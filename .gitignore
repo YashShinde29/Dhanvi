@@ -1,0 +1,32 @@
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/coverage/
+frontend/npm-debug.log*
+
+# .NET
+.dotnet/
+.tools/
+backend/**/bin/
+backend/**/obj/
+backend/.vs/
+*.user
+*.suo
+TestResults/
+coverage/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Docker
+*.pid

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" /></ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Dhanvi.Modules.Organizers.Application\Dhanvi.Modules.Organizers.Application.csproj" />
+    <ProjectReference Include="..\..\Identity\Dhanvi.Modules.Identity.Application\Dhanvi.Modules.Identity.Application.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><IsPackable>false</IsPackable><IsTestProject>true</IsTestProject></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector"><PrivateAssets>all</PrivateAssets><IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets></PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio"><PrivateAssets>all</PrivateAssets><IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets></PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Dhanvi.Api\Dhanvi.Api.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Audit\Dhanvi.Modules.Audit.Infrastructure\Dhanvi.Modules.Audit.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\Dhanvi.Modules.Identity.Application\Dhanvi.Modules.Identity.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Groups\Dhanvi.Modules.Groups.Infrastructure\Dhanvi.Modules.Groups.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

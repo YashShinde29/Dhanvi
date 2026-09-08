@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><ProjectReference Include="..\Dhanvi.Modules.Audit.Domain\Dhanvi.Modules.Audit.Domain.csproj" /></ItemGroup>
+</Project>
+
