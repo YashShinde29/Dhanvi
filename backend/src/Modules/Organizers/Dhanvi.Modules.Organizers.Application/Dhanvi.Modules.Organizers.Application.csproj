@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Dhanvi.Modules.Organizers.Domain\Dhanvi.Modules.Organizers.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Dhanvi.SharedKernel\Dhanvi.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>
+

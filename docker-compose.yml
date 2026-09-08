@@ -1,0 +1,58 @@
+name: dhanvi
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - dhanvi-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Frontend__Origin: ${FRONTEND_ORIGIN:-http://localhost:3000}
+      Database__ApplyMigrations: "true"
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
+      Jwt__SecureCookies: "false"
+      DHANVI_SEED_ADMIN_ENABLED: ${DHANVI_SEED_ADMIN_ENABLED:-false}
+      DHANVI_SEED_ADMIN_EMAIL: ${DHANVI_SEED_ADMIN_EMAIL:-}
+      DHANVI_SEED_ADMIN_PASSWORD: ${DHANVI_SEED_ADMIN_PASSWORD:-}
+    ports:
+      - "${BACKEND_PORT:-5000}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:5000/api/v1}
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:5000/api/v1}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+
+volumes:
+  dhanvi-postgres-data:
