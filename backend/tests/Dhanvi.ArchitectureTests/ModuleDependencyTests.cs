@@ -19,6 +19,8 @@ public sealed class ModuleDependencyTests
 
     public static TheoryData<Type> DomainAssemblies => new()
     {
+        typeof(Dhanvi.Modules.Cycles.Domain.MonthlyCycle),
+        typeof(Dhanvi.Modules.Contributions.Domain.Contribution),
         typeof(AuditLog),
         typeof(IdentityModuleMarker),
         typeof(GroupsModuleMarker),

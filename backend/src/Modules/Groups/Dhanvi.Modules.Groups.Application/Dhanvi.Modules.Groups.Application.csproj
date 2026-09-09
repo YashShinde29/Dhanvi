@@ -3,5 +3,9 @@
     <ProjectReference Include="..\Dhanvi.Modules.Groups.Domain\Dhanvi.Modules.Groups.Domain.csproj" />
     <ProjectReference Include="..\..\..\Dhanvi.SharedKernel\Dhanvi.SharedKernel.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Cycles/Dhanvi.Modules.Cycles.Domain/Dhanvi.Modules.Cycles.Domain.csproj" />
+    <ProjectReference Include="../../Contributions/Dhanvi.Modules.Contributions.Domain/Dhanvi.Modules.Contributions.Domain.csproj" />
+  </ItemGroup>
 </Project>
 

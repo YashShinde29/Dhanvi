@@ -8,5 +8,6 @@
     <ProjectReference Include="..\Dhanvi.Modules.Groups.Application\Dhanvi.Modules.Groups.Application.csproj" />
     <ProjectReference Include="..\Dhanvi.Modules.Groups.Domain\Dhanvi.Modules.Groups.Domain.csproj" />
   </ItemGroup>
+  <ItemGroup><ProjectReference Include="../../Identity/Dhanvi.Modules.Identity.Application/Dhanvi.Modules.Identity.Application.csproj" /></ItemGroup>
 </Project>
 

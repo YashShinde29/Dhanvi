@@ -30,6 +30,7 @@ public static class IdentityModule
         services.AddScoped<TokenService>();
         services.TryAddScoped<IEmailSender, NullEmailSender>();
         services.AddScoped<IIdentityService, IdentityService>();
+        services.AddScoped<IGroupUserDirectory, GroupUserDirectory>();
         services.AddScoped<IdentitySeeder>();
         return services;
     }

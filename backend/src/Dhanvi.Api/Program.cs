@@ -41,6 +41,7 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
     .WriteTo.Console(new JsonFormatter()));
 
 builder.Services.AddProblemDetails();
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.SnakeCaseUpper, allowIntegerValues: false)));
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddHealthChecks();
 builder.Services.AddEndpointsApiExplorer();
@@ -71,7 +72,7 @@ builder.Services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 builder.Services.AddAuditModule();
 builder.Services.AddIdentityModule(builder.Configuration);
 builder.Services.AddOrganizerModule();
-builder.Services.AddGroupsModule(builder.Configuration);
+builder.Services.AddGroupsModule();
 builder.Services.AddDhanviOpenTelemetry(builder.Configuration);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
@@ -154,6 +155,7 @@ api.MapGet("/health", () => Results.Ok(new { status = "healthy", application = "
 api.MapHealthChecks("/health/ready");
 api.MapIdentityEndpoints();
 api.MapGroupsEndpoints();
+api.MapCycleEndpoints();
 api.MapOrganizerEndpoints();
 
 if (builder.Configuration.GetValue("Database:ApplyMigrations", false))
@@ -162,6 +164,7 @@ if (builder.Configuration.GetValue("Database:ApplyMigrations", false))
     await scope.ServiceProvider.GetRequiredService<AuditDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<OrganizerDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<Dhanvi.Modules.Groups.Infrastructure.Persistence.GroupsDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<IdentitySeeder>().SeedAsync(CancellationToken.None);
 }
 

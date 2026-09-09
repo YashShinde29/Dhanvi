@@ -7,5 +7,10 @@
     <PackageReference Include="xunit.runner.visualstudio"><PrivateAssets>all</PrivateAssets><IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets></PackageReference>
   </ItemGroup>
   <ItemGroup><ProjectReference Include="..\..\src\Dhanvi.SharedKernel\Dhanvi.SharedKernel.csproj" /></ItemGroup>
+<ItemGroup><ProjectReference Include="../../src/Modules/Groups/Dhanvi.Modules.Groups.Domain/Dhanvi.Modules.Groups.Domain.csproj" /></ItemGroup>
+<ItemGroup>
+<ProjectReference Include="../../src/Modules/Cycles/Dhanvi.Modules.Cycles.Domain/Dhanvi.Modules.Cycles.Domain.csproj" />
+<ProjectReference Include="../../src/Modules/Contributions/Dhanvi.Modules.Contributions.Domain/Dhanvi.Modules.Contributions.Domain.csproj" />
+</ItemGroup>
 </Project>
 

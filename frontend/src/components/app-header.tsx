@@ -12,7 +12,11 @@ export function AppHeader() {
     <header className="site-header">
       <Link className="brand" href="/">Dhanvi</Link>
       <nav className="nav" aria-label="Main navigation">
-        {auth.authenticated && <Link href="/dashboard">Dashboard</Link>}
+        <Link href="/groups">Groups</Link>
+        {auth.authenticated && <Link href="/my-groups">My groups</Link>}
+        {auth.authenticated && <Link href="/contributions">Contributions</Link>}
+        {auth.roles.includes("ORGANIZER") && <Link href="/organizer/groups">Manage groups</Link>}
+        {isAdmin && <Link href="/admin/groups">Platform groups</Link>}
         {auth.authenticated && <Link href="/profile">Profile</Link>}
         {auth.authenticated && <Link href="/become-organizer">Become an organizer</Link>}
         {isAdmin && <Link href="/admin/organizers">Admin</Link>}

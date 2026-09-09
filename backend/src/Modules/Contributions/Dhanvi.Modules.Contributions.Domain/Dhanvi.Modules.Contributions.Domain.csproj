@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><ProjectReference Include="../../../Dhanvi.SharedKernel/Dhanvi.SharedKernel.csproj" /></ItemGroup>
+</Project>

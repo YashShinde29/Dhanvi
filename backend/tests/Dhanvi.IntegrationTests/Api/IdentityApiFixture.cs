@@ -37,7 +37,7 @@ public sealed class IdentityApiFixture : IAsyncLifetime
     }
 }
 
-public sealed class IdentityApiFactory(string connectionString, TestEmailSender emailSender) : WebApplicationFactory<Program>
+public sealed class IdentityApiFactory(string connectionString, TestEmailSender emailSender, Dhanvi.SharedKernel.Time.IDateTimeProvider? clock = null) : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -55,6 +55,7 @@ public sealed class IdentityApiFactory(string connectionString, TestEmailSender 
             }));
         builder.ConfigureTestServices(services =>
         {
+            if (clock is not null) { services.RemoveAll<Dhanvi.SharedKernel.Time.IDateTimeProvider>(); services.AddSingleton(clock); }
             services.RemoveAll<IEmailSender>();
             services.AddSingleton<IEmailSender>(emailSender);
         });

@@ -7,12 +7,15 @@ namespace Dhanvi.Modules.Groups.Infrastructure;
 
 public static class GroupsModule
 {
-    public static IServiceCollection AddGroupsModule(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddGroupsModule(this IServiceCollection services)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required.");
-        services.AddDbContext<GroupsDbContext>(options =>
-            options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "groups")));
+        services.AddDbContext<GroupsDbContext>((provider, options) =>
+            options.UseNpgsql(provider.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required."), npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "groups")));
+        services.AddScoped<Dhanvi.Modules.Groups.Application.IGroupService, Dhanvi.Modules.Groups.Infrastructure.Services.GroupService>();
+        services.AddScoped<Services.GroupCycleService>();
+        services.AddScoped<Dhanvi.Modules.Groups.Application.IGroupCycleService>(provider => provider.GetRequiredService<Services.GroupCycleService>());
+        services.AddScoped<Dhanvi.Modules.Groups.Application.IContributionRecordingService>(provider => provider.GetRequiredService<Services.GroupCycleService>());
         return services;
     }
 }

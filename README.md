@@ -1,10 +1,10 @@
 # Dhanvi
 
-Dhanvi is a production-minded foundation for a community savings platform. The current milestone implements authentication, user accounts, platform roles, profiles, and organizer application approval in a .NET 10 modular monolith with a Next.js frontend and PostgreSQL. Savings groups, auctions, payments, payouts, draws, and ledger behavior are intentionally not implemented yet.
+Dhanvi is a production-minded foundation for a community savings platform. The current milestone implements authentication, user accounts, platform roles, profiles, organizer application approval, and savings groups, activation, monthly schedules, and manual contribution tracking through READY_FOR_SELECTION in a .NET 10 modular monolith with a Next.js frontend and PostgreSQL. Financial execution, auctions, payments, payouts, draws, and ledger behavior are intentionally not implemented yet. See [Groups and membership foundation](docs/groups-foundation.md) for rules, APIs, migration, concurrency, frontend pages, and operational details. See [Monthly cycles and contribution tracking](docs/cycles-and-contributions.md) for the activation transaction, timezone, idempotency, reversals, new APIs, and migration.
 
 ## Architecture
 
-The backend is one deployable ASP.NET Core process with module-owned Domain, Application, Infrastructure, and API projects. Identity, Organizers, and Audit each own an EF Core `DbContext`, PostgreSQL schema, and migration history. A scoped PostgreSQL connection allows multi-module approval operations to enlist in one database transaction.
+The backend is one deployable ASP.NET Core process with module-owned Domain, Application, Infrastructure, and API projects. Identity, Organizers, Groups, and Audit each own an EF Core `DbContext`, PostgreSQL schema, and migration history. A scoped PostgreSQL connection allows multi-module approval operations to enlist in one database transaction.
 
 Authentication uses a 15-minute JWT access token and a longer-lived random opaque refresh token. Refresh tokens are SHA-256 hashed in PostgreSQL, rotated on use, and revocable. The API supports bearer headers for API clients and HttpOnly, SameSite cookies for the web app. Backend authorization policies remain the source of truth.
 
@@ -84,6 +84,10 @@ Organizer workflow:
 
 The implemented pages are `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard`, `/profile`, `/become-organizer`, `/organizer/application-status`, `/organizer`, `/admin`, and `/admin/organizers`. Protected pages provide client-side UX guards; the API independently enforces every authorization policy.
 
+The group routes are `/groups`, `/groups/[id]`, `/my-groups`, `/organizer/groups`, `/organizer/groups/create`, `/organizer/groups/[id]`, `/organizer/groups/[id]/applications`, `/admin/groups`, `/admin/groups/create`, and `/admin/groups/[id]`.
+
+Additional contribution pages are `/contributions`, `/organizer/groups/[id]/cycles/[cycleId]/contributions`, and `/admin/groups/[id]/cycles/[cycleId]/contributions`. Active group pages include cycle schedules and aggregate progress.
+
 ## Database migrations
 
 Checked-in migrations:
@@ -91,15 +95,18 @@ Checked-in migrations:
 - Identity: `IdentityAndAuthentication`
 - Organizers: `OrganizerApplications`
 - Audit: `IdentityAuditLog`
+- Groups: `GroupsAndMembershipFoundation` (groups, memberships, rules snapshots, terms acceptances, and group audit events)
+- Groups: `MonthlyCyclesAndContributionTracking` (monthly cycles, obligations, append-only contribution entries, and idempotency receipts)
 
 They create `identity.users`, `identity.roles`, `identity.user_roles`, `identity.refresh_tokens`, `identity.password_reset_tokens`, `identity.email_verification_tokens`, `organizers.organizer_profiles`, `organizers.organizer_applications`, and `audit.audit_logs`, with the required indexes and constraints.
 
 Compose applies these migrations when the API starts. For manual development, set `ConnectionStrings__DefaultConnection` and run each module context from `backend`:
 
 ```powershell
-dotnet ef database update --project src/Modules/Audit/Dhanvi.Modules.Audit.Infrastructure --startup-project src/Dhanvi.Api --context AuditDbContext
-dotnet ef database update --project src/Modules/Identity/Dhanvi.Modules.Identity.Infrastructure --startup-project src/Dhanvi.Api --context IdentityDbContext
-dotnet ef database update --project src/Modules/Organizers/Dhanvi.Modules.Organizers.Infrastructure --startup-project src/Dhanvi.Api --context OrganizerDbContext
+dotnet ef database update --project src/Modules/Audit/Dhanvi.Modules.Audit.Infrastructure --context AuditDbContext
+dotnet ef database update --project src/Modules/Identity/Dhanvi.Modules.Identity.Infrastructure --context IdentityDbContext
+dotnet ef database update --project src/Modules/Organizers/Dhanvi.Modules.Organizers.Infrastructure --context OrganizerDbContext
+dotnet ef database update --project src/Modules/Groups/Dhanvi.Modules.Groups.Infrastructure --context GroupsDbContext
 ```
 
 ## Tests and checks
@@ -115,11 +122,11 @@ npm run lint
 npm run build
 ```
 
-Docker must be running for the integration tests. Testcontainers applies the real migrations to disposable PostgreSQL and verifies registration, duplicate email handling, password safety, login, authorization, refresh rotation/reuse protection, password reset reuse protection, organizer application rules, admin approval/rejection, role assignment, and audit creation.
+Docker must be running for the integration tests. Testcontainers applies the real migrations to disposable PostgreSQL and verifies registration, duplicate email handling, password safety, login, authorization, refresh rotation/reuse protection, password reset reuse protection, organizer application rules, admin approval/rejection, role assignment, and audit creation. Group tests additionally verify all four creator/mechanism combinations, terms, privacy, readiness, and real concurrent final-slot approval. Cycle/contribution tests also verify atomic activation and rollback, 20/50-member schedules, private histories, manual recording/reversal, idempotency, concurrent over-record prevention, readiness, and overdue dates.
 
 ## Known limitations
 
 - The development email sender logs that a reset was requested; configure a real `IEmailSender` before production email delivery.
 - Email verification storage is prepared, but send/confirm endpoints and a provider are not implemented.
-- Organizer suspension is foundational only; organizer-owned group capabilities do not exist yet.
-- KYC, document uploads, MFA, groups, and all financial workflows remain out of scope for this milestone.
+- Suspended organizers cannot create or manage groups. Active group suspension blocks contribution operations; resume and all financial execution remain deferred.
+- KYC, document uploads, MFA, and all financial workflows remain out of scope for this milestone.

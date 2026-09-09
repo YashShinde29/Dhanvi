@@ -10,6 +10,9 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
     {
         var (status, type, message) = exception switch
         {
+            Dhanvi.Modules.Groups.Domain.GroupBusinessException group => (group.Code is "NOT_GROUP_OWNER" or "MEMBERSHIP_REQUIRED" or "ORGANIZER_NOT_APPROVED" ? StatusCodes.Status403Forbidden : StatusCodes.Status409Conflict, group.Code, group.Message),
+            BadHttpRequestException badRequest => (StatusCodes.Status400BadRequest, "validation_error", badRequest.Message),
+            BusinessRuleException cycleRule => (StatusCodes.Status409Conflict, cycleRule.Code, cycleRule.Message),
             RequestValidationException validation => (StatusCodes.Status400BadRequest, "validation_error", validation.Message),
             AuthenticationFailedException authentication => (StatusCodes.Status401Unauthorized, "authentication_error", authentication.Message),
             UnauthorizedAccessException unauthorized => (StatusCodes.Status401Unauthorized, "authentication_error", unauthorized.Message),
@@ -28,6 +31,8 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
             Detail = message,
             Instance = httpContext.Request.Path,
         };
+        if (exception is Dhanvi.Modules.Groups.Domain.GroupBusinessException business) details.Extensions["code"] = business.Code;
+        if (exception is BusinessRuleException rule) details.Extensions["code"] = rule.Code;
         details.Extensions["traceId"] = httpContext.TraceIdentifier;
         if (exception is RequestValidationException validationException)
             details.Extensions["errors"] = validationException.Errors;
