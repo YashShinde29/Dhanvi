@@ -200,12 +200,18 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<DateTimeOffset?>("SelectionCompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateOnly>("SelectionDate")
                         .HasColumnType("date");
 
                     b.Property<string>("SelectionMethod")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<Guid?>("SelectionResultId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset?>("StartedAt")
                         .HasColumnType("timestamp with time zone");
@@ -224,6 +230,8 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ContributionDueDate");
+
+                    b.HasIndex("SelectionResultId");
 
                     b.HasIndex("Status");
 
@@ -360,13 +368,26 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ActorUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AlgorithmVersion")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CycleId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("SelectionResultId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("SubjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("WinnerMembershipId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
@@ -391,7 +412,7 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("HasReceivedPayout")
+                    b.Property<bool>("HasBeenSelectedForPayout")
                         .HasColumnType("boolean");
 
                     b.Property<int?>("PayoutCycleNumber")
@@ -508,6 +529,130 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                     b.ToTable("GroupTermsAcceptances", "groups");
                 });
 
+            modelBuilder.Entity("Dhanvi.Modules.RandomDraws.Domain.SelectionEligibleMember", b =>
+                {
+                    b.Property<Guid>("SelectionResultId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MembershipId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SlotNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("SelectionResultId", "MembershipId");
+
+                    b.HasIndex("MembershipId", "GroupId");
+
+                    b.HasIndex("SelectionResultId", "GroupId");
+
+                    b.HasIndex("SelectionResultId", "Ordinal")
+                        .IsUnique();
+
+                    b.HasIndex("SelectionResultId", "SlotNumber")
+                        .IsUnique();
+
+                    b.ToTable("SelectionEligibleMembers", "groups", t =>
+                        {
+                            t.HasCheckConstraint("CK_Eligible_Ordinal", "\"Ordinal\" BETWEEN 0 AND 49 AND \"SlotNumber\" BETWEEN 1 AND 50");
+                        });
+                });
+
+            modelBuilder.Entity("Dhanvi.Modules.RandomDraws.Domain.SelectionResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AlgorithmVersion")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("CycleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CycleNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EligibleMemberCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("EligibleSetHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("ExecutedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ExecutedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RandomSourceType")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("ResultHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SeedCommitment")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SeedReveal")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("SelectedIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SelectionMethod")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("WinnerMembershipId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("WinnerSlotNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("WinnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CycleId")
+                        .IsUnique();
+
+                    b.HasIndex("CycleId", "GroupId");
+
+                    b.HasIndex("GroupId", "CycleNumber")
+                        .IsUnique();
+
+                    b.HasIndex("GroupId", "WinnerMembershipId")
+                        .IsUnique();
+
+                    b.HasIndex("WinnerMembershipId", "WinnerUserId", "GroupId");
+
+                    b.ToTable("SelectionResults", "groups", t =>
+                        {
+                            t.HasCheckConstraint("CK_Selection_Count", "\"EligibleMemberCount\" BETWEEN 1 AND 50 AND \"CycleNumber\" BETWEEN 1 AND 50 AND \"WinnerSlotNumber\" BETWEEN 1 AND 50");
+
+                            t.HasCheckConstraint("CK_Selection_Method", "(\"SelectionMethod\" = 'Random' AND \"SelectedIndex\" IS NOT NULL AND \"SelectedIndex\" >= 0 AND \"SelectedIndex\" < \"EligibleMemberCount\" AND \"SeedReveal\" IS NOT NULL AND \"SeedCommitment\" IS NOT NULL AND \"EligibleSetHash\" IS NOT NULL) OR (\"SelectionMethod\" = 'OrganizerReserved' AND \"CycleNumber\" = 1 AND \"EligibleMemberCount\" = 1 AND \"SelectedIndex\" IS NULL AND \"SeedReveal\" IS NULL AND \"SeedCommitment\" IS NULL AND \"EligibleSetHash\" IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Dhanvi.SharedKernel.Domain.IdempotencyRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -582,6 +727,11 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Dhanvi.Modules.RandomDraws.Domain.SelectionResult", null)
+                        .WithMany()
+                        .HasForeignKey("SelectionResultId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Dhanvi.Modules.Groups.Domain.GroupAuditEvent", b =>
@@ -629,6 +779,45 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                         .HasForeignKey("MembershipId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Dhanvi.Modules.RandomDraws.Domain.SelectionEligibleMember", b =>
+                {
+                    b.HasOne("Dhanvi.Modules.Groups.Domain.GroupMembership", null)
+                        .WithMany()
+                        .HasForeignKey("MembershipId", "GroupId")
+                        .HasPrincipalKey("Id", "GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Dhanvi.Modules.RandomDraws.Domain.SelectionResult", null)
+                        .WithMany("EligibleMembers")
+                        .HasForeignKey("SelectionResultId", "GroupId")
+                        .HasPrincipalKey("Id", "GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Dhanvi.Modules.RandomDraws.Domain.SelectionResult", b =>
+                {
+                    b.HasOne("Dhanvi.Modules.Cycles.Domain.MonthlyCycle", null)
+                        .WithMany()
+                        .HasForeignKey("CycleId", "GroupId")
+                        .HasPrincipalKey("Id", "GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Dhanvi.Modules.Groups.Domain.GroupMembership", null)
+                        .WithMany()
+                        .HasForeignKey("WinnerMembershipId", "WinnerUserId", "GroupId")
+                        .HasPrincipalKey("Id", "UserId", "GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Dhanvi.Modules.RandomDraws.Domain.SelectionResult", b =>
+                {
+                    b.Navigation("EligibleMembers");
                 });
 #pragma warning restore 612, 618
         }

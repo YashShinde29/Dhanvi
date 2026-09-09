@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk"><ItemGroup>
+<ProjectReference Include="../Dhanvi.Modules.RandomDraws.Domain/Dhanvi.Modules.RandomDraws.Domain.csproj" />
+<ProjectReference Include="../../Cycles/Dhanvi.Modules.Cycles.Domain/Dhanvi.Modules.Cycles.Domain.csproj" />
+<ProjectReference Include="../../Contributions/Dhanvi.Modules.Contributions.Domain/Dhanvi.Modules.Contributions.Domain.csproj" />
+</ItemGroup></Project>

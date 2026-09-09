@@ -24,6 +24,8 @@ public sealed class MonthlyCycle
     public DateTimeOffset? StartedAt { get; private set; }
     public DateTimeOffset? ContributionsCompletedAt { get; private set; }
     public DateTimeOffset? ReadyForSelectionAt { get; private set; }
+    public DateTimeOffset? SelectionCompletedAt { get; private set; }
+    public Guid? SelectionResultId { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
     public int Version { get; private set; }
@@ -37,6 +39,14 @@ public sealed class MonthlyCycle
             ExpectedMemberCount = members, ExpectedContributionPerMember = contribution, ExpectedPoolAmount = pool, CreatedAt = now, UpdatedAt = now };
         if (number == 1) { cycle.Status = CycleStatus.CollectingContributions; cycle.StartedAt = now; }
         return cycle;
+    }
+    public void CompleteSelection(Guid resultId, DateTimeOffset now)
+    {
+        BusinessRuleException.Require(Status == CycleStatus.ReadyForSelection && !SelectionResultId.HasValue && resultId != Guid.Empty,
+            "CYCLE_NOT_READY_FOR_SELECTION", "Only a ready cycle with no existing result can complete selection.");
+        BusinessRuleException.Require(FullyRecordedMemberCount == ExpectedMemberCount && RecordedContributionAmount == ExpectedPoolAmount,
+            "CYCLE_NOT_READY_FOR_SELECTION", "Contribution totals must still be complete.");
+        SelectionResultId = resultId; SelectionCompletedAt = now; Status = CycleStatus.SelectionCompleted; UpdatedAt = now; Version++;
     }
     public void EnsureRecordingOpen() => BusinessRuleException.Require(Status == CycleStatus.CollectingContributions, "CYCLE_NOT_COLLECTING", "Only the collecting cycle accepts new contribution records.");
     public void EnsureReversalAllowed() => BusinessRuleException.Require(Status is CycleStatus.CollectingContributions or CycleStatus.ContributionsComplete or CycleStatus.ReadyForSelection,

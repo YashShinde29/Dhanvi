@@ -1,0 +1,26 @@
+{
+  "algorithmVersion": "DHANVI_RANDOM_V1",
+  "groupId": "00000000-0000-0000-0000-000000000001",
+  "cycleId": "00000000-0000-0000-0000-000000000002",
+  "cycleNumber": 1,
+  "canonicalEligibleMembers": [
+    {
+      "membershipId": "00000000-0000-0000-0000-000000000011",
+      "slotNumber": 1
+    },
+    {
+      "membershipId": "00000000-0000-0000-0000-000000000012",
+      "slotNumber": 2
+    },
+    {
+      "membershipId": "00000000-0000-0000-0000-000000000013",
+      "slotNumber": 3
+    }
+  ],
+  "eligibleSetHash": "c22338f049f733b3904ad20b9a4947ced507cd41fadeac79c100d723afd1ecb3",
+  "seedCommitment": "630dcd2966c4336691125448bbb25b4ff412a49c732db2c8abc1b8581bd710dd",
+  "seedReveal": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "selectedIndex": 1,
+  "winnerMembershipId": "00000000-0000-0000-0000-000000000012",
+  "resultHash": "f98c26f97cbbe567f1fc758bf7b6d00f47f0bb2c139ba61b6b1f5108e2ecd885"
+}

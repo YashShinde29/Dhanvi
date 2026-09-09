@@ -1,4 +1,8 @@
 using Dhanvi.Api.Infrastructure;
+using Dhanvi.Modules.RandomDraws.Api;
+using Dhanvi.Modules.Auctions.Api;
+using Dhanvi.Modules.Auctions.Infrastructure;
+using Dhanvi.Modules.RandomDraws.Infrastructure;
 using Dhanvi.Api.Middleware;
 using Dhanvi.Modules.Groups.Api;
 using Dhanvi.Modules.Groups.Infrastructure;
@@ -73,6 +77,8 @@ builder.Services.AddAuditModule();
 builder.Services.AddIdentityModule(builder.Configuration);
 builder.Services.AddOrganizerModule();
 builder.Services.AddGroupsModule();
+builder.Services.AddRandomDrawsModule();
+builder.Services.AddAuctionsModule();
 builder.Services.AddDhanviOpenTelemetry(builder.Configuration);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
@@ -156,6 +162,8 @@ api.MapHealthChecks("/health/ready");
 api.MapIdentityEndpoints();
 api.MapGroupsEndpoints();
 api.MapCycleEndpoints();
+api.MapSelectionEndpoints();
+api.MapAuctionEndpoints();
 api.MapOrganizerEndpoints();
 
 if (builder.Configuration.GetValue("Database:ApplyMigrations", false))

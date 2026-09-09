@@ -15,4 +15,5 @@
 <ProjectReference Include="../../src/Modules/Cycles/Dhanvi.Modules.Cycles.Domain/Dhanvi.Modules.Cycles.Domain.csproj" />
 <ProjectReference Include="../../src/Modules/Contributions/Dhanvi.Modules.Contributions.Domain/Dhanvi.Modules.Contributions.Domain.csproj" />
 </ItemGroup>
+<ItemGroup><ProjectReference Include="../../src/Modules/RandomDraws/Dhanvi.Modules.RandomDraws.Domain/Dhanvi.Modules.RandomDraws.Domain.csproj" /></ItemGroup>
 </Project>

@@ -17,6 +17,8 @@ export interface MonthlyCycle {
   startedAt: string | null;
   contributionsCompletedAt: string | null;
   readyForSelectionAt: string | null;
+  selectionCompletedAt: string | null;
+  selectionResultId: string | null;
 }
 export interface ContributionEntry {
   id: string;

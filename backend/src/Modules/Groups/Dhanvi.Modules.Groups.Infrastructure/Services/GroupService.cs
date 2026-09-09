@@ -154,7 +154,7 @@ internal sealed class GroupService(GroupsDbContext db, IOrganizerStatusReader or
     private async Task<MemberDetails> MapMember(GroupMembership m, bool email, CancellationToken ct)
     {
         var u = await users.FindAsync(m.UserId, ct);
-        return new(m.Id, m.UserId, u?.Name ?? "Unavailable user", email ? u?.Email : null, m.SlotNumber, m.Status, m.AppliedAt, m.ApprovedAt, m.TermsVersionId, m.TermsAcceptedAt, m.RejectedReason);
+        return new(m.Id, m.UserId, u?.Name ?? "Unavailable user", email ? u?.Email : null, m.SlotNumber, m.Status, m.AppliedAt, m.ApprovedAt, m.TermsVersionId, m.TermsAcceptedAt, m.RejectedReason, m.HasBeenSelectedForPayout, m.PayoutCycleNumber);
     }
     private async Task<GroupDetails> Map(Group g, GroupActor? actor, bool management, CancellationToken ct)
     {

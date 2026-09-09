@@ -15,7 +15,7 @@ public sealed record GroupPage(IReadOnlyList<GroupDetails> Items, int Page, int 
 public sealed record PublicOrganizer(string Name, bool Verified, string Status, DateTimeOffset MemberSince);
 public sealed record OrganizerContact(string Name, string? Phone, string Email);
 public sealed record MemberDetails(Guid Id, Guid UserId, string Name, string? Email, int? SlotNumber, MembershipStatus Status,
-    DateTimeOffset AppliedAt, DateTimeOffset? ApprovedAt, Guid? TermsVersionId, DateTimeOffset? TermsAcceptedAt, string? RejectedReason);
+    DateTimeOffset AppliedAt, DateTimeOffset? ApprovedAt, Guid? TermsVersionId, DateTimeOffset? TermsAcceptedAt, string? RejectedReason, bool HasBeenSelectedForPayout, int? PayoutCycleNumber);
 public sealed record PublishedGroupRules(Guid Id, int VersionNumber, string RulesSnapshot, string RulesHash);
 public sealed record GroupDetails(Guid Id, string Name, string Description, GroupType GroupType, GroupCreatorType CreatorType,
     decimal GroupValue, int MemberLimit, int CurrentMemberCount, int AvailableSlots, decimal MonthlyContribution, int DurationMonths,

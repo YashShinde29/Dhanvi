@@ -10,7 +10,7 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
     {
         var (status, type, message) = exception switch
         {
-            Dhanvi.Modules.Groups.Domain.GroupBusinessException group => (group.Code is "NOT_GROUP_OWNER" or "MEMBERSHIP_REQUIRED" or "ORGANIZER_NOT_APPROVED" ? StatusCodes.Status403Forbidden : StatusCodes.Status409Conflict, group.Code, group.Message),
+            Dhanvi.Modules.Groups.Domain.GroupBusinessException group => (group.Code is "NOT_GROUP_OWNER" or "MEMBERSHIP_REQUIRED" or "ORGANIZER_NOT_APPROVED" or "NOT_AUTHORIZED_TO_EXECUTE_SELECTION" or "NOT_AUTHORIZED_TO_MANAGE_AUCTION" ? StatusCodes.Status403Forbidden : StatusCodes.Status409Conflict, group.Code, group.Message),
             BadHttpRequestException badRequest => (StatusCodes.Status400BadRequest, "validation_error", badRequest.Message),
             BusinessRuleException cycleRule => (StatusCodes.Status409Conflict, cycleRule.Code, cycleRule.Message),
             RequestValidationException validation => (StatusCodes.Status400BadRequest, "validation_error", validation.Message),

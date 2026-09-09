@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { SelectionPanel } from "@/features/selections/selection-panel";
 import { useEffect, useState } from "react";
 import { contributionService } from "@/services/contribution.service";
 import type { Group } from "@/types/group";
@@ -93,17 +94,12 @@ export function CyclePanel({ group, scope }: { group: Group; scope: string }) {
             {money(current.expectedContributionPerMember)}
           </p>
           <CycleProgress cycle={current} />
+          <SelectionPanel group={group} cycle={current} scope={scope} />
           {own && (
             <p className="status-note">
               Your contribution: {label(own.status)} ·{" "}
               {money(own.recordedAmount)} recorded of{" "}
               {money(own.expectedAmount)}
-            </p>
-          )}
-          {current.status === "READY_FOR_SELECTION" && (
-            <p>
-              Contribution tracking is complete. Selection execution is not
-              available yet.
             </p>
           )}
         </>

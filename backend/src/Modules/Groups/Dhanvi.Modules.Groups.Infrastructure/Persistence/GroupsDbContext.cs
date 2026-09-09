@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Dhanvi.Modules.Auctions.Domain;
+using Dhanvi.Modules.RandomDraws.Domain;
 using Dhanvi.Modules.Cycles.Domain;
 using Dhanvi.Modules.Contributions.Domain;
 using Dhanvi.SharedKernel.Domain;
@@ -18,10 +20,18 @@ public sealed class GroupsDbContext(DbContextOptions<GroupsDbContext> options) :
     public DbSet<Contribution> Contributions => Set<Contribution>();
     public DbSet<ContributionEntry> ContributionEntries => Set<ContributionEntry>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+    public DbSet<SelectionResult> SelectionResults => Set<SelectionResult>();
+    public DbSet<SelectionEligibleMember> SelectionEligibleMembers => Set<SelectionEligibleMember>();
+    public DbSet<Auction> Auctions => Set<Auction>();
+    public DbSet<AuctionBid> AuctionBids => Set<AuctionBid>();
+    public DbSet<AuctionResult> AuctionResults => Set<AuctionResult>();
+    public DbSet<AuctionBenefitAllocation> AuctionBenefitAllocations => Set<AuctionBenefitAllocation>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("groups");
         CyclePersistence.Configure(modelBuilder);
+        SelectionPersistence.Configure(modelBuilder);
+        Dhanvi.Modules.Auctions.Infrastructure.AuctionPersistence.Configure(modelBuilder);
         var g = modelBuilder.Entity<Group>();
         g.ToTable("Groups", t => {
             t.HasCheckConstraint("CK_Group_Capacity", "\"CurrentMemberCount\" >= 0 AND \"CurrentMemberCount\" <= (\"Rules\"->>'MemberLimit')::int");

@@ -31,6 +31,8 @@ export interface Member {
   termsVersionId: string | null;
   termsAcceptedAt: string | null;
   rejectedReason: string | null;
+  hasBeenSelectedForPayout: boolean;
+  payoutCycleNumber: number | null;
 }
 export interface Group extends GroupInput {
   id: string;

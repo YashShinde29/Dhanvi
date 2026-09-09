@@ -11,7 +11,8 @@ public enum GroupCreatorType { Platform, Organizer }
 public enum GroupStatus { Draft, Published, Recruiting, FullySubscribed, ReadyToStart, Active, Completing, Completed, Suspended, Cancelled }
 public enum MembershipStatus { Applied, Approved, Active, Rejected, Withdrawn, Removed, Completed }
 public enum SelectionMethod { OrganizerReserved, Random, Auction }
-public sealed record AuctionGroupRules(decimal MinimumDiscount, decimal MaximumDiscount, decimal BidIncrement, TimeOnly AuctionStartTime, TimeOnly AuctionEndTime);
+public enum AuctionFeePolicy { WinnerMemberShare }
+public sealed record AuctionGroupRules(decimal MinimumDiscount, decimal MaximumDiscount, decimal BidIncrement, TimeOnly AuctionStartTime, TimeOnly AuctionEndTime, AuctionFeePolicy FeePolicy = AuctionFeePolicy.WinnerMemberShare);
 public sealed record RandomGroupRules(string AlgorithmVersion = "UNASSIGNED", TimeOnly? DrawTime = null, string VerificationMethod = "NOT_IMPLEMENTED");
 public sealed record GroupConfiguration(GroupType GroupType, decimal GroupValue, int MemberLimit, bool OrganizerParticipates,
     bool OrganizerFirstPayout, int ContributionDueDay, int SelectionDay, int PayoutDay, DateOnly StartDate,
@@ -44,9 +45,13 @@ public static class GroupRules
         Require(rules.GroupType != GroupType.Random || rules.AuctionRules is null, "INVALID_AUCTION_RULES", "Random groups cannot have auction rules.");
         Require(rules.GroupType != GroupType.Auction || rules.RandomRules is null, "INVALID_RANDOM_RULES", "Auction groups cannot have random rules.");
         if (rules.AuctionRules is { } a)
+        {
             Require(a.MinimumDiscount >= 0 && a.MaximumDiscount >= a.MinimumDiscount && a.MaximumDiscount < rules.GroupValue && a.BidIncrement > 0 && a.BidIncrement <= rules.GroupValue &&
                 decimal.Round(a.MinimumDiscount, 2) == a.MinimumDiscount && decimal.Round(a.MaximumDiscount, 2) == a.MaximumDiscount && decimal.Round(a.BidIncrement, 2) == a.BidIncrement && a.AuctionStartTime < a.AuctionEndTime,
                 "INVALID_AUCTION_RULES", "Discounts and increment must be valid currency amounts; auction end must follow start.");
+            Require(a.FeePolicy == AuctionFeePolicy.WinnerMemberShare, "UNSUPPORTED_AUCTION_FEE_POLICY", "Only the proposed winner member share fee policy is supported.");
+            Require(a.MaximumDiscount > 0 && a.MinimumDiscount * 100 % rules.MemberLimit == 0 && a.MaximumDiscount * 100 % rules.MemberLimit == 0 && a.BidIncrement * 100 % rules.MemberLimit == 0, "INVALID_AUCTION_ALLOCATION_PRECISION", "Auction limits and increment must divide into exact paise shares for every member position.");
+        }
     }
 }
 public sealed class GroupBusinessException(string code, string message) : DhanviException(message)

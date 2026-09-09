@@ -9,5 +9,7 @@
     <ProjectReference Include="..\Dhanvi.Modules.Groups.Domain\Dhanvi.Modules.Groups.Domain.csproj" />
   </ItemGroup>
   <ItemGroup><ProjectReference Include="../../Identity/Dhanvi.Modules.Identity.Application/Dhanvi.Modules.Identity.Application.csproj" /></ItemGroup>
+<ItemGroup><ProjectReference Include="../../RandomDraws/Dhanvi.Modules.RandomDraws.Application/Dhanvi.Modules.RandomDraws.Application.csproj" /></ItemGroup>
+<ItemGroup><ProjectReference Include="../../Auctions/Dhanvi.Modules.Auctions.Infrastructure/Dhanvi.Modules.Auctions.Infrastructure.csproj" /></ItemGroup>
 </Project>
 

@@ -23,4 +23,6 @@
     <ProjectReference Include="..\Modules\Organizers\Dhanvi.Modules.Organizers.Infrastructure\Dhanvi.Modules.Organizers.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Audit\Dhanvi.Modules.Audit.Infrastructure\Dhanvi.Modules.Audit.Infrastructure.csproj" />
   </ItemGroup>
+<ItemGroup><ProjectReference Include="../Modules/RandomDraws/Dhanvi.Modules.RandomDraws.Api/Dhanvi.Modules.RandomDraws.Api.csproj" /><ProjectReference Include="../Modules/RandomDraws/Dhanvi.Modules.RandomDraws.Infrastructure/Dhanvi.Modules.RandomDraws.Infrastructure.csproj" /></ItemGroup>
+<ItemGroup><ProjectReference Include="../Modules/Auctions/Dhanvi.Modules.Auctions.Api/Dhanvi.Modules.Auctions.Api.csproj" /></ItemGroup>
 </Project>

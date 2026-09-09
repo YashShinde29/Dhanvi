@@ -14,7 +14,9 @@ public sealed class GroupMembership
     public Guid? TermsVersionId { get; private set; }
     public DateTimeOffset? TermsAcceptedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
-    public bool HasReceivedPayout { get; private set; }
+    public bool HasBeenSelectedForPayout { get; private set; }
+    // Compatibility alias only; selection grants a payout right, never confirms money transfer.
+    public bool HasReceivedPayout => HasBeenSelectedForPayout;
     public int? PayoutCycleNumber { get; private set; }
     public static GroupMembership Apply(Guid groupId, Guid userId, DateTimeOffset now) => new() { GroupId = groupId, UserId = userId, AppliedAt = now, UpdatedAt = now };
     public void Approve(int slot, DateTimeOffset now)
@@ -33,6 +35,13 @@ public sealed class GroupMembership
         TermsVersionId = version.Id; TermsAcceptedAt = now; UpdatedAt = now;
         return new GroupTermsAcceptance(Id, version.Id, now, version.RulesHash);
     }
+    public void SelectForPayout(int cycleNumber, DateTimeOffset now)
+    {
+        GroupRules.Require(Status == MembershipStatus.Active && SlotNumber.HasValue, "MEMBERSHIP_NOT_ELIGIBLE", "An active slotted membership is required.");
+        GroupRules.Require(!HasBeenSelectedForPayout, "MEMBER_ALREADY_SELECTED", "This member already owns a main payout right.");
+        GroupRules.Require(cycleNumber is >= 1 and <= 50, "INVALID_CYCLE_NUMBER", "Invalid cycle number.");
+        HasBeenSelectedForPayout = true; PayoutCycleNumber = cycleNumber; UpdatedAt = now;
+    }
     public void Activate(DateTimeOffset now)
     {
         GroupRules.Require(Status == MembershipStatus.Approved && TermsVersionId.HasValue && SlotNumber.HasValue, "MEMBERSHIP_NOT_READY", "Membership must be approved, slotted, and have accepted terms.");
@@ -49,12 +58,16 @@ public sealed class GroupTermsAcceptance(Guid membershipId, Guid groupRuleVersio
     public string RulesHash { get; private set; } = rulesHash;
 }
 // Stored with the group transaction so audit events cannot be lost on rollback.
-public sealed class GroupAuditEvent(Guid groupId, Guid actorUserId, string action, DateTimeOffset createdAt, Guid? subjectId = null)
+public sealed class GroupAuditEvent(Guid groupId, Guid actorUserId, string action, DateTimeOffset createdAt, Guid? subjectId = null, Guid? cycleId = null, Guid? selectionResultId = null, Guid? winnerMembershipId = null, string? algorithmVersion = null)
 {
     public Guid Id { get; private set; } = Guid.NewGuid();
     public Guid GroupId { get; private set; } = groupId;
     public Guid ActorUserId { get; private set; } = actorUserId;
     public string Action { get; private set; } = action;
     public Guid? SubjectId { get; private set; } = subjectId;
+    public Guid? CycleId { get; private set; } = cycleId;
+    public Guid? SelectionResultId { get; private set; } = selectionResultId;
+    public Guid? WinnerMembershipId { get; private set; } = winnerMembershipId;
+    public string? AlgorithmVersion { get; private set; } = algorithmVersion;
     public DateTimeOffset CreatedAt { get; private set; } = createdAt;
 }

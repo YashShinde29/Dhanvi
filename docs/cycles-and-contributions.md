@@ -1,5 +1,7 @@
 # Monthly cycles and contribution tracking
 
+This describes Prompt 4. [Prompt 5](random-and-reserved-selection.md) now implements random/organizer-reserved selection and blocks contribution reversals once selection completes. Earlier selection-related limits below are historical where superseded.
+
 Prompt 4 adds controlled activation and operational contribution tracking to the existing modular monolith. **No real payment is processed.** A Contribution is an expected monthly obligation; a ContributionEntry is an operational manual record or reversal. Neither is a payment nor a financial ledger entry.
 
 ## Architecture and changes

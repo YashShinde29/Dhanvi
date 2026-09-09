@@ -122,5 +122,5 @@ internal sealed partial class GroupCycleService(GroupsDbContext db, IOrganizerSt
     private static ContributionEntryDetails MapEntry(ContributionEntry e) => new(e.Id, e.EntryType, e.Amount, e.Reference, e.Note, e.RecordedByUserId, e.CreatedAt, e.ReversesEntryId);
     private static CycleDetails MapCycle(MonthlyCycle c, string timeZone) => new(c.Id, c.GroupId, c.CycleNumber, c.SelectionMethod, c.Status, c.ContributionDueDate, c.SelectionDate, c.PayoutDate, timeZone,
         c.ExpectedMemberCount, c.ExpectedContributionPerMember, c.ExpectedPoolAmount, c.RecordedContributionAmount, c.FullyRecordedMemberCount, c.ExpectedMemberCount - c.FullyRecordedMemberCount,
-        c.StartedAt, c.ContributionsCompletedAt, c.ReadyForSelectionAt);
+        c.StartedAt, c.ContributionsCompletedAt, c.ReadyForSelectionAt, c.SelectionCompletedAt, c.SelectionResultId);
 }

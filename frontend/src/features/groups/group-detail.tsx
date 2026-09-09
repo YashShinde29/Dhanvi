@@ -189,6 +189,12 @@ function GroupDetail({
       {own && (
         <section className="panel">
           <h2>My membership: {label(own.status)}</h2>
+          {own.hasBeenSelectedForPayout && (
+            <p className="status-note">
+              Selected for the cycle {own.payoutCycleNumber} payout right. This
+              does not confirm a money transfer.
+            </p>
+          )}
           {own.rejectedReason && <p>{own.rejectedReason}</p>}
           {own.status === "APPLIED" && (
             <p>Application pending. No payment is needed.</p>

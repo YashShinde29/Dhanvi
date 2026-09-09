@@ -22,7 +22,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 namespace Dhanvi.IntegrationTests.Api;
 
-public sealed class CycleEndpointTests(CycleApiFixture fixture) : IClassFixture<CycleApiFixture>
+public sealed partial class CycleEndpointTests(CycleApiFixture fixture) : IClassFixture<CycleApiFixture>
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseUpper) } };
     private sealed record Scenario(Guid GroupId, Guid OwnerId, Guid[] MemberIds, string Scope);
