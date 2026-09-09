@@ -1,16 +1,13 @@
 using Dhanvi.Modules.Groups.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Testcontainers.PostgreSql;
+
 
 namespace Dhanvi.IntegrationTests.Database;
 
-public sealed class PostgreSqlConnectivityTests : IAsyncLifetime
+public sealed class PostgreSqlConnectivityTests : IAsyncLifetime, IAsyncDisposable
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18-alpine")
-        .WithDatabase("dhanvi_tests")
-        .WithUsername("dhanvi")
-        .WithPassword("integration-test-only")
-        .Build();
+    ValueTask IAsyncDisposable.DisposeAsync() => new(DisposeAsync());
+    private readonly TestPostgres _postgres = new();
 
     public Task InitializeAsync() => _postgres.StartAsync();
     public Task DisposeAsync() => _postgres.DisposeAsync().AsTask();

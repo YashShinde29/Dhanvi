@@ -22,14 +22,14 @@ public sealed partial class AuctionService(IAuctionStore store, IDateTimeProvide
     }, ct);
     public Task<AuctionBidDetails> BidAsync(Guid groupId, Guid cycleId, SelectionActor actor, PlaceAuctionBidRequest request, string key, CancellationToken ct) => store.ExecuteLockedAsync(groupId, cycleId, actor.UserId, state =>
     {
-        SelectionPolicy.AuthorizeReader(state.Selection, actor); Active(state); Method(state);
+        SelectionPolicy.AuthorizeReader(state.Selection, actor); Method(state);
         var auction = Existing(state);
         BusinessRuleException.Require(!string.IsNullOrWhiteSpace(key) && key.Length <= 128, "IDEMPOTENCY_KEY_REQUIRED", "Provide an Idempotency-Key of at most 128 characters.");
-        var receiptScope = $"auction-bid:{groupId:D}:{cycleId:D}:{actor.UserId:D}";
+        var receiptScope = AuctionBidIdempotency.Scope(groupId, cycleId, actor.UserId);
         var fingerprint = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(receiptScope + "\n" + request.DiscountAmount.ToString("0.00##########################", CultureInfo.InvariantCulture))));
         var receipt = state.Receipts.SingleOrDefault(r => r.Scope == receiptScope && r.Key == key);
-        if (receipt is not null) { receipt.ValidateReplay(fingerprint); return BidMap(state, state.Bids.Single(b => b.Id == receipt.ResultId)); }
-        auction.EnsureOpen();
+        if (receipt is not null) { receipt.ValidateReplay(fingerprint); return AcceptedBidMap(state, state.Bids.Single(b => b.Id == receipt.ResultId)); }
+        Active(state); auction.EnsureOpen();
         var participant = state.Selection.Participants.SingleOrDefault(p => p.Membership.UserId == actor.UserId);
         BusinessRuleException.Require(participant is not null, "MEMBER_NOT_ELIGIBLE_TO_BID", "Only active group members can bid.");
         BusinessRuleException.Require(!participant!.Membership.HasBeenSelectedForPayout, "MEMBER_ALREADY_SELECTED_FOR_PAYOUT", "Members already selected for main payout cannot bid again.");
@@ -37,7 +37,7 @@ public sealed partial class AuctionService(IAuctionStore store, IDateTimeProvide
         Ready(state);
         var now = clock.UtcNow; var bid = auction.Bid(participant.Membership.Id, request.DiscountAmount, key, now);
         state.Bids.Add(bid); state.Receipts.Add(new IdempotencyRecord(receiptScope, key, fingerprint, bid.Id, now)); Audit(state, actor, "AUCTION_BID_SUBMITTED", now, bid.Id);
-        return BidMap(state, bid);
+        return AcceptedBidMap(state, bid);
     }, ct);
     public Task<AuctionDetails> CloseAsync(Guid groupId, Guid cycleId, SelectionActor actor, CancellationToken ct) => store.ExecuteLockedAsync(groupId, cycleId, actor.UserId, state =>
     {
@@ -79,7 +79,9 @@ public sealed partial class AuctionService(IAuctionStore store, IDateTimeProvide
     {
         var group = state.Selection.Group; var cycle = state.Selection.Cycle;
         var rules = group.Rules.AuctionRules ?? throw new BusinessRuleException("INVALID_AUCTION_RULES", "Published auction configuration is required.");
-        var zone = TimeZoneInfo.FindSystemTimeZoneById(group.GroupTimeZone);
+        // Prompt 3 published these TimeOnly values as UTC clock times. SelectionDate
+        // supplies the calendar label; do not reinterpret existing rules as local times.
+        var zone = TimeZoneInfo.Utc;
         DateTimeOffset Utc(TimeOnly time) => new(TimeZoneInfo.ConvertTimeToUtc(cycle.SelectionDate.ToDateTime(time, DateTimeKind.Unspecified), zone));
         return Auction.Schedule(group.Id, cycle.Id, cycle.CycleNumber, group.GroupValue, group.MemberLimit, rules, Utc(rules.AuctionStartTime), Utc(rules.AuctionEndTime), now);
     }

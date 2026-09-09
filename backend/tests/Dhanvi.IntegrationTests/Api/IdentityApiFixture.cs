@@ -6,17 +6,14 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Testcontainers.PostgreSql;
+using Dhanvi.IntegrationTests.Database;
 
 namespace Dhanvi.IntegrationTests.Api;
 
-public sealed class IdentityApiFixture : IAsyncLifetime
+public sealed class IdentityApiFixture : IAsyncLifetime, IAsyncDisposable
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18-alpine")
-        .WithDatabase("dhanvi_identity_tests")
-        .WithUsername("dhanvi")
-        .WithPassword("integration-test-only")
-        .Build();
+    ValueTask IAsyncDisposable.DisposeAsync() => new(DisposeAsync());
+    private readonly TestPostgres _postgres = new();
 
     public TestEmailSender EmailSender { get; } = new();
     public IdentityApiFactory Factory { get; private set; } = null!;
@@ -32,7 +29,7 @@ public sealed class IdentityApiFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        Factory.Dispose();
+        Factory?.Dispose();
         await _postgres.DisposeAsync();
     }
 }

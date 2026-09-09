@@ -1,6 +1,6 @@
 # Dhanvi
 
-Dhanvi is a production-minded foundation for a community savings platform. The current milestone implements authentication, user accounts, platform roles, profiles, organizer application approval, and savings groups, activation, monthly schedules, and manual contribution tracking, and verifiable random/organizer-reserved selection through SELECTION_COMPLETED in a .NET 10 modular monolith with a Next.js frontend and PostgreSQL. Financial execution, auction bidding, payments, payouts, and ledger behavior are intentionally not implemented yet. See [Groups and membership foundation](docs/groups-foundation.md) for rules, APIs, migration, concurrency, frontend pages, and operational details. See [Monthly cycles and contribution tracking](docs/cycles-and-contributions.md) for the activation transaction, timezone, idempotency, reversals, new APIs, and migration. See [Random and organizer-reserved selection](docs/random-and-reserved-selection.md) for the V1 algorithm, proof format, payout-right semantics, APIs, and migration.
+Dhanvi is a production-minded foundation for a community savings platform. The current milestone implements authentication, user accounts, platform roles, profiles, organizer application approval, and savings groups, activation, monthly schedules, and manual contribution tracking, and verifiable random/organizer-reserved selection through SELECTION_COMPLETED in a .NET 10 modular monolith with a Next.js frontend and PostgreSQL. Auction bidding and calculated payout rights are implemented; financial execution, payments, real payouts, and ledger behavior remain deferred. See [Auction engine](docs/auction-engine.md) and [Windows verification](docs/prompt-6-windows-verification.md). See [Groups and membership foundation](docs/groups-foundation.md) for rules, APIs, migration, concurrency, frontend pages, and operational details. See [Monthly cycles and contribution tracking](docs/cycles-and-contributions.md) for the activation transaction, timezone, idempotency, reversals, new APIs, and migration. See [Random and organizer-reserved selection](docs/random-and-reserved-selection.md) for the V1 algorithm, proof format, payout-right semantics, APIs, and migration.
 
 ## Architecture
 
@@ -100,6 +100,8 @@ Checked-in migrations:
 - Groups: `GroupsAndMembershipFoundation` (groups, memberships, rules snapshots, terms acceptances, and group audit events)
 - Groups: `MonthlyCyclesAndContributionTracking` (monthly cycles, obligations, append-only contribution entries, and idempotency receipts)
 - Groups: `RandomAndReservedSelectionFoundation` (immutable selection results and relational eligible snapshots, cycle completion, and payout-right naming)
+
+- Groups: `AuctionEngine` (auctions, append-only bids, immutable results and calculated allocations, auction selection integration)
 
 They create `identity.users`, `identity.roles`, `identity.user_roles`, `identity.refresh_tokens`, `identity.password_reset_tokens`, `identity.email_verification_tokens`, `organizers.organizer_profiles`, `organizers.organizer_applications`, and `audit.audit_logs`, with the required indexes and constraints.
 

@@ -16,10 +16,14 @@ public sealed partial class AuctionService
         BusinessRuleException.Require(state.Result is not null, state.Auction?.Status == AuctionStatus.ClosedNoBids ? "AUCTION_HAS_NO_BIDS" : "AUCTION_RESULT_NOT_FOUND", "No auction winner calculation exists.");
         return ResultMap(state, actor);
     }, ct);
+    // Each accepted bid was the highest at submission. Replays return that original
+    // receipt view; GET history supplies the current winning state separately.
+    private static AuctionBidDetails AcceptedBidMap(AuctionContext state, AuctionBid bid) => new(bid.Id, bid.DiscountAmount, bid.SequenceNumber,
+        true, bid.DiscountAmount, state.Auction!.GroupValue - bid.DiscountAmount, bid.SubmittedAt);
     private static AuctionBidDetails BidMap(AuctionContext state, AuctionBid bid, bool inspect = false) => new(bid.Id, bid.DiscountAmount, bid.SequenceNumber,
         state.Auction?.CurrentWinningBidId == bid.Id, state.Auction?.CurrentHighestDiscount ?? 0, state.Selection.Group.GroupValue - bid.DiscountAmount, bid.SubmittedAt,
         inspect ? state.Selection.Participants.Single(p => p.Membership.Id == bid.MembershipId).Membership.SlotNumber : null);
-    private static IReadOnlyList<AuctionBidDetails> OwnBids(AuctionContext state, SelectionActor actor)
+    private static AuctionBidDetails[] OwnBids(AuctionContext state, SelectionActor actor)
     {
         var membership = state.Selection.Participants.SingleOrDefault(p => p.Membership.UserId == actor.UserId)?.Membership.Id;
         return state.Bids.Where(b => b.MembershipId == membership).OrderByDescending(b => b.SequenceNumber).Select(b => BidMap(state, b)).ToArray();
@@ -42,7 +46,7 @@ public sealed partial class AuctionService
         var canBid = active && ready && window && auction.Status == AuctionStatus.Open && next <= auction.MaximumDiscount && eligible.Any(p => p.Membership.UserId == actor.UserId);
         var reason = canBid ? null : !active ? "Group is not active." : own?.Membership.HasBeenSelectedForPayout == true ? "You already hold a main payout right." :
             auction.Status != AuctionStatus.Open ? "Auction is not open." : !window ? "Outside the configured auction window." : next > auction.MaximumDiscount ? "Maximum discount has been reached." : "An active membership and fully recorded contribution are required.";
-        return new(state.Auction?.Id, auction.CycleNumber, auction.Status.ToString(), auction.StartsAt, auction.EndsAt, now, auction.OpenedAt, auction.ClosedAt, auction.WinnerSelectedAt,
+        return new(state.Auction?.Id, auction.CycleNumber, System.Text.Json.JsonNamingPolicy.SnakeCaseUpper.ConvertName(auction.Status.ToString()), auction.StartsAt, auction.EndsAt, now, auction.OpenedAt, auction.ClosedAt, auction.WinnerSelectedAt,
             auction.MinimumDiscount, auction.MaximumDiscount, auction.BidIncrement, auction.CurrentHighestDiscount, next, auction.GroupValue - auction.CurrentHighestDiscount,
             auction.LastBidSequence, eligible.Count, manage, manage && active && ready && state.Auction is null && window, manage && active && ready && auction.Status == AuctionStatus.Open,
             canBid, reason, OwnBids(state, actor), inspect ? state.Bids.OrderBy(b => b.SequenceNumber).Select(b => BidMap(state, b, true)).ToArray() : [],

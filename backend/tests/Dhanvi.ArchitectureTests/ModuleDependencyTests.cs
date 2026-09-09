@@ -22,7 +22,7 @@ public sealed class ModuleDependencyTests
         typeof(Dhanvi.Modules.Cycles.Domain.MonthlyCycle),
         typeof(Dhanvi.Modules.Contributions.Domain.Contribution),
         typeof(Dhanvi.Modules.RandomDraws.Domain.SelectionResult),
-        typeof(AuditLog),
+        typeof(Dhanvi.Modules.Auctions.Domain.Auction), typeof(AuditLog),
         typeof(IdentityModuleMarker),
         typeof(GroupsModuleMarker),
         typeof(OrganizerApplication),

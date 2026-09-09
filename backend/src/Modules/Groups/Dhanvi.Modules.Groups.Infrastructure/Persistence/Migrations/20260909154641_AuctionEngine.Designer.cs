@@ -3,6 +3,7 @@ using System;
 using Dhanvi.Modules.Groups.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(GroupsDbContext))]
-    partial class GroupsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909154641_AuctionEngine")]
+    partial class AuctionEngine
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

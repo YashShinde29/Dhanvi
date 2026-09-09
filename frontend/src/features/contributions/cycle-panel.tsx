@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { AuctionPanel } from "@/features/auctions/auction-panel";
 import { SelectionPanel } from "@/features/selections/selection-panel";
 import { useEffect, useState } from "react";
 import { contributionService } from "@/services/contribution.service";
@@ -94,7 +95,7 @@ export function CyclePanel({ group, scope }: { group: Group; scope: string }) {
             {money(current.expectedContributionPerMember)}
           </p>
           <CycleProgress cycle={current} />
-          <SelectionPanel group={group} cycle={current} scope={scope} />
+          {current.selectionMethod === "AUCTION" ? <AuctionPanel group={group} cycle={current} scope={scope} /> : <SelectionPanel group={group} cycle={current} scope={scope} />}
           {own && (
             <p className="status-note">
               Your contribution: {label(own.status)} ·{" "}
@@ -123,6 +124,7 @@ export function CyclePanel({ group, scope }: { group: Group; scope: string }) {
                 <td>
                   {c.selectionDate}
                   <small>{label(c.selectionMethod)}</small>
+                  {c.selectionMethod === "AUCTION" && <Link className="text-link" href={`/${management ? scope + "/" : ""}groups/${group.id}/cycles/${c.id}/auction`}>View auction</Link>}
                 </td>
                 <td>{label(c.status)}</td>
                 <td>

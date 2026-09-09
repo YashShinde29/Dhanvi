@@ -60,9 +60,10 @@ public sealed class Auction
     public static AuctionBid? WinningBid(IEnumerable<AuctionBid> bids) => bids.OrderByDescending(b => b.DiscountAmount).ThenBy(b => b.SequenceNumber).FirstOrDefault();
     public void Close(AuctionBid? winner, DateTimeOffset now)
     {
-        EnsureOpen(); ClosedAt = now; Status = AuctionStatus.Closed;
+        EnsureOpen();
         BusinessRuleException.Require(winner is null ? LastBidSequence == 0 : winner.AuctionId == Id && winner.Id == CurrentWinningBidId && winner.DiscountAmount == CurrentHighestDiscount,
             "AUCTION_HISTORY_INCONSISTENT", "The authoritative bid history and current auction state do not agree.");
+        ClosedAt = now;
         if (winner is null) Status = AuctionStatus.ClosedNoBids;
         else { Status = AuctionStatus.WinnerSelected; WinnerSelectedAt = now; }
         Touch(now);
@@ -81,5 +82,6 @@ public sealed class AuctionBid(Guid auctionId, Guid groupId, Guid cycleId, Guid 
     public decimal DiscountAmount { get; private set; } = discountAmount;
     public long SequenceNumber { get; private set; } = sequenceNumber;
     public string IdempotencyKey { get; private set; } = idempotencyKey;
-    public DateTimeOffset SubmittedAt { get; private set; } = submittedAt;
+    // PostgreSQL stores microseconds; normalize before returning the original receipt.
+    public DateTimeOffset SubmittedAt { get; private set; } = new DateTimeOffset(submittedAt.Ticks - submittedAt.Ticks % 10, submittedAt.Offset).ToUniversalTime();
 }

@@ -93,7 +93,7 @@ export function SelectionPanel({
         </>
       ) : cycle.status === "READY_FOR_SELECTION" ? (
         cycle.selectionMethod === "AUCTION" ? (
-          <p>Auction selection is not available in this step.</p>
+          <Link className="text-link" href={`/${scope === "admin" || scope === "organizer" ? scope + "/" : ""}groups/${group.id}/cycles/${cycle.id}/auction`}>View auction</Link>
         ) : (
           <>
             <p>

@@ -13,13 +13,18 @@ internal sealed class AuctionStore(GroupsDbContext db, ISelectionStore selection
     private async Task<T> Run<T>(Guid groupId, Guid cycleId, Guid actorId, bool write, Func<AuctionContext, T> operation, CancellationToken ct)
     {
         await using var tx = await db.Database.BeginTransactionAsync(write ? IsolationLevel.ReadCommitted : IsolationLevel.RepeatableRead, ct);
-        if (write) await db.Groups.FromSqlInterpolated($"SELECT * FROM groups.\"Groups\" WHERE \"Id\" = {groupId} FOR UPDATE").SingleOrDefaultAsync(ct);
+        if (write)
+        {
+            await db.Groups.FromSqlInterpolated($"SELECT * FROM groups.\"Groups\" WHERE \"Id\" = {groupId} FOR UPDATE").SingleOrDefaultAsync(ct);
+            await db.MonthlyCycles.FromSqlInterpolated($"SELECT * FROM groups.\"MonthlyCycles\" WHERE \"GroupId\" = {groupId} AND \"Id\" = {cycleId} FOR UPDATE").SingleOrDefaultAsync(ct);
+            await db.Auctions.FromSqlInterpolated($"SELECT * FROM groups.\"Auctions\" WHERE \"GroupId\" = {groupId} AND \"CycleId\" = {cycleId} FOR UPDATE").SingleOrDefaultAsync(ct);
+        }
         var selection = await selectionStore.ReadAsync(groupId, cycleId, actorId, ct);
         var state = new AuctionContext(selection) {
             Auction = await db.Auctions.SingleOrDefaultAsync(a => a.GroupId == groupId && a.CycleId == cycleId, ct),
             Result = await db.AuctionResults.Include(r => r.Allocations).SingleOrDefaultAsync(r => r.GroupId == groupId && r.CycleId == cycleId, ct),
             Bids = await db.AuctionBids.Where(b => b.GroupId == groupId && b.CycleId == cycleId).ToListAsync(ct),
-            Receipts = await db.IdempotencyRecords.Where(r => r.Scope == $"auction-bid:{groupId:D}:{cycleId:D}:{actorId:D}").ToListAsync(ct),
+            Receipts = await db.IdempotencyRecords.Where(r => r.Scope == AuctionBidIdempotency.Scope(groupId, cycleId, actorId)).ToListAsync(ct),
             Audit = await db.AuditEvents.Where(a => a.GroupId == groupId && a.CycleId == cycleId).ToListAsync(ct)
         };
         var result = operation(state);

@@ -26,7 +26,7 @@ public sealed partial class CycleEndpointTests(CycleApiFixture fixture) : IClass
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseUpper) } };
     private sealed record Scenario(Guid GroupId, Guid OwnerId, Guid[] MemberIds, string Scope);
-    private async Task<Scenario> Seed(int count = 20, GroupType type = GroupType.Random, bool organizer = false, bool reserved = false, bool ready = true)
+    private async Task<Scenario> Seed(int count = 20, GroupType type = GroupType.Random, bool organizer = false, bool reserved = false, bool ready = true, AuctionGroupRules? auctionRules = null)
     {
         using var scope = fixture.Factory.Services.CreateScope(); var identities = scope.ServiceProvider.GetRequiredService<IdentityDbContext>(); var db = scope.ServiceProvider.GetRequiredService<GroupsDbContext>(); var now = fixture.Clock.UtcNow;
         var owner = NewUser(now); identities.Users.Add(owner); var users = Enumerable.Range(0, count).Select(_ => NewUser(now)).ToArray();
@@ -36,7 +36,7 @@ public sealed partial class CycleEndpointTests(CycleApiFixture fixture) : IClass
         {
             var organizers = scope.ServiceProvider.GetRequiredService<OrganizerDbContext>(); var profile = OrganizerProfile.CreateForApplication(owner.Id, now); profile.Approve(owner.Id, now); organizers.OrganizerProfiles.Add(profile); await organizers.SaveChangesAsync();
         }
-        var group = Group.Create("Cycle integration group", "", organizer ? GroupCreatorType.Organizer : GroupCreatorType.Platform, owner.Id, new(type, 50000, count, reserved, reserved, 1, 2, 2, DateOnly.FromDateTime(now.UtcDateTime).AddMonths(1)), organizer, now);
+        var group = Group.Create("Cycle integration group", "", organizer ? GroupCreatorType.Organizer : GroupCreatorType.Platform, owner.Id, new(type, 50000, count, reserved, reserved, 1, 2, 2, DateOnly.FromDateTime(now.UtcDateTime).AddMonths(1), auctionRules), organizer, now);
         var rules = group.Publish(organizer, now); db.Groups.Add(group); db.RuleVersions.Add(rules);
         for (var i = 0; i < count; i++)
         {

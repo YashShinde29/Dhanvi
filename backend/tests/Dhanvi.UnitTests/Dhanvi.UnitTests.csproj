@@ -13,5 +13,5 @@
 <ProjectReference Include="../../src/Modules/Contributions/Dhanvi.Modules.Contributions.Domain/Dhanvi.Modules.Contributions.Domain.csproj" />
 </ItemGroup>
 <ItemGroup><ProjectReference Include="../../src/Modules/RandomDraws/Dhanvi.Modules.RandomDraws.Application/Dhanvi.Modules.RandomDraws.Application.csproj" /><ProjectReference Include="../../src/Modules/RandomDraws/Dhanvi.Modules.RandomDraws.Infrastructure/Dhanvi.Modules.RandomDraws.Infrastructure.csproj" /></ItemGroup>
-</Project>
+<ItemGroup><ProjectReference Include="../../src/Modules/Auctions/Dhanvi.Modules.Auctions.Application/Dhanvi.Modules.Auctions.Application.csproj" /></ItemGroup></Project>
 
