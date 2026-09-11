@@ -1,9 +1,4 @@
-import { ApiError } from "@/services/api-client";
-
-export function errorMessage(error: unknown): string {
-  if (error instanceof ApiError) return Object.values(error.errors).flat()[0] ?? error.message;
-  return "Something went wrong. Please try again.";
-}
+export { friendlyError as errorMessage, fieldErrors } from "@/lib/errors";
 
 export function passwordError(password: string): string | null {
   if (password.length < 8) return "Use at least 8 characters.";
@@ -14,3 +9,4 @@ export function passwordError(password: string): string | null {
   return null;
 }
 
+export const PASSWORD_HINT = "At least 8 characters with an uppercase letter, a lowercase letter, a number and a symbol.";

@@ -82,7 +82,7 @@ Organizer workflow:
 
 ## Frontend routes
 
-The implemented pages are `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard`, `/profile`, `/become-organizer`, `/organizer/application-status`, `/organizer`, `/admin`, and `/admin/organizers`. Protected pages provide client-side UX guards; the API independently enforces every authorization policy.
+The implemented pages are `/` (landing), `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard`, `/profile`, `/become-organizer`, `/organizer/application-status`, `/organizer`, `/organizer/applications`, `/admin`, and `/admin/organizers`. The frontend uses a token-based design system (`src/app/globals.css`), shared UI components (`src/components/ui`), a role-aware application shell (`src/components/layout`), and shared formatters/status mappings (`src/lib`). Protected pages provide client-side UX guards; the API independently enforces every authorization policy.
 
 The group routes are `/groups`, `/groups/[id]`, `/my-groups`, `/organizer/groups`, `/organizer/groups/create`, `/organizer/groups/[id]`, `/organizer/groups/[id]/applications`, `/admin/groups`, `/admin/groups/create`, and `/admin/groups/[id]`.
 

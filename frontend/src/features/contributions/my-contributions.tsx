@@ -1,136 +1,58 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ProtectedPage } from "@/features/auth/protected-page";
 import { contributionService } from "@/services/contribution.service";
-import type { ContributionPage } from "@/types/contribution";
-import { errorText, label, money } from "@/features/groups/shared";
+import type { Contribution } from "@/types/contribution";
+import { useAsyncData } from "@/hooks/use-async-data";
+import { PageHeader } from "@/components/ui/page-header";
+import { ChipGroup } from "@/components/ui/filter-bar";
+import { DataTable, Pagination, type Column } from "@/components/ui/data-table";
+import { StatusBadge } from "@/components/ui/badge";
+import { Callout, ErrorState } from "@/components/ui/callout";
+import { LinkButton } from "@/components/ui/button";
+import { Icons } from "@/components/ui/icons";
+import { PageSkeleton } from "@/components/ui/skeleton";
+import { formatDate, formatMoney } from "@/lib/format";
+import { CONTRIBUTION_STATUSES, presentStatus } from "@/lib/status";
+
 export function MyContributionsPage() {
-  return (
-    <ProtectedPage>
-      <History />
-    </ProtectedPage>
-  );
+  return <ProtectedPage><Suspense fallback={<PageSkeleton />}><History /></Suspense></ProtectedPage>;
 }
+
 function History() {
-  const [data, setData] = useState<ContributionPage>();
+  const groupId = useSearchParams().get("groupId");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
-  const [error, setError] = useState("");
-  useEffect(() => {
-    let active = true;
-    const params = new URLSearchParams({
-      status,
-      page: String(page),
-      pageSize: "20",
-    });
-    const groupId = new URLSearchParams(window.location.search).get("groupId");
+  const query = useMemo(() => {
+    const params = new URLSearchParams({ page: String(page), pageSize: "20" });
+    if (status) params.set("status", status);
     if (groupId) params.set("groupId", groupId);
-    contributionService
-      .mine(params.toString())
-      .then((d) => {
-        if (active) {
-          setData(d);
-          setError("");
-        }
-      })
-      .catch((e) => {
-        if (active) setError(errorText(e));
-      });
-    return () => {
-      active = false;
-    };
-  }, [page, status]);
+    return params.toString();
+  }, [page, status, groupId]);
+  const { data, error, loading, reload } = useAsyncData(() => contributionService.mine(query), [query]);
+
+  const columns: Column<Contribution>[] = [
+    { key: "group", header: "Group", primary: true, render: (c) => <><Link className="link" href={`/groups/${c.groupId}`}>{c.groupName}</Link><span className="cell__sub">Cycle {c.cycleNumber}</span></> },
+    { key: "due", header: "Due date", render: (c) => formatDate(c.dueDate) },
+    { key: "expected", header: "Expected", align: "right", render: (c) => <span className="amount">{formatMoney(c.expectedAmount)}</span> },
+    { key: "recorded", header: "Recorded", align: "right", render: (c) => <span className="amount" style={{ fontWeight: 500 }}>{formatMoney(c.recordedAmount)}</span> },
+    { key: "recordedAt", header: "Recorded on", render: (c) => c.recordedAt ? formatDate(c.recordedAt, c.groupTimeZone) : <span className="text-muted">—</span> },
+    { key: "status", header: "Status", render: (c) => <StatusBadge kind="contribution" value={c.status} /> },
+  ];
+
   return (
     <>
-      <p className="eyebrow">My savings groups</p>
-      <h1>My contributions</h1>
-      <p className="lead">
-        Your expected obligations and manually recorded contributions. No real
-        payment is processed here.
-      </p>
-      <label>
-        Status
-        <select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(1);
-          }}
-        >
-          <option value="">All</option>
-          {["PENDING", "RECORDED", "PARTIAL", "OVERDUE", "REVERSED"].map(
-            (s) => (
-              <option key={s}>{s}</option>
-            ),
-          )}
-        </select>
-      </label>
-      {error && (
-        <p role="alert" className="form-error">
-          {error}
-        </p>
-      )}
-      {!data && !error && <p>Loading contribution history…</p>}
-      {data?.items.length === 0 && <p>No contributions match this filter.</p>}
-      {data && (
+      <PageHeader eyebrow="Member" title="My contributions" description="Your expected monthly obligations and what has been recorded for each cycle."
+        actions={groupId && <LinkButton href="/contributions" variant="secondary" size="sm">Show all groups</LinkButton>} />
+      <Callout variant="neutral">Contributions are recorded by the organizer or platform as operational records. Dhanvi does not process payments at this stage.</Callout>
+      <ChipGroup label="Filter by status" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={[{ value: "", label: "All" }, ...CONTRIBUTION_STATUSES.map((s) => ({ value: s, label: presentStatus("contribution", s).label }))]} />
+      {error ? <ErrorState message={error} onRetry={reload} /> : (
         <>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  {[
-                    "Group",
-                    "Cycle",
-                    "Due date",
-                    "Expected",
-                    "Recorded",
-                    "Status",
-                  ].map((h) => (
-                    <th key={h}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.map((c) => (
-                  <tr key={c.id}>
-                    <td>
-                      <Link className="text-link" href={`/groups/${c.groupId}`}>
-                        {c.groupName}
-                      </Link>
-                    </td>
-                    <td>{c.cycleNumber}</td>
-                    <td>
-                      {c.dueDate}
-                      <small>{c.groupTimeZone}</small>
-                    </td>
-                    <td>{money(c.expectedAmount)}</td>
-                    <td>{money(c.recordedAmount)}</td>
-                    <td>{label(c.status)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="actions">
-            <button
-              className="button secondary"
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-            >
-              Previous
-            </button>
-            <span>
-              Page {page} · {data.totalCount} contributions
-            </span>
-            <button
-              className="button secondary"
-              disabled={page * data.pageSize >= data.totalCount}
-              onClick={() => setPage(page + 1)}
-            >
-              Next
-            </button>
-          </div>
+          <DataTable columns={columns} rows={loading && !data ? undefined : data?.items} loading={loading} rowKey={(c) => c.id} caption="Contribution history"
+            empty={{ title: status ? "No contributions with this status" : "No contributions yet", description: status ? "Try another status filter." : "Once you're an active member of a group, each cycle's contribution will appear here.", action: !status ? <LinkButton href="/groups" variant="secondary" icon={<Icons.Search size={16} />}>Browse groups</LinkButton> : undefined }} />
+          {data && <Pagination page={data.page} pageSize={data.pageSize} totalCount={data.totalCount} onPageChange={setPage} itemLabel="contributions" />}
         </>
       )}
     </>
