@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design"><PrivateAssets>all</PrivateAssets><IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets></PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Dhanvi.Modules.Ledger.Application/Dhanvi.Modules.Ledger.Application.csproj" />
+    <ProjectReference Include="../../Audit/Dhanvi.Modules.Audit.Infrastructure/Dhanvi.Modules.Audit.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

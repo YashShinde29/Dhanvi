@@ -1,4 +1,7 @@
 using Dhanvi.Api.Infrastructure;
+using Dhanvi.Modules.Ledger.Api;
+using Dhanvi.Modules.Ledger.Infrastructure;
+using Dhanvi.Modules.Ledger.Infrastructure.Persistence;
 using Dhanvi.Modules.RandomDraws.Api;
 using Dhanvi.Modules.Auctions.Api;
 using Dhanvi.Modules.Auctions.Infrastructure;
@@ -79,6 +82,7 @@ builder.Services.AddOrganizerModule();
 builder.Services.AddGroupsModule();
 builder.Services.AddRandomDrawsModule();
 builder.Services.AddAuctionsModule();
+builder.Services.AddLedgerModule(builder.Configuration);
 builder.Services.AddDhanviOpenTelemetry(builder.Configuration);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
@@ -165,6 +169,7 @@ api.MapCycleEndpoints();
 api.MapSelectionEndpoints();
 api.MapAuctionEndpoints();
 api.MapOrganizerEndpoints();
+api.MapLedgerEndpoints();
 
 if (builder.Configuration.GetValue("Database:ApplyMigrations", false))
 {
@@ -173,6 +178,8 @@ if (builder.Configuration.GetValue("Database:ApplyMigrations", false))
     await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<OrganizerDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<Dhanvi.Modules.Groups.Infrastructure.Persistence.GroupsDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<LedgerDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<LedgerSeeder>().SeedAsync(CancellationToken.None);
     await scope.ServiceProvider.GetRequiredService<IdentitySeeder>().SeedAsync(CancellationToken.None);
 }
 

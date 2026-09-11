@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
+    <ProjectReference Include="../Modules/Ledger/Dhanvi.Modules.Ledger.Api/Dhanvi.Modules.Ledger.Api.csproj" />
+    <ProjectReference Include="../Modules/Ledger/Dhanvi.Modules.Ledger.Infrastructure/Dhanvi.Modules.Ledger.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Npgsql" />
     <PackageReference Include="Hangfire.AspNetCore" />

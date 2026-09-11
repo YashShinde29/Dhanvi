@@ -4,10 +4,13 @@ using Dhanvi.Modules.Identity.Application.Abstractions;
 using Dhanvi.Modules.RandomDraws.Application;
 using Dhanvi.SharedKernel.Exceptions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Dhanvi.Modules.Ledger.Application;
+using Dhanvi.Modules.Ledger.Domain;
 namespace Dhanvi.Modules.Groups.Infrastructure.Services;
 
 // Persistence adapter only. Algorithm, eligibility policy, verification and command logic live in RandomDraws.
-internal sealed class SelectionStore(GroupsDbContext db, IGroupUserDirectory users, IOrganizerStatusReader organizers) : ISelectionStore
+internal sealed class SelectionStore(GroupsDbContext db, IGroupUserDirectory users, IOrganizerStatusReader organizers, ILedgerPostingService ledger) : ISelectionStore
 {
     public Task<SelectionContext> ReadAsync(Guid groupId, Guid cycleId, Guid actorId, CancellationToken ct) => Load(groupId, cycleId, actorId, false, ct);
     public async Task<SelectionContext> ExecuteLockedAsync(Guid groupId, Guid cycleId, Guid actorId, Func<SelectionContext, SelectionMutation> execute, CancellationToken ct)
@@ -16,6 +19,8 @@ internal sealed class SelectionStore(GroupsDbContext db, IGroupUserDirectory use
         var context = await Load(groupId, cycleId, actorId, true, ct);
         var mutation = execute(context);
         if (mutation.Created) { db.SelectionResults.Add(mutation.Result); db.AuditEvents.AddRange(mutation.AuditEvents); await db.SaveChangesAsync(ct); }
+        if (mutation.Created) await ledger.PostAsync(mutation.Result.SelectionMethod == SelectionMethod.Random ? AccountingEventType.RandomSelectionCompleted : AccountingEventType.OrganizerReservedSelectionCompleted,
+            mutation.Result.Id, actorId, null, tx.GetDbTransaction(), ct);
         await tx.CommitAsync(ct); return context with { ExistingResult = mutation.Result };
     }
     public async Task AddVerificationAuditAsync(GroupAuditEvent auditEvent, CancellationToken ct)

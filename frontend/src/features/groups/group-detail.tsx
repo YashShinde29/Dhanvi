@@ -85,6 +85,7 @@ function GroupDetail({ scope, applications }: { scope: GroupScope; applications:
   return (
     <div className="stack stack--lg">
       <div className="group-hero">
+        {scope === "admin" && <Link className="link" href={`/admin/ledger/groups/${id}`}>View group ledger</Link>}
         <Breadcrumbs items={[{ label: listLabel, href: listHref }, { label: g.name }]} />
         <div className="group-hero__top">
           <div className="group-hero__title">

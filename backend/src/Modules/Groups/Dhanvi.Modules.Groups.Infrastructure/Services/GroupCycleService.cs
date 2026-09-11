@@ -11,9 +11,12 @@ using Dhanvi.SharedKernel.Domain;
 using Dhanvi.SharedKernel.Exceptions;
 using Dhanvi.SharedKernel.Time;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Dhanvi.Modules.Ledger.Application;
+using Dhanvi.Modules.Ledger.Domain;
 namespace Dhanvi.Modules.Groups.Infrastructure.Services;
 
-internal sealed partial class GroupCycleService(GroupsDbContext db, IOrganizerStatusReader organizers, IGroupUserDirectory users, IDateTimeProvider clock)
+internal sealed partial class GroupCycleService(GroupsDbContext db, IOrganizerStatusReader organizers, IGroupUserDirectory users, IDateTimeProvider clock, ILedgerPostingService ledger)
     : IGroupCycleService, IContributionRecordingService
 {
     public async Task<IReadOnlyList<CycleDetails>> ActivateAsync(Guid groupId, GroupActor actor, CancellationToken ct)
@@ -94,7 +97,9 @@ internal sealed partial class GroupCycleService(GroupsDbContext db, IOrganizerSt
         }
         else if (wasReady) Audit(groupId, actor, "CYCLE_REOPENED_AFTER_REVERSAL", now, cycleId);
         if (contribution.Status == ContributionStatus.Overdue) Audit(groupId, actor, "CONTRIBUTION_MARKED_OVERDUE", now, contributionId);
-        await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
+        await db.SaveChangesAsync(ct);
+        await ledger.PostAsync(record is not null ? AccountingEventType.ContributionRecorded : AccountingEventType.ContributionReversed, entry.Id, actor.UserId, null, tx.GetDbTransaction(), ct);
+        await tx.CommitAsync(ct);
         return new(MapEntry(entry), false);
     }
     public async Task<int> MarkOverdueAsync(Guid groupId, GroupActor actor, CancellationToken ct)

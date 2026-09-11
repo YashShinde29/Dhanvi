@@ -3,10 +3,13 @@ using Dhanvi.Modules.Auctions.Application;
 using Dhanvi.Modules.Groups.Infrastructure.Persistence;
 using Dhanvi.Modules.RandomDraws.Application;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Dhanvi.Modules.Ledger.Application;
+using Dhanvi.Modules.Ledger.Domain;
 namespace Dhanvi.Modules.Groups.Infrastructure.Services;
 
 // All group mutations use this same group-row lock, including contributions and selection.
-internal sealed class AuctionStore(GroupsDbContext db, ISelectionStore selectionStore) : IAuctionStore
+internal sealed class AuctionStore(GroupsDbContext db, ISelectionStore selectionStore, ILedgerPostingService ledger) : IAuctionStore
 {
     public Task<T> ReadAsync<T>(Guid groupId, Guid cycleId, Guid actorId, Func<AuctionContext, T> read, CancellationToken ct) => Run(groupId, cycleId, actorId, false, read, ct);
     public Task<T> ExecuteLockedAsync<T>(Guid groupId, Guid cycleId, Guid actorId, Func<AuctionContext, T> execute, CancellationToken ct) => Run(groupId, cycleId, actorId, true, execute, ct);
@@ -37,6 +40,7 @@ internal sealed class AuctionStore(GroupsDbContext db, ISelectionStore selection
             db.IdempotencyRecords.AddRange(state.Receipts.Where(r => db.Entry(r).State == EntityState.Detached));
             db.AuditEvents.AddRange(state.Audit.Where(a => db.Entry(a).State == EntityState.Detached));
             await db.SaveChangesAsync(ct);
+            if (state.NewSelection is not null) await ledger.PostAsync(AccountingEventType.AuctionSelectionCompleted, state.NewSelection.Id, actorId, null, tx.GetDbTransaction(), ct);
         }
         await tx.CommitAsync(ct); return result;
     }

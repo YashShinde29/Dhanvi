@@ -18,6 +18,7 @@ public static class GroupsModule
         services.AddScoped<Dhanvi.Modules.Groups.Application.IContributionRecordingService>(provider => provider.GetRequiredService<Services.GroupCycleService>());
         services.AddScoped<Dhanvi.Modules.RandomDraws.Application.ISelectionStore, Services.SelectionStore>();
         services.AddScoped<Dhanvi.Modules.Auctions.Application.IAuctionStore, Services.AuctionStore>();
+        services.AddScoped<Dhanvi.Modules.Ledger.Application.ILedgerSourceReader, Services.LedgerSourceReader>();
         return services;
     }
 }

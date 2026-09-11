@@ -20,6 +20,7 @@ const memberItems = (user: CurrentUser): NavItem[] => [
   { href: "/groups", label: "Browse groups", icon: "Search", prefix: true },
   { href: "/my-groups", label: "My groups", icon: "Users" },
   { href: "/contributions", label: "Contributions", icon: "Wallet" },
+  { href: "/ledger", label: "Financial history", icon: "Activity" },
   { href: "/profile", label: "Profile", icon: "User" },
   ...(user.organizerStatus === "APPROVED" ? [] : [{ href: user.organizerStatus === "NOT_APPLIED" ? "/become-organizer" : "/organizer/application-status", label: "Become an organizer", icon: "Briefcase" as IconName, prefix: true }]),
 ];
@@ -36,6 +37,7 @@ export function navigationFor(user: CurrentUser | null): NavSection[] {
         { href: "/admin", label: "Overview", icon: "Dashboard" },
         { href: "/admin/organizers", label: "Organizer applications", icon: "Inbox", prefix: true },
         { href: "/admin/groups", label: "Groups", icon: "Layers", prefix: true },
+        { href: "/admin/ledger", label: "Ledger", icon: "Wallet", prefix: true },
       ],
     });
     sections.push({
@@ -95,6 +97,7 @@ export function isActive(item: NavItem, pathname: string): boolean {
 /** Human page context for the top header, derived from the pathname. */
 export function pageTitleFor(pathname: string): string {
   const rules: [RegExp, string][] = [
+    [/^\/admin\/ledger/, "Financial ledger"], [/^\/ledger/, "Financial history"],
     [/^\/admin\/organizers/, "Organizer applications"], [/^\/admin\/groups\/create/, "Create platform group"], [/^\/admin\/groups\/[^/]+\/cycles\/[^/]+\/auction/, "Auction"],
     [/^\/admin\/groups\/[^/]+\/cycles\/[^/]+\/contributions/, "Cycle contributions"], [/^\/admin\/groups\/[^/]+/, "Group management"], [/^\/admin\/groups/, "Platform groups"], [/^\/admin/, "Admin overview"],
     [/^\/organizer\/groups\/create/, "Create group"], [/^\/organizer\/groups\/[^/]+\/applications/, "Applications"], [/^\/organizer\/groups\/[^/]+\/cycles\/[^/]+\/auction/, "Auction"],

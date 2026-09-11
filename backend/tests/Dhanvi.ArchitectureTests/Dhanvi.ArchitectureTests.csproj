@@ -1,4 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../src/Modules/Ledger/Dhanvi.Modules.Ledger.Api/Dhanvi.Modules.Ledger.Api.csproj" />
+    <ProjectReference Include="../../src/Modules/Groups/Dhanvi.Modules.Groups.Infrastructure/Dhanvi.Modules.Groups.Infrastructure.csproj" />
+  </ItemGroup>
   <PropertyGroup><IsPackable>false</IsPackable><IsTestProject>true</IsTestProject></PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

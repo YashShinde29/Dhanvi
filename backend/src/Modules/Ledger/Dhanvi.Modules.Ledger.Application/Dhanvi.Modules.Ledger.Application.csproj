@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><ProjectReference Include="../Dhanvi.Modules.Ledger.Domain/Dhanvi.Modules.Ledger.Domain.csproj" /></ItemGroup>
+</Project>
