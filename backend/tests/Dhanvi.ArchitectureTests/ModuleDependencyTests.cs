@@ -7,6 +7,14 @@ namespace Dhanvi.ArchitectureTests;
 
 public sealed class ModuleDependencyTests
 {
+    [Fact] public void PayoutApiUsesApplicationContractsAndSeparateProvider()
+    {
+        var api = typeof(Dhanvi.Modules.Payouts.Api.PayoutEndpoints).Assembly;
+        Assert.DoesNotContain(api.GetReferencedAssemblies(), a => a.Name!.Contains("Infrastructure", StringComparison.Ordinal));
+        Assert.Contains(api.GetReferencedAssemblies(), a => a.Name == "Dhanvi.Modules.Payouts.Application");
+        Assert.DoesNotContain(typeof(Dhanvi.Modules.Payouts.Application.IPayoutGateway).GetMethods().SelectMany(m => m.GetParameters()),
+            p => p.ParameterType.Namespace?.StartsWith("Dhanvi.Modules.Payments", StringComparison.Ordinal) == true);
+    }
     [Theory]
     [MemberData(nameof(DomainAssemblies))]
     public void DomainDoesNotReferenceInfrastructure(Type moduleMarker)
@@ -19,6 +27,8 @@ public sealed class ModuleDependencyTests
 
     public static TheoryData<Type> DomainAssemblies => new()
     {
+        typeof(Dhanvi.Modules.Payouts.Domain.PayoutObligation),
+        typeof(Dhanvi.Modules.Payments.Domain.Payment),
         typeof(Dhanvi.Modules.Ledger.Domain.JournalEntry),
         typeof(Dhanvi.Modules.Cycles.Domain.MonthlyCycle),
         typeof(Dhanvi.Modules.Contributions.Domain.Contribution),

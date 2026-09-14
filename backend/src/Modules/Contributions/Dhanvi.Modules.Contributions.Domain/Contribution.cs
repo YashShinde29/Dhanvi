@@ -3,6 +3,7 @@ namespace Dhanvi.Modules.Contributions.Domain;
 
 public enum ContributionStatus { Pending, Partial, Recorded, Overdue, Reversed }
 public enum ContributionEntryType { Record, Reversal }
+public enum ContributionFinancialStatus { Unpaid, Settled, Refunded }
 
 public sealed class Contribution
 {
@@ -13,6 +14,23 @@ public sealed class Contribution
     public Guid MembershipId { get; private set; }
     public decimal ExpectedAmount { get; private set; }
     public decimal RecordedAmount { get; private set; }
+    public decimal FinanciallySettledAmount { get; private set; }
+    public ContributionFinancialStatus FinancialStatus { get; private set; } = ContributionFinancialStatus.Unpaid;
+    public Guid? SettledPaymentId { get; private set; }
+    public void Settle(Guid payment, decimal amount, DateTimeOffset now)
+    {
+        BusinessRuleException.Require(payment != Guid.Empty && FinanciallySettledAmount == 0 && amount == ExpectedAmount,
+            "CONTRIBUTION_ALREADY_SETTLED", "Only the exact outstanding financial obligation can settle.");
+        FinanciallySettledAmount = amount; SettledPaymentId = payment; FinancialStatus = ContributionFinancialStatus.Settled;
+        UpdatedAt = now.ToUniversalTime(); Version++;
+    }
+    public void Refund(Guid payment, DateTimeOffset now)
+    {
+        BusinessRuleException.Require(SettledPaymentId == payment && FinanciallySettledAmount == ExpectedAmount,
+            "INVALID_SETTLEMENT_REVERSAL", "Refund must reverse the current settlement.");
+        FinanciallySettledAmount = 0; SettledPaymentId = null; FinancialStatus = ContributionFinancialStatus.Refunded;
+        UpdatedAt = now.ToUniversalTime(); Version++;
+    }
     public ContributionStatus Status { get; private set; } = ContributionStatus.Pending;
     public DateOnly DueDate { get; private set; }
     public DateTimeOffset? RecordedAt { get; private set; }

@@ -6,11 +6,14 @@ namespace Dhanvi.Modules.Groups.Application;
 public sealed record CycleDetails(Guid Id, Guid GroupId, int CycleNumber, SelectionMethod SelectionMethod, CycleStatus Status,
     DateOnly ContributionDueDate, DateOnly SelectionDate, DateOnly PayoutDate, string GroupTimeZone, int ExpectedMemberCount,
     decimal ExpectedContributionPerMember, decimal ExpectedPoolAmount, decimal RecordedContributionAmount, int FullyRecordedMemberCount,
-    int PendingMemberCount, DateTimeOffset? StartedAt, DateTimeOffset? ContributionsCompletedAt, DateTimeOffset? ReadyForSelectionAt, DateTimeOffset? SelectionCompletedAt, Guid? SelectionResultId);
+    int PendingMemberCount, DateTimeOffset? StartedAt, DateTimeOffset? ContributionsCompletedAt, DateTimeOffset? ReadyForSelectionAt, DateTimeOffset? SelectionCompletedAt, Guid? SelectionResultId,
+    ContributionCollectionMode CollectionMode = ContributionCollectionMode.ManualTracking, decimal FinanciallySettledAmount = 0, int FinanciallySettledMemberCount = 0);
 public sealed record ContributionEntryDetails(Guid Id, ContributionEntryType EntryType, decimal Amount, string Reference, string? Note, Guid RecordedByUserId, DateTimeOffset CreatedAt, Guid? ReversesEntryId);
 public sealed record ContributionDetails(Guid Id, Guid GroupId, string GroupName, Guid CycleId, int CycleNumber, Guid MembershipId,
     int? SlotNumber, string? MemberName, DateOnly DueDate, string GroupTimeZone, decimal ExpectedAmount, decimal RecordedAmount,
-    ContributionStatus Status, DateTimeOffset? RecordedAt, IReadOnlyList<ContributionEntryDetails> Entries);
+    ContributionStatus Status, DateTimeOffset? RecordedAt, IReadOnlyList<ContributionEntryDetails> Entries,
+    ContributionCollectionMode CollectionMode = ContributionCollectionMode.ManualTracking, decimal FinanciallySettledAmount = 0,
+    ContributionFinancialStatus FinancialStatus = ContributionFinancialStatus.Unpaid);
 public sealed record ContributionPage(IReadOnlyList<ContributionDetails> Items, int Page, int PageSize, int TotalCount);
 public sealed record RecordContributionRequest(decimal Amount, string Reference, string? Note);
 public sealed record ReverseContributionRequest(Guid EntryId, string Reason);

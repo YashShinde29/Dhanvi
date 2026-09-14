@@ -5,6 +5,55 @@ public sealed class GroupTests
     private static readonly DateTimeOffset Now = new(2026, 9, 9, 0, 0, 0, TimeSpan.Zero);
     private static GroupConfiguration Rules(bool participates = false, bool first = false, GroupType type = GroupType.Random) => new(type, 50000, 20, participates, first, 1, 2, 2, new DateOnly(2027, 1, 1));
     private static Group Create(GroupConfiguration? rules = null) => Group.Create("Test group", "Description", GroupCreatorType.Organizer, Guid.NewGuid(), rules ?? Rules(), true, Now);
+    [Theory]
+    [InlineData(true, 1, false)] [InlineData(true, 2, true)] [InlineData(true, 3, true)]
+    [InlineData(true, 50, true)] [InlineData(true, 51, false)]
+    [InlineData(false, 19, false)] [InlineData(false, 20, true)]
+    [InlineData(false, 50, true)] [InlineData(false, 51, false)]
+    public void MemberPolicyBoundariesAndDerivedValues(bool development, int count, bool valid)
+    {
+        var policy = development ? GroupMemberPolicy.Development : GroupMemberPolicy.Production;
+        // Use an exactly divisible value so capacity validation is tested independently of paise precision.
+        var rules = Rules() with { MemberLimit = count, GroupValue = count * 2500m };
+        Group CreateWithPolicy() => Group.Create("Policy test", "", GroupCreatorType.Organizer, Guid.NewGuid(), rules, true, Now, policy);
+        if (!valid) { Error("INVALID_MEMBER_LIMIT", () => CreateWithPolicy()); return; }
+        var group = CreateWithPolicy();
+        group.Update(group.Name, group.Description, rules, Now, policy);
+        Assert.Equal(group.GroupValue / count, group.MonthlyContribution);
+        Assert.Equal(count, group.DurationMonths);
+        group.Publish(true, Now, policy);
+        for (var i = 0; i < count; i++) group.ApproveMember(Now);
+        group.ConfirmReady(true, count, true, Now);
+        group.Activate(count, true, true, false, Now, policy);
+        Assert.Equal(GroupStatus.Active, group.Status);
+    }
+
+    [Fact]
+    public void ProductionDefaultRevalidatesSmallGroupsAtEveryRulesBoundary()
+    {
+        var rules = Rules() with { MemberLimit = 2 };
+        Error("INVALID_MEMBER_LIMIT", () => Create(rules));
+        var group = Group.Create("Small", "", GroupCreatorType.Organizer, Guid.NewGuid(), rules, true, Now, GroupMemberPolicy.Development);
+        Error("INVALID_MEMBER_LIMIT", () => group.Update(group.Name, "", rules, Now));
+        Error("INVALID_MEMBER_LIMIT", () => group.Publish(true, Now));
+        group.Publish(true, Now, GroupMemberPolicy.Development);
+        group.ApproveMember(Now); group.ApproveMember(Now); group.ConfirmReady(true, 2, true, Now);
+        Error("INVALID_MEMBER_LIMIT", () => group.Activate(2, true, true, false, Now));
+    }
+
+    [Fact]
+    public void TwoMemberOrganizerParticipationLeavesOneExternalSlot()
+    {
+        var group = Group.Create("Small", "", GroupCreatorType.Organizer, Guid.NewGuid(),
+            Rules(true, true) with { MemberLimit = 2 }, true, Now, GroupMemberPolicy.Development);
+        Assert.Equal(1, group.CurrentMemberCount);
+        Assert.Equal(1, group.MemberLimit - group.CurrentMemberCount);
+        Assert.Equal(SelectionMethod.OrganizerReserved, group.FirstCycleSelectionMethod);
+        group.Publish(true, Now, GroupMemberPolicy.Development);
+        Assert.Equal(2, group.ApproveMember(Now));
+        Assert.Equal(GroupStatus.FullySubscribed, group.Status);
+        Error("GROUP_NOT_JOINABLE", () => group.ApproveMember(Now));
+    }
     [Theory] [InlineData(GroupType.Random)] [InlineData(GroupType.Auction)]
     public void ApprovedOrganizerCreatesEitherType(GroupType type) { var g = Create(Rules(type: type)); Assert.Equal(type, g.GroupType); Assert.Equal(2500m, g.MonthlyContribution); Assert.Equal(20, g.DurationMonths); Assert.Equal(GroupStatus.Draft, g.Status); }
     [Fact] public void UnapprovedOrganizerCannotCreate() => Error("ORGANIZER_NOT_APPROVED", () => Group.Create("Test", "", GroupCreatorType.Organizer, Guid.NewGuid(), Rules(), false, Now));

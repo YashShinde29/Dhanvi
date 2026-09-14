@@ -1,4 +1,5 @@
 "use client";
+import { CycleSettlement } from "@/features/payouts/cycle-settlement";
 import Link from "next/link";
 import { AuctionPanel } from "@/features/auctions/auction-panel";
 import { SelectionPanel } from "@/features/selections/selection-panel";
@@ -21,10 +22,13 @@ import { statusLabel } from "@/lib/status";
 import { ContributionSummaryCard } from "./contribution-card";
 
 export function CycleProgress({ cycle }: { cycle: MonthlyCycle }) {
+  const financial = cycle.collectionMode === "RAZORPAY";
+  const amount = financial ? cycle.financiallySettledAmount : cycle.recordedContributionAmount;
+  const members = financial ? cycle.financiallySettledMemberCount : cycle.fullyRecordedMemberCount;
   return (
-    <ProgressBar value={cycle.recordedContributionAmount} max={cycle.expectedPoolAmount} label={`Cycle ${cycle.cycleNumber} contributions recorded`}
-      start={<><strong className="num">{cycle.fullyRecordedMemberCount} / {cycle.expectedMemberCount}</strong> members complete · {formatNumber(cycle.pendingMemberCount)} pending</>}
-      end={<span className="amount" style={{ fontWeight: 500 }}>{formatMoney(cycle.recordedContributionAmount)} / {formatMoney(cycle.expectedPoolAmount)}</span>} />
+    <ProgressBar value={amount} max={cycle.expectedPoolAmount} label={`Cycle ${cycle.cycleNumber} contributions ${financial ? "gateway settled" : "recorded"}`}
+      start={<><strong className="num">{members} / {cycle.expectedMemberCount}</strong> members complete · {formatNumber(cycle.expectedMemberCount - members)} pending</>}
+      end={<span className="amount" style={{ fontWeight: 500 }}>{formatMoney(amount)} / {formatMoney(cycle.expectedPoolAmount)}</span>} />
   );
 }
 
@@ -98,6 +102,7 @@ export function CyclePanel({ group, scope, showSchedule = true, onChanged }: { g
         <Callout variant="neutral">No cycle is currently active for this group.</Callout>
       )}
       {current && (current.selectionMethod === "AUCTION" ? <AuctionPanel group={group} cycle={current} scope={scope} /> : <SelectionPanel group={group} cycle={current} scope={scope} onCompleted={async () => { await reload(); await onChanged?.(); }} />)}
+      {current?.selectionResultId && <CycleSettlement cycleId={current.id} groupId={group.id} scope={scope} />}
       {showSchedule && (
         <div className="section">
           <div className="section__header"><h2 className="h-section">Full schedule</h2>{hasMembership && <Link className="link" href={`/contributions?groupId=${group.id}`}>My contribution history →</Link>}</div>

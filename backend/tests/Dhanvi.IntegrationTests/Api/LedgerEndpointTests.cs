@@ -48,7 +48,7 @@ public sealed partial class CycleEndpointTests
         using var scope = fixture.Factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<LedgerDbContext>();
         var before = await db.Accounts.OrderBy(a => a.Code).Select(a => a.Id).ToArrayAsync();
         await scope.ServiceProvider.GetRequiredService<LedgerSeeder>().SeedAsync(default); await scope.ServiceProvider.GetRequiredService<LedgerSeeder>().SeedAsync(default);
-        Assert.Equal(before, await db.Accounts.OrderBy(a => a.Code).Select(a => a.Id).ToArrayAsync()); Assert.Equal(8, before.Length);
+        Assert.Equal(before, await db.Accounts.OrderBy(a => a.Code).Select(a => a.Id).ToArrayAsync()); Assert.Equal(ChartOfAccounts.SystemAccounts.Count, before.Length);
         db.Accounts.Add(LedgerAccount.Create(ChartOfAccounts.SystemAccounts[0], fixture.Clock.UtcNow));
         var error = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync()); Assert.Equal("23505", Assert.IsType<PostgresException>(error.InnerException).SqlState);
     }
@@ -174,7 +174,8 @@ public sealed partial class CycleEndpointTests
         using var scope = fixture.Factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<LedgerDbContext>();
         var extra = await FundingJournal(db, s, cycle.Id, 100); db.Lines.AddRange(extra.Lines);
         foreach (var line in extra.Lines) db.Entry(line).Property(l => l.JournalEntryId).CurrentValue = original.Id;
-        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        var error = await Assert.ThrowsAsync<PostgresException>(() => db.SaveChangesAsync());
+        Assert.Equal("23514", error.SqlState);
     }
     [Fact]
     public async Task LedgerDatabaseRejectsIncompleteJournalAndRollsBack()
@@ -182,7 +183,7 @@ public sealed partial class CycleEndpointTests
         var s = await Seed(); using var owner = Owner(s); var cycle = (await Activate(owner, s))[0];
         using var scope = fixture.Factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<LedgerDbContext>(); var j = await FundingJournal(db, s, cycle.Id, 100);
         db.Journals.Add(j); db.Entry(j).Property(x => x.LineCount).CurrentValue = 3;
-        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync()); db.ChangeTracker.Clear();
+        var error = await Assert.ThrowsAsync<PostgresException>(() => db.SaveChangesAsync()); Assert.Equal("23514", error.SqlState); db.ChangeTracker.Clear();
         Assert.False(await db.Journals.AnyAsync(x => x.Id == j.Id)); Assert.False(await db.Lines.AnyAsync(x => x.JournalEntryId == j.Id));
     }
     [Theory] [InlineData(true)] [InlineData(false)]

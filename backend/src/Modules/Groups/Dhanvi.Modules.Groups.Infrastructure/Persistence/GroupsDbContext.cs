@@ -35,7 +35,7 @@ public sealed class GroupsDbContext(DbContextOptions<GroupsDbContext> options) :
         var g = modelBuilder.Entity<Group>();
         g.ToTable("Groups", t => {
             t.HasCheckConstraint("CK_Group_Capacity", "\"CurrentMemberCount\" >= 0 AND \"CurrentMemberCount\" <= (\"Rules\"->>'MemberLimit')::int");
-            t.HasCheckConstraint("CK_Group_Rules", "(\"Rules\"->>'MemberLimit')::int BETWEEN 20 AND 50 AND (\"Rules\"->>'GroupValue')::numeric > 0 AND \"DurationMonths\" = (\"Rules\"->>'MemberLimit')::int AND \"MonthlyContribution\" * \"DurationMonths\" = (\"Rules\"->>'GroupValue')::numeric");
+            t.HasCheckConstraint("CK_Group_Rules", "(\"Rules\"->>'MemberLimit')::int BETWEEN 2 AND 50 AND (\"Rules\"->>'GroupValue')::numeric > 0 AND \"DurationMonths\" = (\"Rules\"->>'MemberLimit')::int AND \"MonthlyContribution\" * \"DurationMonths\" = (\"Rules\"->>'GroupValue')::numeric");
         });
         g.HasKey(x => x.Id); g.Property(x => x.Name).HasMaxLength(200); g.Property(x => x.Description).HasMaxLength(4000);
         g.Property(x => x.Rules).HasConversion(v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null), v => JsonSerializer.Deserialize<GroupConfiguration>(v, (JsonSerializerOptions?)null)!).HasColumnType("jsonb");

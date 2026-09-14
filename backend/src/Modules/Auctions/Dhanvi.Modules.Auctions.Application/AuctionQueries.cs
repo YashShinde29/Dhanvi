@@ -37,7 +37,7 @@ public sealed partial class AuctionService
             own.HasValue ? result.Allocations.Where(a => a.MembershipId == own).Sum(a => a.Amount) : null,
             CanInspect(state, actor) ? result.Allocations.Select(a => new AuctionAllocationDetails(a.MembershipId, a.AllocationType, a.Amount)).ToArray() : []);
     }
-    private static AuctionDetails Map(AuctionContext state, SelectionActor actor, DateTimeOffset now)
+    private AuctionDetails Map(AuctionContext state, SelectionActor actor, DateTimeOffset now)
     {
         var auction = state.Auction ?? Scheduled(state, now); var eligible = SelectionPolicy.Eligible(state.Selection); var own = state.Selection.Participants.SingleOrDefault(p => p.Membership.UserId == actor.UserId);
         var active = state.Selection.Group.Status == GroupStatus.Active; var ready = state.Selection.Cycle.Status == CycleStatus.ReadyForSelection;

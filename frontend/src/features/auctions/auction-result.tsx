@@ -35,7 +35,7 @@ export function AuctionResultCard({ result, timeZone }: { result: AuctionResult;
             ]} />
           </div>
         </div>
-        <Callout variant="info" title={humanize(result.allocationStatus)}>These are calculated allocations under the group&apos;s fee policy ({humanize(result.feePolicy)}). Actual settlement has not yet been processed.</Callout>
+        <Callout variant="info" title="Finalized allocations">These allocations use the group&apos;s fee policy ({humanize(result.feePolicy)}). See payout settlement for the winner transfer, member benefits and internal fee status.</Callout>
       </CardBody>
     </Card>
   );

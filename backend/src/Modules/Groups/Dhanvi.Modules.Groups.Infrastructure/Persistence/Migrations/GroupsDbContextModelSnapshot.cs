@@ -115,7 +115,7 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_Auction_Current", "\"LastBidSequence\" >= 0 AND \"CurrentHighestDiscount\" >= 0 AND \"CurrentHighestDiscount\" <= \"MaximumDiscount\"");
 
-                            t.HasCheckConstraint("CK_Auction_Rules", "\"GroupValue\" > 0 AND \"MemberLimit\" BETWEEN 20 AND 50 AND \"CycleNumber\" BETWEEN 1 AND 50 AND \"MinimumDiscount\" >= 0 AND \"MaximumDiscount\" >= \"MinimumDiscount\" AND \"MaximumDiscount\" > 0 AND \"MaximumDiscount\" < \"GroupValue\" AND \"BidIncrement\" > 0 AND \"StartsAt\" < \"EndsAt\"");
+                            t.HasCheckConstraint("CK_Auction_Rules", "\"GroupValue\" > 0 AND \"MemberLimit\" BETWEEN 2 AND 50 AND \"CycleNumber\" BETWEEN 1 AND 50 AND \"MinimumDiscount\" >= 0 AND \"MaximumDiscount\" >= \"MinimumDiscount\" AND \"MaximumDiscount\" > 0 AND \"MaximumDiscount\" < \"GroupValue\" AND \"BidIncrement\" > 0 AND \"StartsAt\" < \"EndsAt\"");
                         });
                 });
 
@@ -303,7 +303,7 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
 
                     b.ToTable("AuctionResults", "groups", t =>
                         {
-                            t.HasCheckConstraint("CK_AuctionResult_Money", "\"WinningDiscount\" > 0 AND \"WinnerPayout\" > 0 AND \"WinnerPayout\" < \"GroupValue\" AND \"WinnerPayout\" + \"WinningDiscount\" = \"GroupValue\" AND \"MemberLimit\" BETWEEN 20 AND 50 AND \"GrossMemberShare\" > 0 AND \"PlatformFee\" = \"GrossMemberShare\" AND \"GrossMemberShare\" * \"MemberLimit\" = \"WinningDiscount\" AND \"MemberBenefitPool\" + \"PlatformFee\" = \"WinningDiscount\" AND \"MemberBenefitPool\" = \"GrossMemberShare\" * (\"MemberLimit\" - 1)");
+                            t.HasCheckConstraint("CK_AuctionResult_Money", "\"WinningDiscount\" > 0 AND \"WinnerPayout\" > 0 AND \"WinnerPayout\" < \"GroupValue\" AND \"WinnerPayout\" + \"WinningDiscount\" = \"GroupValue\" AND \"MemberLimit\" BETWEEN 2 AND 50 AND \"GrossMemberShare\" > 0 AND \"PlatformFee\" = \"GrossMemberShare\" AND \"GrossMemberShare\" * \"MemberLimit\" = \"WinningDiscount\" AND \"MemberBenefitPool\" + \"PlatformFee\" = \"WinningDiscount\" AND \"MemberBenefitPool\" = \"GrossMemberShare\" * (\"MemberLimit\" - 1)");
 
                             t.HasCheckConstraint("CK_AuctionResult_Version", "\"CalculationVersion\" = 'DHANVI_AUCTION_V1' AND \"FeePolicy\" = 'WinnerMemberShare'");
                         });
@@ -328,6 +328,16 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<string>("FinancialStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Unpaid");
+
+                    b.Property<decimal>("FinanciallySettledAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid");
 
@@ -343,6 +353,9 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTimeOffset?>("RecordedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SettledPaymentId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -361,6 +374,9 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("MembershipId");
 
+                    b.HasIndex("SettledPaymentId")
+                        .IsUnique();
+
                     b.HasIndex("CycleId", "GroupId");
 
                     b.HasIndex("CycleId", "MembershipId")
@@ -373,6 +389,8 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                     b.ToTable("Contributions", "groups", t =>
                         {
                             t.HasCheckConstraint("CK_Contribution_Amounts", "\"ExpectedAmount\" > 0 AND \"RecordedAmount\" BETWEEN 0 AND \"ExpectedAmount\"");
+
+                            t.HasCheckConstraint("CK_Contribution_Financial", "(\"FinanciallySettledAmount\" = 0 AND \"SettledPaymentId\" IS NULL AND \"FinancialStatus\" IN ('Unpaid','Refunded')) OR (\"FinanciallySettledAmount\" = \"ExpectedAmount\" AND \"SettledPaymentId\" IS NOT NULL AND \"FinancialStatus\" = 'Settled')");
                         });
                 });
 
@@ -447,6 +465,15 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CollectionMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("ManualTracking");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateOnly>("ContributionDueDate")
                         .HasColumnType("date");
 
@@ -470,11 +497,21 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal>("FinanciallySettledAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("FinanciallySettledMemberCount")
+                        .HasColumnType("integer");
+
                     b.Property<int>("FullyRecordedMemberCount")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("PayoutCompletedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateOnly>("PayoutDate")
                         .HasColumnType("date");
@@ -528,7 +565,9 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_Cycle_Dates", "\"ContributionDueDate\" <= \"SelectionDate\" AND \"SelectionDate\" <= \"PayoutDate\"");
 
-                            t.HasCheckConstraint("CK_Cycle_Expected", "\"CycleNumber\" BETWEEN 1 AND \"ExpectedMemberCount\" AND \"ExpectedMemberCount\" BETWEEN 20 AND 50 AND \"ExpectedContributionPerMember\" > 0 AND \"ExpectedPoolAmount\" = \"ExpectedContributionPerMember\" * \"ExpectedMemberCount\"");
+                            t.HasCheckConstraint("CK_Cycle_Expected", "\"CycleNumber\" BETWEEN 1 AND \"ExpectedMemberCount\" AND \"ExpectedMemberCount\" BETWEEN 2 AND 50 AND \"ExpectedContributionPerMember\" > 0 AND \"ExpectedPoolAmount\" = \"ExpectedContributionPerMember\" * \"ExpectedMemberCount\"");
+
+                            t.HasCheckConstraint("CK_Cycle_Financial", "\"FinanciallySettledAmount\" BETWEEN 0 AND \"ExpectedPoolAmount\" AND \"FinanciallySettledMemberCount\" BETWEEN 0 AND \"ExpectedMemberCount\"");
 
                             t.HasCheckConstraint("CK_Cycle_Totals", "\"RecordedContributionAmount\" BETWEEN 0 AND \"ExpectedPoolAmount\" AND \"FullyRecordedMemberCount\" BETWEEN 0 AND \"ExpectedMemberCount\"");
                         });
@@ -541,6 +580,9 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset?>("ActivatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -637,7 +679,7 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_Group_Capacity", "\"CurrentMemberCount\" >= 0 AND \"CurrentMemberCount\" <= (\"Rules\"->>'MemberLimit')::int");
 
-                            t.HasCheckConstraint("CK_Group_Rules", "(\"Rules\"->>'MemberLimit')::int BETWEEN 20 AND 50 AND (\"Rules\"->>'GroupValue')::numeric > 0 AND \"DurationMonths\" = (\"Rules\"->>'MemberLimit')::int AND \"MonthlyContribution\" * \"DurationMonths\" = (\"Rules\"->>'GroupValue')::numeric");
+                            t.HasCheckConstraint("CK_Group_Rules", "(\"Rules\"->>'MemberLimit')::int BETWEEN 2 AND 50 AND (\"Rules\"->>'GroupValue')::numeric > 0 AND \"DurationMonths\" = (\"Rules\"->>'MemberLimit')::int AND \"MonthlyContribution\" * \"DurationMonths\" = (\"Rules\"->>'GroupValue')::numeric");
                         });
                 });
 

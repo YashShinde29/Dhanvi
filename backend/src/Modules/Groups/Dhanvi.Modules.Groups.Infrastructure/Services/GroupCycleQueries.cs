@@ -69,6 +69,6 @@ internal sealed partial class GroupCycleService
             foreach (var userId in memberships.Values.Select(m => m.UserId).Distinct()) names[userId] = (await users.FindAsync(userId, ct))?.Name ?? "Unavailable member";
         return items.Select(c => new ContributionDetails(c.Id, c.GroupId, groups[c.GroupId].Name, c.CycleId, cycles[c.CycleId].CycleNumber, c.MembershipId, memberships[c.MembershipId].SlotNumber,
             management ? names[memberships[c.MembershipId].UserId] : null, c.DueDate, groups[c.GroupId].GroupTimeZone, c.ExpectedAmount, c.RecordedAmount, c.Status, c.RecordedAt,
-            entries.Where(e => e.ContributionId == c.Id).Select(MapEntry).ToArray())).ToArray();
+            entries.Where(e => e.ContributionId == c.Id).Select(MapEntry).ToArray(), groups[c.GroupId].Rules.CollectionMode, c.FinanciallySettledAmount, c.FinancialStatus)).ToArray();
     }
 }

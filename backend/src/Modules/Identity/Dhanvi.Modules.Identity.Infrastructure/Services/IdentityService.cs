@@ -28,6 +28,13 @@ internal sealed class IdentityService(
     IEmailSender emailSender,
     IDateTimeProvider clock) : IIdentityService
 {
+    public async Task VerifyPasswordAsync(Guid userId, string password, CancellationToken cancellationToken)
+    {
+        var user = await dbContext.Users.SingleOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (user is null || !user.IsActive || string.IsNullOrEmpty(password) || password.Length > 256 ||
+            passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password) == PasswordVerificationResult.Failed)
+            throw new AuthenticationFailedException();
+    }
     public async Task<RegisteredUserResponse> RegisterAsync(RegisterRequest request, string? ipAddress, string? correlationId, CancellationToken cancellationToken)
     {
         IdentityInputValidator.Validate(request, passwordRules);

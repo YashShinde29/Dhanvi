@@ -1,4 +1,6 @@
 "use client";
+
+import { env } from "@/lib/env";
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { groupService, type GroupScope } from "@/services/group.service";
@@ -39,7 +41,7 @@ function fromGroup(existing?: Group): FormState {
   const auction = existing?.auctionRules ?? defaultAuction;
   return {
     name: existing?.name ?? "", description: existing?.description ?? "", groupType: existing?.groupType ?? "RANDOM",
-    groupValue: existing ? String(existing.groupValue) : "500000", memberLimit: existing ? String(existing.memberLimit) : "20",
+    groupValue: existing ? String(existing.groupValue) : "500000", memberLimit: existing ? String(existing.memberLimit) : String(env.minimumGroupMembers),
     organizerParticipates: existing?.organizerParticipates ?? false, organizerFirstPayout: existing?.organizerFirstPayout ?? false,
     contributionDueDay: String(existing?.contributionDueDay ?? 1), selectionDay: String(existing?.selectionDay ?? 2), payoutDay: String(existing?.payoutDay ?? 2),
     startDate: existing?.startDate ?? "",
@@ -108,7 +110,7 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
     if (name === "Group value") {
       if (!calc.valid) { if (!(Number(form.groupValue) > 0)) next.groupValue = "Enter the total group value."; }
       const members = Number(form.memberLimit);
-      if (!Number.isInteger(members) || members < 20 || members > 50) next.memberLimit = "Choose between 20 and 50 members.";
+      if (!Number.isInteger(members) || members < env.minimumGroupMembers || members > env.maximumGroupMembers) next.memberLimit = `Choose between ${env.minimumGroupMembers} and ${env.maximumGroupMembers} members.`;
       else if (calc.valid && !calc.exact) next.groupValue = "The group value must divide exactly among all members (no fractional paise). Adjust the value or member count.";
     }
     if (name === "Schedule") {
@@ -210,8 +212,8 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
                   <FormField label="Group value" htmlFor="group-groupValue" required error={errors.groupValue} help="Total pool each cycle, e.g. ₹5,00,000.">
                     <MoneyInput id="group-groupValue" value={form.groupValue} onChange={(v) => set("groupValue", v)} invalid={!!errors.groupValue} disabled={locked} />
                   </FormField>
-                  <FormField label="Number of members" htmlFor="group-memberLimit" required error={errors.memberLimit} help="Between 20 and 50. Duration equals the number of members.">
-                    <Input id="group-memberLimit" type="number" inputMode="numeric" min={20} max={50} value={form.memberLimit} onChange={(e) => set("memberLimit", e.target.value)} invalid={!!errors.memberLimit} disabled={locked} />
+                  <FormField label="Number of members" htmlFor="group-memberLimit" required error={errors.memberLimit} help={`Between ${env.minimumGroupMembers} and ${env.maximumGroupMembers}. Duration equals the number of members.`}>
+                    <Input id="group-memberLimit" type="number" inputMode="numeric" min={env.minimumGroupMembers} max={env.maximumGroupMembers} value={form.memberLimit} onChange={(e) => set("memberLimit", e.target.value)} invalid={!!errors.memberLimit} disabled={locked} />
                   </FormField>
                 </div>
                 <Callout variant={calc.exact ? "success" : "neutral"} title={calc.exact ? "Calculated monthly contribution" : "Waiting for a valid combination"}>

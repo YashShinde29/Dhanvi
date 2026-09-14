@@ -34,7 +34,7 @@ public sealed class IdentityApiFixture : IAsyncLifetime, IAsyncDisposable
     }
 }
 
-public sealed class IdentityApiFactory(string connectionString, TestEmailSender emailSender, Dhanvi.SharedKernel.Time.IDateTimeProvider? clock = null, Dhanvi.Modules.RandomDraws.Application.ISecureRandomSource? random = null) : WebApplicationFactory<Program>
+public sealed class IdentityApiFactory(string connectionString, TestEmailSender emailSender, Dhanvi.SharedKernel.Time.IDateTimeProvider? clock = null, Dhanvi.Modules.RandomDraws.Application.ISecureRandomSource? random = null, Dhanvi.Modules.Payments.Application.IPaymentGateway? gateway = null) : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -44,6 +44,14 @@ public sealed class IdentityApiFactory(string connectionString, TestEmailSender 
             {
                 ["ConnectionStrings:DefaultConnection"] = connectionString,
                 ["Database:ApplyMigrations"] = "true",
+                // Exported manual-smoke credentials must never affect the offline suite.
+                ["Payment_RazorpayEnabled"] = "false",
+                ["Payment_RazorpayKeyId"] = "",
+                ["Payment_RazorpayKeySecret"] = "",
+                ["Payment_RazorpayCheckoutReturnBaseUrl"] = "http://localhost:3000/checkout/return",
+                ["Payment_WebhookEnabled"] = "true",
+                ["Payment_WebhookSecret"] = "",
+                ["RAZORPAY_ENVIRONMENT"] = "TEST",
                 ["Jwt:SigningKey"] = "integration-test-signing-key-with-at-least-32-characters",
                 ["Jwt:SecureCookies"] = "false",
                 ["DHANVI_SEED_ADMIN_ENABLED"] = "true",
@@ -52,6 +60,7 @@ public sealed class IdentityApiFactory(string connectionString, TestEmailSender 
             }));
         builder.ConfigureTestServices(services =>
         {
+            if (gateway is not null) { services.RemoveAll<Dhanvi.Modules.Payments.Application.IPaymentGateway>(); services.AddSingleton(gateway); }
             if (random is not null) { services.RemoveAll<Dhanvi.Modules.RandomDraws.Application.ISecureRandomSource>(); services.AddSingleton(random); }
             if (clock is not null) { services.RemoveAll<Dhanvi.SharedKernel.Time.IDateTimeProvider>(); services.AddSingleton(clock); }
             services.RemoveAll<IEmailSender>();

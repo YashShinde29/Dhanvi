@@ -12,10 +12,10 @@ namespace Dhanvi.IntegrationTests.Api;
 
 public sealed partial class CycleEndpointTests
 {
-    private async Task<(Scenario Scenario, CycleDetails Cycle)> SelectionReady(bool organizer = false, bool reserved = false, GroupType type = GroupType.Random)
+    private async Task<(Scenario Scenario, CycleDetails Cycle)> SelectionReady(bool organizer = false, bool reserved = false, GroupType type = GroupType.Random, int count = 20)
     {
-        var s = await Seed(organizer: organizer, reserved: reserved, type: type); using var owner = Owner(s); var cycles = await Activate(owner, s);
-        foreach (var row in await Rows(owner, s, cycles[0].Id)) await Result(Operation(owner, s, row, new RecordContributionRequest(2500, "selection-ready", null), row.Id.ToString()));
+        var s = await Seed(count: count, organizer: organizer, reserved: reserved, type: type); using var owner = Owner(s); var cycles = await Activate(owner, s);
+        foreach (var row in await Rows(owner, s, cycles[0].Id)) await Result(Operation(owner, s, row, new RecordContributionRequest(row.ExpectedAmount, "selection-ready", null), row.Id.ToString()));
         return (s, cycles[0]);
     }
     private static Task<HttpResponseMessage> Select(HttpClient client, Scenario s, Guid cycleId) => client.PostAsJsonAsync($"/api/v1/groups/{s.GroupId}/cycles/{cycleId}/selection", new { });
@@ -32,10 +32,10 @@ public sealed partial class CycleEndpointTests
         Assert.All(await db.MonthlyCycles.Where(c => c.GroupId == s.GroupId && c.CycleNumber > 1).ToListAsync(), c => Assert.Equal(CycleStatus.Upcoming, c.Status));
         Assert.True(await db.AuditEvents.AnyAsync(a => a.GroupId == s.GroupId && a.Action == "RANDOM_DRAW_EXECUTED" && a.SelectionResultId == result.Id && a.AlgorithmVersion == "DHANVI_RANDOM_V1"));
     }
-    [Theory] [InlineData(GroupType.Random)] [InlineData(GroupType.Auction)]
-    public async Task ReservedCycleSelectsOnlyOrganizerWithoutEntropy(GroupType type)
+    [Theory] [InlineData(GroupType.Random, 20)] [InlineData(GroupType.Auction, 20)] [InlineData(GroupType.Random, 2)]
+    public async Task ReservedCycleSelectsOnlyOrganizerWithoutEntropy(GroupType type, int count)
     {
-        var (s, cycle) = await SelectionReady(true, true, type); using var owner = Owner(s); var before = fixture.RandomSource.Calls; var result = await Selection(Select(owner, s, cycle.Id)); Assert.Equal(before, fixture.RandomSource.Calls); Assert.Equal("ORGANIZER_RESERVED_V1", result.AlgorithmVersion); Assert.False(result.VerificationAvailable);
+        var (s, cycle) = await SelectionReady(true, true, type, count); using var owner = Owner(s); var before = fixture.RandomSource.Calls; var result = await Selection(Select(owner, s, cycle.Id)); Assert.Equal(before, fixture.RandomSource.Calls); Assert.Equal("ORGANIZER_RESERVED_V1", result.AlgorithmVersion); Assert.False(result.VerificationAvailable);
         using var scope = fixture.Factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<GroupsDbContext>(); var winner = await db.Memberships.SingleAsync(m => m.Id == result.Winner.MembershipId); Assert.Equal(s.OwnerId, winner.UserId);
         var stored = await db.SelectionResults.SingleAsync(r => r.Id == result.Id); Assert.Null(stored.SeedReveal); Assert.True(await db.AuditEvents.AnyAsync(a => a.GroupId == s.GroupId && a.Action == "ORGANIZER_RESERVED_SELECTION_EXECUTED"));
         using var verify = await owner.GetAsync($"/api/v1/groups/{s.GroupId}/cycles/{cycle.Id}/selection/verify"); Assert.Equal(HttpStatusCode.Conflict, verify.StatusCode); Assert.Contains("RANDOM_VERIFICATION_NOT_APPLICABLE", await verify.Content.ReadAsStringAsync());

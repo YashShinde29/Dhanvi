@@ -159,6 +159,9 @@ namespace Dhanvi.Modules.Ledger.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("AuctionResultId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ContributionId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -192,6 +195,9 @@ namespace Dhanvi.Modules.Ledger.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("MembershipId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("PaymentId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("ReferenceId")
                         .HasColumnType("uuid");
 
@@ -209,6 +215,8 @@ namespace Dhanvi.Modules.Ledger.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("AuctionResultId");
 
+                    b.HasIndex("ContributionId");
+
                     b.HasIndex("CycleId");
 
                     b.HasIndex("GroupId");
@@ -216,6 +224,8 @@ namespace Dhanvi.Modules.Ledger.Infrastructure.Persistence.Migrations
                     b.HasIndex("JournalEntryId");
 
                     b.HasIndex("MembershipId");
+
+                    b.HasIndex("PaymentId");
 
                     b.HasIndex("SelectionResultId");
 

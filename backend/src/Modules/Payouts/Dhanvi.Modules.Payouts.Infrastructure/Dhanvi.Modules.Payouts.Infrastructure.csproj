@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk"><ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" />
+<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" /><PackageReference Include="Microsoft.EntityFrameworkCore.Design"><PrivateAssets>all</PrivateAssets></PackageReference>
+<ProjectReference Include="../Dhanvi.Modules.Payouts.Application/Dhanvi.Modules.Payouts.Application.csproj" />
+<ProjectReference Include="../../Groups/Dhanvi.Modules.Groups.Application/Dhanvi.Modules.Groups.Application.csproj" />
+<ProjectReference Include="../../Ledger/Dhanvi.Modules.Ledger.Application/Dhanvi.Modules.Ledger.Application.csproj" />
+<ProjectReference Include="../../Audit/Dhanvi.Modules.Audit.Infrastructure/Dhanvi.Modules.Audit.Infrastructure.csproj" />
+</ItemGroup></Project>

@@ -7,6 +7,7 @@ using Dhanvi.SharedKernel.Time;
 namespace Dhanvi.Modules.Groups.Domain;
 
 public enum GroupType { Random, Auction }
+public enum ContributionCollectionMode { ManualTracking, Razorpay }
 public enum GroupCreatorType { Platform, Organizer }
 public enum GroupStatus { Draft, Published, Recruiting, FullySubscribed, ReadyToStart, Active, Completing, Completed, Suspended, Cancelled }
 public enum MembershipStatus { Applied, Approved, Active, Rejected, Withdrawn, Removed, Completed }
@@ -16,15 +17,13 @@ public sealed record AuctionGroupRules(decimal MinimumDiscount, decimal MaximumD
 public sealed record RandomGroupRules(string AlgorithmVersion = "UNASSIGNED", TimeOnly? DrawTime = null, string VerificationMethod = "NOT_IMPLEMENTED");
 public sealed record GroupConfiguration(GroupType GroupType, decimal GroupValue, int MemberLimit, bool OrganizerParticipates,
     bool OrganizerFirstPayout, int ContributionDueDay, int SelectionDay, int PayoutDay, DateOnly StartDate,
-    AuctionGroupRules? AuctionRules = null, RandomGroupRules? RandomRules = null);
+    AuctionGroupRules? AuctionRules = null, RandomGroupRules? RandomRules = null, ContributionCollectionMode CollectionMode = ContributionCollectionMode.ManualTracking);
 
 public static class GroupRules
 {
-    public const int MinimumMembers = 20;
-    public const int MaximumMembers = 50;
-    public static decimal Contribution(decimal value, int members)
+    public static decimal Contribution(decimal value, int members, GroupMemberPolicy? policy = null)
     {
-        Require(members is >= MinimumMembers and <= MaximumMembers, "INVALID_MEMBER_LIMIT", "Member limit must be between 20 and 50.");
+        (policy ?? GroupMemberPolicy.Default).ValidateMemberCount(members);
         Require(value > 0 && value <= 9999999999999999.99m && decimal.Round(value, 2) == value, "INVALID_GROUP_AMOUNT", "Group value must be positive with at most two decimal places.");
         Require(value * 100 % members == 0, "INVALID_CONTRIBUTION_PRECISION", "Group value divided by members must be exact to two decimal places.");
         return value / members;
@@ -33,9 +32,11 @@ public static class GroupRules
     {
         if (!condition) throw new GroupBusinessException(code, message);
     }
-    public static void Validate(GroupConfiguration rules, GroupCreatorType creatorType, DateOnly today)
+    public static void Validate(GroupConfiguration rules, GroupCreatorType creatorType, DateOnly today, GroupMemberPolicy? policy = null)
     {
-        Contribution(rules.GroupValue, rules.MemberLimit);
+        Contribution(rules.GroupValue, rules.MemberLimit, policy);
+        Require(Enum.IsDefined(rules.CollectionMode) && (rules.CollectionMode != ContributionCollectionMode.Razorpay || creatorType == GroupCreatorType.Platform),
+            "COLLECTION_MODE_NOT_ALLOWED", "Razorpay Test collection is available only for platform groups.");
         Require(Enum.IsDefined(rules.GroupType), "INVALID_GROUP_TYPE", "Select Random or Auction.");
         Require(!rules.OrganizerFirstPayout || rules.OrganizerParticipates, "ORGANIZER_FIRST_PAYOUT_REQUIRES_MEMBERSHIP", "Organizer first payout requires participation.");
         Require(creatorType != GroupCreatorType.Platform || (!rules.OrganizerParticipates && !rules.OrganizerFirstPayout), "INVALID_PLATFORM_RULES", "Platform groups cannot use organizer participation rules.");
@@ -84,30 +85,31 @@ public sealed class Group
     public string GroupTimeZone { get; private set; } = BusinessCalendar.DefaultTimeZone;
     public DateTimeOffset? ActivatedAt { get; private set; }
     public int? CurrentCycleNumber { get; private set; }
+    public DateTimeOffset? CompletedAt { get; private set; }
     public string? StatusReason { get; private set; }
     public SelectionMethod FirstCycleSelectionMethod => Rules.OrganizerFirstPayout ? SelectionMethod.OrganizerReserved : Rules.GroupType == GroupType.Random ? SelectionMethod.Random : SelectionMethod.Auction;
-    public static Group Create(string name, string description, GroupCreatorType creator, Guid userId, GroupConfiguration rules, bool organizerApproved, DateTimeOffset now)
+    public static Group Create(string name, string description, GroupCreatorType creator, Guid userId, GroupConfiguration rules, bool organizerApproved, DateTimeOffset now, GroupMemberPolicy? memberPolicy = null)
     {
         GroupRules.Require(creator != GroupCreatorType.Organizer || organizerApproved, "ORGANIZER_NOT_APPROVED", "Only approved organizers may create groups.");
         var group = new Group { CreatorType = creator, CreatedByUserId = userId, CreatedAt = now };
-        group.Update(name, description, rules, now);
+        group.Update(name, description, rules, now, memberPolicy);
         if (rules.OrganizerParticipates) { group.CurrentMemberCount = 1; group.RulesLocked = true; }
         return group;
     }
-    public void Update(string name, string description, GroupConfiguration rules, DateTimeOffset now)
+    public void Update(string name, string description, GroupConfiguration rules, DateTimeOffset now, GroupMemberPolicy? memberPolicy = null)
     {
         GroupRules.Require(Status == GroupStatus.Draft, "GROUP_NOT_EDITABLE", "Only drafts may be edited; published rules are immutable.");
         GroupRules.Require(!RulesLocked || Rules == rules, "GROUP_RULES_LOCKED", "Rules are locked after approval or terms acceptance.");
         GroupRules.Require(!string.IsNullOrWhiteSpace(name) && name.Length <= 200 && description is not null && description.Length <= 4000, "INVALID_GROUP_NAME", "Name is required (maximum 200 characters); description maximum is 4000.");
-        GroupRules.Validate(rules, CreatorType, BusinessCalendar.Today(now, GroupTimeZone));
+        GroupRules.Validate(rules, CreatorType, BusinessCalendar.Today(now, GroupTimeZone), memberPolicy);
         Name = name.Trim(); Description = description!.Trim(); Rules = rules; GroupType = rules.GroupType; GroupValue = rules.GroupValue; MemberLimit = rules.MemberLimit;
-        MonthlyContribution = GroupRules.Contribution(rules.GroupValue, rules.MemberLimit); DurationMonths = rules.MemberLimit; Touch(now);
+        MonthlyContribution = GroupRules.Contribution(rules.GroupValue, rules.MemberLimit, memberPolicy); DurationMonths = rules.MemberLimit; Touch(now);
     }
-    public GroupRuleVersion Publish(bool organizerApproved, DateTimeOffset now)
+    public GroupRuleVersion Publish(bool organizerApproved, DateTimeOffset now, GroupMemberPolicy? memberPolicy = null)
     {
         GroupRules.Require(Status == GroupStatus.Draft, "INVALID_GROUP_TRANSITION", "Only drafts may be published.");
         CheckOrganizer(organizerApproved);
-        GroupRules.Validate(Rules, CreatorType, BusinessCalendar.Today(now, GroupTimeZone));
+        GroupRules.Validate(Rules, CreatorType, BusinessCalendar.Today(now, GroupTimeZone), memberPolicy);
         RulesVersion++; PublishedAt = now; Status = GroupStatus.Recruiting; Touch(now);
         return GroupRuleVersion.Create(this, now);
     }
@@ -130,7 +132,7 @@ public sealed class Group
         GroupRules.Require(Rules.StartDate > BusinessCalendar.Today(now, GroupTimeZone), "INVALID_START_DATE", "Start date must be in the future.");
         CheckOrganizer(organizerApproved); Status = GroupStatus.ReadyToStart; Touch(now);
     }
-    public void Activate(int approvedCount, bool allAccepted, bool organizerApproved, bool hasCycles, DateTimeOffset now)
+    public void Activate(int approvedCount, bool allAccepted, bool organizerApproved, bool hasCycles, DateTimeOffset now, GroupMemberPolicy? memberPolicy = null)
     {
         GroupRules.Require(Status == GroupStatus.ReadyToStart, "GROUP_NOT_READY", "Only a ready-to-start group can activate.");
         GroupRules.Require(!hasCycles, "GROUP_ALREADY_HAS_CYCLES", "This group already has a cycle schedule.");
@@ -139,7 +141,7 @@ public sealed class Group
         CheckOrganizer(organizerApproved);
         GroupRules.Require(Rules.StartDate >= BusinessCalendar.Today(now, GroupTimeZone), "INVALID_START_DATE", "Start date must be today or in the future in the group timezone.");
         GroupRules.Require(DurationMonths == MemberLimit && GroupValue == Rules.GroupValue && MemberLimit == Rules.MemberLimit && GroupType == Rules.GroupType &&
-            MonthlyContribution == GroupRules.Contribution(GroupValue, MemberLimit) && MonthlyContribution * MemberLimit == GroupValue,
+            MonthlyContribution == GroupRules.Contribution(GroupValue, MemberLimit, memberPolicy) && MonthlyContribution * MemberLimit == GroupValue,
             "INVALID_EXPECTED_POOL", "Duration and expected contributions must exactly match the group's accepted rules.");
         Status = GroupStatus.Active; ActivatedAt = now; CurrentCycleNumber = 1; RulesLocked = true; Touch(now);
     }
@@ -151,6 +153,16 @@ public sealed class Group
         StatusReason = reason.Trim(); Status = cancel ? GroupStatus.Cancelled : GroupStatus.Suspended; Touch(now);
     }
     private void CheckOrganizer(bool approved) => GroupRules.Require(CreatorType != GroupCreatorType.Organizer || approved, "ORGANIZER_NOT_APPROVED", "Organizer must still be approved.");
+    public void AdvanceCycle(int number, DateTimeOffset now)
+    {
+        GroupRules.Require(Status == GroupStatus.Active && number == CurrentCycleNumber + 1 && number <= DurationMonths, "NEXT_CYCLE_NOT_ALLOWED", "Next cycle must follow the current active group cycle.");
+        CurrentCycleNumber = number; Touch(now);
+    }
+    public void Complete(DateTimeOffset now)
+    {
+        GroupRules.Require(Status == GroupStatus.Active && CurrentCycleNumber == DurationMonths, "NEXT_CYCLE_NOT_ALLOWED", "Only the final active cycle can complete the group.");
+        Status = GroupStatus.Completing; Status = GroupStatus.Completed; CompletedAt = now; Touch(now);
+    }
     private void Touch(DateTimeOffset now) { UpdatedAt = now; Version++; }
 }
 
@@ -166,7 +178,9 @@ public sealed class GroupRuleVersion
     public static GroupRuleVersion Create(Group group, DateTimeOffset now)
     {
         var snapshot = JsonSerializer.Serialize(new { group.CreatorType, group.CreatedByUserId, group.Rules, group.MonthlyContribution, group.DurationMonths, group.FirstCycleSelectionMethod, group.GroupTimeZone,
-            Terms = "Each member receives the main payout once and must continue contributing for the remaining cycles. Organizer-reserved cycle pays the full group value with zero discount. No money is collected by this implementation." });
+            Terms = group.Rules.CollectionMode == ContributionCollectionMode.Razorpay
+                ? "Razorpay TEST MODE only. Gateway capture is required for contribution readiness. Each member receives a payout right once and must continue contributing. Payout transfers are not implemented."
+                : "Each member receives the main payout once and must continue contributing for the remaining cycles. Organizer-reserved cycle pays the full group value with zero discount. Manual contribution tracking only." });
         return new() { GroupId = group.Id, VersionNumber = group.RulesVersion, RulesSnapshot = snapshot, RulesHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot))), CreatedAt = now, CreatedByUserId = group.CreatedByUserId };
     }
 }

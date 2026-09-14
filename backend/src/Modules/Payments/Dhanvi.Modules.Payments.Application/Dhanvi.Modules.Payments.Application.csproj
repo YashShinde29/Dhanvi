@@ -1,0 +1,1 @@
+<Project Sdk="Microsoft.NET.Sdk"><ItemGroup><ProjectReference Include="../Dhanvi.Modules.Payments.Domain/Dhanvi.Modules.Payments.Domain.csproj" /></ItemGroup></Project>

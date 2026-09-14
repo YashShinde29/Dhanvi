@@ -1,3 +1,5 @@
+import { env } from "@/lib/env";
+
 import { ApiError } from "@/services/api-client";
 
 /** Backend business codes → friendly, action-oriented copy. */
@@ -23,7 +25,7 @@ const codeMessages: Record<string, string> = {
   CURRENT_RULE_VERSION_REQUIRED: "The group rules were updated. Please review the latest version.",
   REASON_REQUIRED: "Please provide a reason.",
   INVALID_GROUP_AMOUNT: "Enter a valid group value.",
-  INVALID_MEMBER_LIMIT: "Member count must be between 20 and 50.",
+  INVALID_MEMBER_LIMIT: `Member count must be between ${env.minimumGroupMembers} and ${env.maximumGroupMembers}.`,
   INVALID_START_DATE: "Choose a start date in the future.",
   INVALID_SCHEDULE: "Check the contribution, selection and payout days.",
   INVALID_AUCTION_RULES: "Check the auction configuration values.",

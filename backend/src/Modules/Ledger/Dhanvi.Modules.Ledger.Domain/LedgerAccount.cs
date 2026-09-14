@@ -7,10 +7,14 @@ public sealed record AccountDefinition(string Code, string Name, AccountType Typ
 
 public static class ChartOfAccounts
 {
+    public const string PaymentGatewayClearing = "1010";
+    public const string PayoutGatewayClearing = "1020";
     public const string CashClearing = "1000", MemberReceivable = "1100", PlatformFeeReceivable = "1200",
         GroupPool = "2000", MemberPayout = "2100", MemberBenefit = "2200", DeferredPlatformFee = "2300", ServiceFeeRevenue = "4000";
     public static IReadOnlyList<AccountDefinition> SystemAccounts { get; } = Array.AsReadOnly(new[] {
         new AccountDefinition(CashClearing, "Cash clearing (future settlement)", AccountType.Asset),
+        new(PaymentGatewayClearing, "Razorpay test payment gateway clearing", AccountType.Asset),
+        new(PayoutGatewayClearing, "Test payout gateway clearing", AccountType.Asset),
         new(MemberReceivable, "Member receivable", AccountType.Asset),
         new(PlatformFeeReceivable, "Platform fee receivable", AccountType.Asset),
         new(GroupPool, "Group pool liability", AccountType.Liability),

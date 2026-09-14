@@ -6,12 +6,12 @@ public enum AccountingEventType
     ContributionRecorded, ContributionReversed, RandomSelectionCompleted, OrganizerReservedSelectionCompleted,
     AuctionSelectionCompleted, AuctionMemberBenefitCalculated, PlatformFeeCalculated, AccountingReversal,
     // Reserved vocabulary only: no Payment source adapter or posting handler exists in Prompt 7.
-    PaymentReceived
+    PaymentReceived, PaymentCaptured, PayoutSettled
 }
 public enum FeeRecognitionPolicy { Deferred, OnFundedSelection }
 public sealed record JournalLineInput(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string Currency,
     Guid? GroupId, Guid? CycleId, Guid? MembershipId, Guid? SelectionResultId, Guid? AuctionResultId,
-    string ReferenceType, Guid ReferenceId, string Description);
+    string ReferenceType, Guid ReferenceId, string Description, Guid? PaymentId = null, Guid? ContributionId = null);
 
 public sealed class JournalEntry
 {
@@ -68,7 +68,7 @@ public sealed class JournalEntry
         return journal;
     }
     public JournalLineInput[] ReversedLines() => Lines.Select(l => new JournalLineInput(l.AccountId, l.CreditAmount, l.DebitAmount,
-        l.Currency, l.GroupId, l.CycleId, l.MembershipId, l.SelectionResultId, l.AuctionResultId, l.ReferenceType, l.ReferenceId, l.Description)).ToArray();
+        l.Currency, l.GroupId, l.CycleId, l.MembershipId, l.SelectionResultId, l.AuctionResultId, l.ReferenceType, l.ReferenceId, l.Description, l.PaymentId, l.ContributionId)).ToArray();
 }
 
 public sealed class JournalLine
@@ -77,6 +77,8 @@ public sealed class JournalLine
     public Guid Id { get; private set; } = Guid.NewGuid();
     public Guid JournalEntryId { get; private set; }
     public Guid AccountId { get; private set; }
+    public Guid? PaymentId { get; private set; }
+    public Guid? ContributionId { get; private set; }
     public decimal DebitAmount { get; private set; }
     public decimal CreditAmount { get; private set; }
     public string Currency { get; private set; } = "INR";
@@ -103,6 +105,6 @@ public sealed class JournalLine
         return new() { JournalEntryId = journalId, AccountId = input.AccountId, DebitAmount = input.DebitAmount, CreditAmount = input.CreditAmount,
             Currency = input.Currency, GroupId = input.GroupId, CycleId = input.CycleId, MembershipId = input.MembershipId,
             SelectionResultId = input.SelectionResultId, AuctionResultId = input.AuctionResultId, ReferenceType = input.ReferenceType,
-            ReferenceId = input.ReferenceId, Description = input.Description, CreatedAt = now.ToUniversalTime() };
+            ReferenceId = input.ReferenceId, Description = input.Description, CreatedAt = now.ToUniversalTime(), PaymentId = input.PaymentId, ContributionId = input.ContributionId };
     }
 }

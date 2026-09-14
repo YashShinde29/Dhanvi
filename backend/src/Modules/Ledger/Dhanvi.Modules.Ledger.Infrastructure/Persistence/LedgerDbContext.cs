@@ -35,6 +35,7 @@ public sealed class LedgerDbContext(DbContextOptions<LedgerDbContext> options) :
             t.HasCheckConstraint("CK_Line_Currency", "\"Currency\" = 'INR'");
         });
         l.HasKey(x => x.Id); l.HasOne<LedgerAccount>().WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
+        l.HasIndex(x => x.PaymentId); l.HasIndex(x => x.ContributionId);
         l.HasIndex(x => x.GroupId); l.HasIndex(x => x.CycleId); l.HasIndex(x => x.MembershipId); l.HasIndex(x => x.SelectionResultId); l.HasIndex(x => x.AuctionResultId);
         l.Property(x => x.Currency).HasMaxLength(3); l.Property(x => x.ReferenceType).HasMaxLength(80); l.Property(x => x.Description).HasMaxLength(500);
         foreach (var entity in new[] { j.Metadata, l.Metadata })

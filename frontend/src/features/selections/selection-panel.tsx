@@ -64,7 +64,7 @@ export function SelectionPanel({ group, cycle, scope, onCompleted }: { group: Gr
             <span className="check-anim"><Icons.Check size={28} /></span>
             <span className="result-hero__label">Selected member</span>
             <span className="result-hero__name">Member #{result.winner.slotNumber} — {result.winner.displayName}</span>
-            <span className="result-hero__slot">Payout right of <strong className="amount">{formatMoney(group.groupValue)}</strong> · no money has been transferred</span>
+            <span className="result-hero__slot">Selected for payout · <strong className="amount">{formatMoney(cycle.expectedPoolAmount)}</strong> · see payout settlement for transfer status</span>
           </div>
           <div className="grid-3" style={{ gap: 12 }}>
             <Fact label="Executed" value={formatDateTime(result.executedAt, group.groupTimeZone)} />

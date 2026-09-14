@@ -5,17 +5,21 @@ using Dhanvi.Modules.Identity.Application.Abstractions;
 using Dhanvi.SharedKernel.Exceptions;
 using Dhanvi.SharedKernel.Time;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 namespace Dhanvi.Modules.Groups.Infrastructure.Services;
 
-internal sealed class GroupService(GroupsDbContext db, IOrganizerStatusReader organizers, IGroupUserDirectory users, IDateTimeProvider clock) : IGroupService
+internal sealed class GroupService(GroupsDbContext db, IOrganizerStatusReader organizers, IGroupUserDirectory users, IDateTimeProvider clock, IConfiguration configuration, GroupMemberPolicy memberPolicy) : IGroupService
 {
     private static readonly GroupStatus[] PublicStatuses = [GroupStatus.Published, GroupStatus.Recruiting, GroupStatus.FullySubscribed, GroupStatus.ReadyToStart];
+    private void CheckCollectionMode(SaveGroupRequest request) => GroupRules.Require(request.CollectionMode != ContributionCollectionMode.Razorpay ||
+        (configuration.GetValue<bool?>("Payment_RazorpayEnabled") ?? configuration.GetValue<bool>("Payments:Razorpay:Enabled")), "PAYMENTS_DISABLED", "Razorpay Test collection is disabled.");
     public async Task<GroupDetails> CreateAsync(GroupActor actor, GroupCreatorType creator, SaveGroupRequest request, CancellationToken ct)
     {
         GroupRules.Require(creator != GroupCreatorType.Platform || actor.IsAdmin, "NOT_GROUP_OWNER", "Platform permission is required.");
         await EnsureUser(actor, ct);
+        CheckCollectionMode(request);
         var approved = creator == GroupCreatorType.Organizer && await Approved(actor.UserId, ct);
-        var g = Group.Create(request.Name, request.Description, creator, actor.UserId, request.Configuration(), approved, clock.UtcNow);
+        var g = Group.Create(request.Name, request.Description, creator, actor.UserId, request.Configuration(), approved, clock.UtcNow, memberPolicy);
         db.Groups.Add(g); Audit(g, actor, "GROUP_CREATED");
         if (g.Rules.OrganizerParticipates)
         {
@@ -28,9 +32,10 @@ internal sealed class GroupService(GroupsDbContext db, IOrganizerStatusReader or
     {
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         var g = await Locked(id, ct); await Manage(g, actor, ct);
+        CheckCollectionMode(request);
         // Participation cannot be introduced by edit: membership creation is atomic with group creation.
         GroupRules.Require(g.Rules.OrganizerParticipates == request.OrganizerParticipates, "GROUP_RULES_LOCKED", "Choose organizer participation when creating the group.");
-        g.Update(request.Name, request.Description, request.Configuration(), clock.UtcNow); Audit(g, actor, "GROUP_UPDATED");
+        g.Update(request.Name, request.Description, request.Configuration(), clock.UtcNow, memberPolicy); Audit(g, actor, "GROUP_UPDATED");
         await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); return await Map(g, actor, true, ct);
     }
     public async Task<GroupPage> BrowseAsync(GroupFilter filter, GroupActor? actor, string scope, CancellationToken ct)
@@ -88,7 +93,7 @@ internal sealed class GroupService(GroupsDbContext db, IOrganizerStatusReader or
         switch (operation)
         {
             case "publish":
-                var version = g.Publish(await Approved(g.CreatedByUserId, ct), now); db.RuleVersions.Add(version);
+                var version = g.Publish(await Approved(g.CreatedByUserId, ct), now, memberPolicy); db.RuleVersions.Add(version);
                 Audit(g, actor, "GROUP_PUBLISHED"); Audit(g, actor, "GROUP_RULE_VERSION_CREATED"); break;
             case "apply":
                 g.EnsureJoinable();
@@ -166,6 +171,6 @@ internal sealed class GroupService(GroupsDbContext db, IOrganizerStatusReader or
         var r = g.Rules;
         return new(g.Id, g.Name, g.Description, r.GroupType, g.CreatorType, r.GroupValue, r.MemberLimit, g.CurrentMemberCount, r.MemberLimit - g.CurrentMemberCount, g.MonthlyContribution, g.DurationMonths,
             r.OrganizerParticipates, r.OrganizerFirstPayout, g.FirstCycleSelectionMethod, r.ContributionDueDay, r.SelectionDay, r.PayoutDay, r.StartDate, g.Status, g.RulesVersion, g.RulesLocked, organizer, version is null ? null : new PublishedGroupRules(version.Id, version.VersionNumber, version.RulesSnapshot, version.RulesHash),
-            own is null ? null : await MapMember(own, false, ct), management ? await db.Memberships.CountAsync(m => m.GroupId == g.Id && m.Status == MembershipStatus.Applied, ct) : 0, r.AuctionRules, r.RandomRules, management ? g.StatusReason : null, g.GroupTimeZone, g.ActivatedAt, g.CurrentCycleNumber);
+            own is null ? null : await MapMember(own, false, ct), management ? await db.Memberships.CountAsync(m => m.GroupId == g.Id && m.Status == MembershipStatus.Applied, ct) : 0, r.AuctionRules, r.RandomRules, management ? g.StatusReason : null, g.GroupTimeZone, g.ActivatedAt, g.CurrentCycleNumber, r.CollectionMode);
     }
 }

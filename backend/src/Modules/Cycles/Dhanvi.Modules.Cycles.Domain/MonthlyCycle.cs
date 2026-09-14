@@ -20,12 +20,17 @@ public sealed class MonthlyCycle
     public decimal ExpectedPoolAmount { get; private set; }
     public decimal RecordedContributionAmount { get; private set; }
     public int FullyRecordedMemberCount { get; private set; }
+    public decimal FinanciallySettledAmount { get; private set; }
+    public int FinanciallySettledMemberCount { get; private set; }
+    public ContributionCollectionMode CollectionMode { get; private set; }
     public CycleStatus Status { get; private set; } = CycleStatus.Upcoming;
     public DateTimeOffset? StartedAt { get; private set; }
     public DateTimeOffset? ContributionsCompletedAt { get; private set; }
     public DateTimeOffset? ReadyForSelectionAt { get; private set; }
     public DateTimeOffset? SelectionCompletedAt { get; private set; }
     public Guid? SelectionResultId { get; private set; }
+    public DateTimeOffset? PayoutCompletedAt { get; private set; }
+    public DateTimeOffset? CompletedAt { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
     public int Version { get; private set; }
@@ -40,11 +45,24 @@ public sealed class MonthlyCycle
         if (number == 1) { cycle.Status = CycleStatus.CollectingContributions; cycle.StartedAt = now; }
         return cycle;
     }
+    public void CompleteSettlement(DateTimeOffset now)
+    {
+        BusinessRuleException.Require(Status == CycleStatus.SelectionCompleted, "CYCLE_SETTLEMENT_INCOMPLETE", "Only a selected cycle can complete settlement.");
+        Status = CycleStatus.PayoutCompleted; PayoutCompletedAt = now;
+        Status = CycleStatus.Completed; CompletedAt = now; UpdatedAt = now; Version++;
+    }
+    public void OpenNext(DateTimeOffset now)
+    {
+        BusinessRuleException.Require(Status == CycleStatus.Upcoming, "NEXT_CYCLE_NOT_ALLOWED", "Only an upcoming cycle may open.");
+        Status = CycleStatus.CollectingContributions; StartedAt = now; UpdatedAt = now; Version++;
+    }
     public void CompleteSelection(Guid resultId, DateTimeOffset now)
     {
         BusinessRuleException.Require(Status == CycleStatus.ReadyForSelection && !SelectionResultId.HasValue && resultId != Guid.Empty,
             "CYCLE_NOT_READY_FOR_SELECTION", "Only a ready cycle with no existing result can complete selection.");
-        BusinessRuleException.Require(FullyRecordedMemberCount == ExpectedMemberCount && RecordedContributionAmount == ExpectedPoolAmount,
+        BusinessRuleException.Require(CollectionMode == ContributionCollectionMode.Razorpay
+            ? FinanciallySettledMemberCount == ExpectedMemberCount && FinanciallySettledAmount == ExpectedPoolAmount
+            : FullyRecordedMemberCount == ExpectedMemberCount && RecordedContributionAmount == ExpectedPoolAmount,
             "CYCLE_NOT_READY_FOR_SELECTION", "Contribution totals must still be complete.");
         SelectionResultId = resultId; SelectionCompletedAt = now; Status = CycleStatus.SelectionCompleted; UpdatedAt = now; Version++;
     }
@@ -59,7 +77,9 @@ public sealed class MonthlyCycle
         BusinessRuleException.Require(obligationCount == ExpectedMemberCount && recorded >= 0 && recorded <= ExpectedPoolAmount && fullyRecorded >= 0 && fullyRecorded <= ExpectedMemberCount,
             "INVALID_CYCLE_TOTALS", "Cycle totals do not match its expected obligations.");
         RecordedContributionAmount = recorded; FullyRecordedMemberCount = fullyRecorded; UpdatedAt = now; Version++;
-        var complete = fullyRecorded == ExpectedMemberCount && recorded == ExpectedPoolAmount;
+        var complete = CollectionMode == ContributionCollectionMode.Razorpay
+            ? FinanciallySettledMemberCount == ExpectedMemberCount && FinanciallySettledAmount == ExpectedPoolAmount
+            : fullyRecorded == ExpectedMemberCount && recorded == ExpectedPoolAmount;
         var becameReady = complete && Status != CycleStatus.ReadyForSelection;
         if (complete)
         {
@@ -75,6 +95,14 @@ public sealed class MonthlyCycle
             Status = CycleStatus.CollectingContributions; ContributionsCompletedAt = null; ReadyForSelectionAt = null;
         }
         return becameReady;
+    }
+    public void ConfigureCollection(ContributionCollectionMode mode) => CollectionMode = mode;
+    public bool RecalculateFinancial(decimal amount, int members, int count, DateTimeOffset now)
+    {
+        BusinessRuleException.Require(CollectionMode == ContributionCollectionMode.Razorpay && amount >= 0 && amount <= ExpectedPoolAmount &&
+            members >= 0 && members <= ExpectedMemberCount, "INVALID_FINANCIAL_TOTALS", "Financial totals must match cycle obligations.");
+        FinanciallySettledAmount = amount; FinanciallySettledMemberCount = members;
+        return Recalculate(RecordedContributionAmount, FullyRecordedMemberCount, count, now);
     }
 }
 
@@ -97,6 +125,7 @@ public static class CycleSchedule
             var method = number == 1 ? group.FirstCycleSelectionMethod : r.GroupType == GroupType.Random ? SelectionMethod.Random : SelectionMethod.Auction;
             cycles.Add(MonthlyCycle.Create(group.Id, number, method, due, new(due.Year, due.Month, r.SelectionDay), new(due.Year, due.Month, r.PayoutDay), group.MemberLimit, group.MonthlyContribution, group.GroupValue, now));
         }
+        foreach (var cycle in cycles) cycle.ConfigureCollection(r.CollectionMode);
         return cycles;
     }
 }

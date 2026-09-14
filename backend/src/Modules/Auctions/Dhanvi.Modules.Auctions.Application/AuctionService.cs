@@ -11,7 +11,7 @@ using Dhanvi.SharedKernel.Exceptions;
 using Dhanvi.SharedKernel.Time;
 namespace Dhanvi.Modules.Auctions.Application;
 
-public sealed partial class AuctionService(IAuctionStore store, IDateTimeProvider clock) : IAuctionService
+public sealed partial class AuctionService(IAuctionStore store, IDateTimeProvider clock, GroupMemberPolicy? memberPolicy = null) : IAuctionService
 {
     public Task<AuctionDetails> OpenAsync(Guid groupId, Guid cycleId, SelectionActor actor, CancellationToken ct) => store.ExecuteLockedAsync(groupId, cycleId, actor.UserId, state =>
     {
@@ -35,7 +35,7 @@ public sealed partial class AuctionService(IAuctionStore store, IDateTimeProvide
         BusinessRuleException.Require(!participant!.Membership.HasBeenSelectedForPayout, "MEMBER_ALREADY_SELECTED_FOR_PAYOUT", "Members already selected for main payout cannot bid again.");
         BusinessRuleException.Require(SelectionPolicy.Eligible(state.Selection).Any(p => p.Membership.Id == participant.Membership.Id), "MEMBER_NOT_ELIGIBLE_TO_BID", "Your membership and current contribution must be eligible.");
         Ready(state);
-        var now = clock.UtcNow; var bid = auction.Bid(participant.Membership.Id, request.DiscountAmount, key, now);
+        var now = clock.UtcNow; var bid = auction.Bid(participant.Membership.Id, request.DiscountAmount, key, now, memberPolicy);
         state.Bids.Add(bid); state.Receipts.Add(new IdempotencyRecord(receiptScope, key, fingerprint, bid.Id, now)); Audit(state, actor, "AUCTION_BID_SUBMITTED", now, bid.Id);
         return AcceptedBidMap(state, bid);
     }, ct);
@@ -54,7 +54,7 @@ public sealed partial class AuctionService(IAuctionStore store, IDateTimeProvide
             eligible.Select(p => new EligibleMember(p.Membership.Id, p.Membership.SlotNumber!.Value)).ToArray(), winner.Id);
         // Obligations identify every original member position, including prior main-payout recipients.
         var recipients = state.Selection.Contributions.Select(c => c.MembershipId).ToArray();
-        state.Result = AuctionResult.Create(auction, winner, selection.Id, recipients, actor.UserId, now); state.NewSelection = selection;
+        state.Result = AuctionResult.Create(auction, winner, selection.Id, recipients, actor.UserId, now, memberPolicy); state.NewSelection = selection;
         auction.Close(winner, now); member.SelectForPayout(auction.CycleNumber, now); state.Selection.Cycle.CompleteSelection(selection.Id, now);
         foreach (var action in FinalizationActions) Audit(state, actor, action, now, state.Result.Id, selection);
         return Map(state, actor, now);
@@ -75,7 +75,7 @@ public sealed partial class AuctionService(IAuctionStore store, IDateTimeProvide
     private static void Method(AuctionContext state) => BusinessRuleException.Require(state.Selection.Cycle.SelectionMethod == SelectionMethod.Auction, "CYCLE_NOT_AUCTION", "This cycle does not use auction selection.");
     private static void Ready(AuctionContext state) { Method(state); BusinessRuleException.Require(state.Selection.ExistingResult is null, "AUCTION_RESULT_ALREADY_EXISTS", "A selection result already exists."); SelectionPolicy.RequireContributionsReady(state.Selection); }
     private static Auction Existing(AuctionContext state) => state.Auction ?? throw new BusinessRuleException("AUCTION_NOT_FOUND", "The auction has not been opened.");
-    private static Auction Scheduled(AuctionContext state, DateTimeOffset now)
+    private Auction Scheduled(AuctionContext state, DateTimeOffset now)
     {
         var group = state.Selection.Group; var cycle = state.Selection.Cycle;
         var rules = group.Rules.AuctionRules ?? throw new BusinessRuleException("INVALID_AUCTION_RULES", "Published auction configuration is required.");
@@ -83,7 +83,7 @@ public sealed partial class AuctionService(IAuctionStore store, IDateTimeProvide
         // supplies the calendar label; do not reinterpret existing rules as local times.
         var zone = TimeZoneInfo.Utc;
         DateTimeOffset Utc(TimeOnly time) => new(TimeZoneInfo.ConvertTimeToUtc(cycle.SelectionDate.ToDateTime(time, DateTimeKind.Unspecified), zone));
-        return Auction.Schedule(group.Id, cycle.Id, cycle.CycleNumber, group.GroupValue, group.MemberLimit, rules, Utc(rules.AuctionStartTime), Utc(rules.AuctionEndTime), now);
+        return Auction.Schedule(group.Id, cycle.Id, cycle.CycleNumber, group.GroupValue, group.MemberLimit, rules, Utc(rules.AuctionStartTime), Utc(rules.AuctionEndTime), now, memberPolicy);
     }
     private static void Audit(AuctionContext state, SelectionActor actor, string action, DateTimeOffset now, Guid? subject = null, SelectionResult? selection = null) =>
         state.Audit.Add(new(state.Selection.Group.Id, actor.UserId, action, now, subject ?? state.Auction?.Id, state.Selection.Cycle.Id, selection?.Id, selection?.WinnerMembershipId, AuctionCalculator.Version));

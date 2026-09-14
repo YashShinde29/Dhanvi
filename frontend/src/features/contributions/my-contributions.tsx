@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { ProtectedPage } from "@/features/auth/protected-page";
 import { contributionService } from "@/services/contribution.service";
 import type { Contribution } from "@/types/contribution";
+import { PaymentCheckout } from "@/features/payments/payment-checkout";
 import { useAsyncData } from "@/hooks/use-async-data";
 import { PageHeader } from "@/components/ui/page-header";
 import { ChipGroup } from "@/components/ui/filter-bar";
@@ -40,13 +41,14 @@ function History() {
     { key: "recorded", header: "Recorded", align: "right", render: (c) => <span className="amount" style={{ fontWeight: 500 }}>{formatMoney(c.recordedAmount)}</span> },
     { key: "recordedAt", header: "Recorded on", render: (c) => c.recordedAt ? formatDate(c.recordedAt, c.groupTimeZone) : <span className="text-muted">—</span> },
     { key: "status", header: "Status", render: (c) => <StatusBadge kind="contribution" value={c.status} /> },
+    { key: "payment", header: "Payment", render: (c) => c.collectionMode === "RAZORPAY" ? <PaymentCheckout contributionId={c.id} groupName={c.groupName} cycleNumber={c.cycleNumber} dueDate={c.dueDate} /> : "Manual tracking" },
   ];
 
   return (
     <>
       <PageHeader eyebrow="Member" title="My contributions" description="Your expected monthly obligations and what has been recorded for each cycle."
         actions={groupId && <LinkButton href="/contributions" variant="secondary" size="sm">Show all groups</LinkButton>} />
-      <Callout variant="neutral">Contributions are recorded by the organizer or platform as operational records. Dhanvi does not process payments at this stage.</Callout>
+      <Callout variant="neutral">Manual records track reported contributions. Eligible platform groups collect through Razorpay Test Checkout; only verified captures count as gateway settlement.</Callout>
       <ChipGroup label="Filter by status" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={[{ value: "", label: "All" }, ...CONTRIBUTION_STATUSES.map((s) => ({ value: s, label: presentStatus("contribution", s).label }))]} />
       {error ? <ErrorState message={error} onRetry={reload} /> : (
         <>

@@ -7,9 +7,9 @@ public sealed record AuctionCalculation(decimal WinnerPayout, decimal GrossMembe
 public static class AuctionCalculator
 {
     public const string Version = "DHANVI_AUCTION_V1";
-    public static AuctionCalculation Calculate(decimal groupValue, int memberLimit, decimal discount, AuctionFeePolicy policy)
+    public static AuctionCalculation Calculate(decimal groupValue, int memberLimit, decimal discount, AuctionFeePolicy policy, GroupMemberPolicy? memberPolicy = null)
     {
-        GroupRules.Contribution(groupValue, memberLimit);
+        GroupRules.Contribution(groupValue, memberLimit, memberPolicy);
         BusinessRuleException.Require(policy == AuctionFeePolicy.WinnerMemberShare, "UNSUPPORTED_AUCTION_FEE_POLICY", "This fee policy is not implemented.");
         BusinessRuleException.Require(discount > 0 && discount < groupValue && decimal.Round(discount, 2) == discount, "INVALID_DISCOUNT", "Discount must be positive, below the group value, and exact to two decimal places.");
         BusinessRuleException.Require(discount * 100 % memberLimit == 0, "INVALID_AUCTION_ALLOCATION_PRECISION", "Discount divided by all member positions must be exact to two decimal places.");

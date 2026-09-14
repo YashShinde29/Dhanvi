@@ -4,6 +4,7 @@ namespace Dhanvi.Modules.Identity.Application.Abstractions;
 
 public interface IIdentityService
 {
+    Task VerifyPasswordAsync(Guid userId, string password, CancellationToken cancellationToken);
     Task<RegisteredUserResponse> RegisterAsync(RegisterRequest request, string? ipAddress, string? correlationId, CancellationToken cancellationToken);
     Task<AuthenticationResponse> LoginAsync(LoginRequest request, string? ipAddress, string? correlationId, CancellationToken cancellationToken);
     Task<AuthenticationResponse> RefreshAsync(string refreshToken, string? ipAddress, string? correlationId, CancellationToken cancellationToken);

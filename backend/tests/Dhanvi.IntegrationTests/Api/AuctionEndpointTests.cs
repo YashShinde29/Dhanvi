@@ -14,13 +14,13 @@ namespace Dhanvi.IntegrationTests.Api;
 
 public sealed partial class CycleEndpointTests
 {
-    private async Task<(Scenario Scenario, CycleDetails Cycle)> AuctionReady(bool organizer = false, bool reserved = false, bool open = true)
+    private async Task<(Scenario Scenario, CycleDetails Cycle)> AuctionReady(bool organizer = false, bool reserved = false, bool open = true, int count = 20)
     {
-        var s = await Seed(type: GroupType.Auction, organizer: organizer, reserved: reserved,
+        var s = await Seed(count: count, type: GroupType.Auction, organizer: organizer, reserved: reserved,
             auctionRules: new(5000, 20000, 500, new(10, 0), new(11, 0)));
         using var owner = Owner(s); var cycle = (await Activate(owner, s))[0];
         foreach (var row in await Rows(owner, s, cycle.Id))
-            await Result(Operation(owner, s, row, new RecordContributionRequest(2500, "auction-ready", null), row.Id.ToString()));
+            await Result(Operation(owner, s, row, new RecordContributionRequest(row.ExpectedAmount, "auction-ready", null), row.Id.ToString()));
         fixture.Clock.UtcNow = new DateTimeOffset(cycle.SelectionDate.ToDateTime(new(10, 0)), TimeSpan.Zero).AddTicks(17);
         if (open) await AuctionResponse(ManageAuction(owner, s, cycle.Id, "open"));
         return (s, cycle);
@@ -45,34 +45,36 @@ public sealed partial class CycleEndpointTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task AuctionPersistsExactResultSelectionAllocationsAndAudit(bool organizer)
+    [InlineData(false, 20)]
+    [InlineData(false, 2)]
+    [InlineData(true, 20)]
+    [InlineData(true, 2)]
+    public async Task AuctionPersistsExactResultSelectionAllocationsAndAudit(bool organizer, int count)
     {
-        var (s, cycle) = await AuctionReady(organizer); using var owner = Owner(s); using var member = Client(s.MemberIds[0]);
+        var (s, cycle) = await AuctionReady(organizer, count: count); using var owner = Owner(s); using var member = Client(s.MemberIds[0]);
         var bid = await BidResponse(PlaceBid(member, s, cycle.Id));
         var closed = await AuctionResponse(ManageAuction(owner, s, cycle.Id, "close")); var result = closed.Result!;
         Assert.Equal("WINNER_SELECTED", closed.Status); Assert.Equal(35000, result.WinnerPayout);
-        Assert.Equal(750, result.GrossMemberShare); Assert.Equal(750, result.PlatformFee); Assert.Equal(14250, result.MemberBenefitPool);
+        Assert.Equal(15000m / count, result.GrossMemberShare); Assert.Equal(15000m / count, result.PlatformFee); Assert.Equal(15000m - 15000m / count, result.MemberBenefitPool);
         Assert.Equal(result.WinningDiscount, result.MemberBenefitPool + result.PlatformFee);
         Assert.Equal("CALCULATED_PENDING_SETTLEMENT", result.AllocationStatus); Assert.Equal("DHANVI_AUCTION_V1", result.CalculationVersion);
-        Assert.Equal(20, result.Allocations.Count); Assert.DoesNotContain(result.Allocations, a => a.MembershipId == result.Winner.MembershipId);
+        Assert.Equal(count, result.Allocations.Count); Assert.DoesNotContain(result.Allocations, a => a.MembershipId == result.Winner.MembershipId);
         using var scope = fixture.Factory.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<GroupsDbContext>();
         var stored = await db.AuctionResults.SingleAsync(r => r.CycleId == cycle.Id);
         var selection = await db.SelectionResults.Include(r => r.EligibleMembers).SingleAsync(r => r.Id == stored.SelectionResultId);
         Assert.Equal(SelectionMethod.Auction, selection.SelectionMethod); Assert.Equal(result.Winner.MembershipId, selection.WinnerMembershipId);
-        Assert.Equal(20, selection.EligibleMembers.Count); Assert.Equal("DHANVI_AUCTION_V1", selection.AlgorithmVersion); Assert.Null(selection.SeedReveal);
+        Assert.Equal(count, selection.EligibleMembers.Count); Assert.Equal("DHANVI_AUCTION_V1", selection.AlgorithmVersion); Assert.Null(selection.SeedReveal);
         var winner = await db.Memberships.SingleAsync(m => m.Id == selection.WinnerMembershipId); Assert.True(winner.HasBeenSelectedForPayout);
         var completed = await db.MonthlyCycles.SingleAsync(c => c.Id == cycle.Id);
         Assert.Equal(CycleStatus.SelectionCompleted, completed.Status); Assert.Equal(selection.Id, completed.SelectionResultId);
         Assert.All(await db.MonthlyCycles.Where(c => c.GroupId == s.GroupId && c.Id != cycle.Id).ToListAsync(), c => Assert.Equal(CycleStatus.Upcoming, c.Status));
-        Assert.Equal(20, await db.ContributionEntries.CountAsync(e => db.Contributions.Any(c => c.Id == e.ContributionId && c.GroupId == s.GroupId)));
+        Assert.Equal(count, await db.ContributionEntries.CountAsync(e => db.Contributions.Any(c => c.Id == e.ContributionId && c.GroupId == s.GroupId)));
         Assert.Equal(10, await db.AuditEvents.CountAsync(e => e.GroupId == s.GroupId && e.AlgorithmVersion == "DHANVI_AUCTION_V1"));
         var replay = await BidResponse(PlaceBid(member, s, cycle.Id)); Assert.Equal(bid, replay);
         var ownResult = (await member.GetFromJsonAsync<AuctionResultDetails>(AuctionPath(s, cycle.Id) + "/result", Json))!;
         Assert.Empty(ownResult.Allocations); Assert.Equal(0, ownResult.MyBenefitAllocation);
         using var other = Client(s.MemberIds[1]); var benefit = (await other.GetFromJsonAsync<AuctionResultDetails>(AuctionPath(s, cycle.Id) + "/result", Json))!;
-        Assert.Equal(750, benefit.MyBenefitAllocation);
+        Assert.Equal(15000m / count, benefit.MyBenefitAllocation);
         using var late = await PlaceBid(other, s, cycle.Id, 15500); Assert.Contains("AUCTION_CLOSED", await late.Content.ReadAsStringAsync());
     }
 
@@ -126,6 +128,7 @@ public sealed partial class CycleEndpointTests
         var timeout = Stopwatch.StartNew();
         while (timeout.Elapsed < TimeSpan.FromSeconds(15))
         {
+            await db.Database.ExecuteSqlRawAsync("SELECT pg_stat_clear_snapshot()");
             var waiting = await db.Database.SqlQueryRaw<int>("SELECT count(*)::int AS \"Value\" FROM pg_stat_activity WHERE datname = current_database() AND cardinality(pg_blocking_pids(pid)) > 0").SingleAsync();
             if (waiting >= count) return;
             await Task.Delay(20);
@@ -328,15 +331,10 @@ public sealed partial class CycleEndpointTests
     {
         var (s, firstCycle) = await AuctionReady(true, true, false); using var owner = Owner(s);
         await Selection(Select(owner, s, firstCycle.Id));
-        CycleDetails second;
-        using (var scope = fixture.Factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<GroupsDbContext>();
-            // Test-only setup of a later current cycle. No production cycle advancement is introduced.
-            await db.Groups.Where(g => g.Id == s.GroupId).ExecuteUpdateAsync(set => set.SetProperty(g => g.CurrentCycleNumber, 2));
-            await db.MonthlyCycles.Where(c => c.GroupId == s.GroupId && c.CycleNumber == 2).ExecuteUpdateAsync(set => set.SetProperty(c => c.Status, CycleStatus.CollectingContributions));
-        }
-        second = (await owner.GetFromJsonAsync<List<CycleDetails>>($"/api/v1/groups/{s.GroupId}/cycles", Json))!.Single(c => c.CycleNumber == 2);
+        // Prompt 9 now opens the next cycle through funded, approved, reconciled settlement.
+        await Funding(s, firstCycle.Id); var payout = Assert.Single(await Prepare(s, firstCycle.Id));
+        await AddPayoutAccount(s.OwnerId); await PayoutAction(payout.Id, s.MemberIds[1], "approve"); await PayoutAction(payout.Id, s.MemberIds[1], "execute");
+        var second = (await owner.GetFromJsonAsync<List<CycleDetails>>($"/api/v1/groups/{s.GroupId}/cycles", Json))!.Single(c => c.CycleNumber == 2);
         foreach (var row in await Rows(owner, s, second.Id))
             await Result(Operation(owner, s, row, new RecordContributionRequest(2500, "cycle-two", null), row.Id.ToString()));
         fixture.Clock.UtcNow = new(second.SelectionDate.ToDateTime(new(10, 0)), TimeSpan.Zero);

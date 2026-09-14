@@ -3,6 +3,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { Fact } from "@/components/ui/description";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { Contribution } from "@/types/contribution";
+import { PaymentCheckout } from "@/features/payments/payment-checkout";
 
 /** Member-facing contribution summary for one cycle. */
 export function ContributionSummaryCard({ contribution, compact, showGroup }: { contribution: Contribution; compact?: boolean; showGroup?: boolean }) {
@@ -21,6 +22,7 @@ export function ContributionSummaryCard({ contribution, compact, showGroup }: { 
           <Fact label="Recorded" value={formatMoney(contribution.recordedAmount)} />
           <Fact label="Recorded on" value={contribution.recordedAt ? formatDate(contribution.recordedAt, contribution.groupTimeZone) : "—"} />
         </div>
+        {contribution.collectionMode === "RAZORPAY" && <PaymentCheckout contributionId={contribution.id} groupName={contribution.groupName} cycleNumber={contribution.cycleNumber} dueDate={contribution.dueDate} />}
       </CardBody>
     </Card>
   );

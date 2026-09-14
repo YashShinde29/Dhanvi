@@ -25,12 +25,13 @@ public sealed class AuctionTests
         Assert.Equal(150000, result.MemberBenefitPool + result.PlatformFee);
     }
 
-    [Fact]
-    public void EverySupportedMemberCountHasExactAllocations()
+    [Theory] [InlineData(false)] [InlineData(true)]
+    public void EverySupportedMemberCountHasExactAllocations(bool development)
     {
-        for (var members = 20; members <= 50; members++)
+        var policy = development ? GroupMemberPolicy.Development : GroupMemberPolicy.Production;
+        for (var members = policy.MinimumMembers; members <= policy.MaximumMembers; members++)
         {
-            var result = AuctionCalculator.Calculate(members * 25000m, members, members * 7500m, AuctionFeePolicy.WinnerMemberShare);
+            var result = AuctionCalculator.Calculate(members * 25000m, members, members * 7500m, AuctionFeePolicy.WinnerMemberShare, policy);
             Assert.Equal(members * 7500m, result.MemberBenefitPool + result.PlatformFee);
             Assert.Equal(result.MemberBenefitPool, result.BenefitPerNonWinner * (members - 1));
         }

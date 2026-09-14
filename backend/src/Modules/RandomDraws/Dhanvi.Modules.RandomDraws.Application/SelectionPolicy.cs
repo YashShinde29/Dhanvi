@@ -20,7 +20,7 @@ public static class SelectionPolicy
         "MEMBERSHIP_REQUIRED", "Selection results are available only to group members, the organizer, and administrators.");
     public static IReadOnlyList<SelectionParticipant> Eligible(SelectionContext state)
     {
-        var contributions = state.Contributions.Where(c => c.GroupId == state.Group.Id && c.CycleId == state.Cycle.Id && c.RecordedAmount == c.ExpectedAmount).Select(c => c.MembershipId).ToHashSet();
+        var contributions = state.Contributions.Where(c => c.GroupId == state.Group.Id && c.CycleId == state.Cycle.Id && Satisfied(state, c)).Select(c => c.MembershipId).ToHashSet();
         return state.Participants.Where(p => p.UserActive && p.Membership.GroupId == state.Group.Id && p.Membership.Status == MembershipStatus.Active && !p.Membership.HasBeenSelectedForPayout &&
             p.Membership.SlotNumber is >= 1 && p.Membership.SlotNumber <= state.Group.MemberLimit && contributions.Contains(p.Membership.Id)).OrderBy(p => p.Membership.SlotNumber).ToArray();
     }
@@ -36,10 +36,14 @@ public static class SelectionPolicy
             "CYCLE_NOT_READY_FOR_SELECTION", "The current cycle must be ready for selection.");
         var c = state.Cycle; var obligations = state.Contributions;
         BusinessRuleException.Require(c.ExpectedMemberCount == state.Group.MemberLimit && c.ExpectedContributionPerMember == state.Group.MonthlyContribution && c.ExpectedPoolAmount == state.Group.GroupValue &&
-            c.FullyRecordedMemberCount == c.ExpectedMemberCount && c.RecordedContributionAmount == c.ExpectedPoolAmount && obligations.Count == c.ExpectedMemberCount &&
-            obligations.Select(o => o.MembershipId).Distinct().Count() == c.ExpectedMemberCount && obligations.All(o => o.GroupId == state.Group.Id && o.CycleId == c.Id && o.ExpectedAmount == c.ExpectedContributionPerMember && o.RecordedAmount == o.ExpectedAmount) && obligations.Sum(o => o.RecordedAmount) == c.ExpectedPoolAmount,
+            (state.Group.Rules.CollectionMode == ContributionCollectionMode.Razorpay
+                ? c.FinanciallySettledMemberCount == c.ExpectedMemberCount && c.FinanciallySettledAmount == c.ExpectedPoolAmount
+                : c.FullyRecordedMemberCount == c.ExpectedMemberCount && c.RecordedContributionAmount == c.ExpectedPoolAmount) && obligations.Count == c.ExpectedMemberCount &&
+            obligations.Select(o => o.MembershipId).Distinct().Count() == c.ExpectedMemberCount && obligations.All(o => o.GroupId == state.Group.Id && o.CycleId == c.Id && o.ExpectedAmount == c.ExpectedContributionPerMember && Satisfied(state, o)),
             "CYCLE_NOT_READY_FOR_SELECTION", "Every expected contribution and the cycle totals must still be fully recorded.");
     }
+    private static bool Satisfied(SelectionContext state, Dhanvi.Modules.Contributions.Domain.Contribution c) =>
+        (state.Group.Rules.CollectionMode == ContributionCollectionMode.Razorpay ? c.FinanciallySettledAmount : c.RecordedAmount) == c.ExpectedAmount;
     public static SelectionParticipant ReservedOrganizer(SelectionContext state)
     {
         BusinessRuleException.Require(state.Group.CreatorType == GroupCreatorType.Organizer && state.Group.Rules.OrganizerFirstPayout && state.Group.Rules.OrganizerParticipates && state.Cycle.CycleNumber == 1,

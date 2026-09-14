@@ -26,7 +26,7 @@ public sealed partial class CycleEndpointTests(CycleApiFixture fixture) : IClass
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseUpper) } };
     private sealed record Scenario(Guid GroupId, Guid OwnerId, Guid[] MemberIds, string Scope);
-    private async Task<Scenario> Seed(int count = 20, GroupType type = GroupType.Random, bool organizer = false, bool reserved = false, bool ready = true, AuctionGroupRules? auctionRules = null)
+    private async Task<Scenario> Seed(int count = 20, GroupType type = GroupType.Random, bool organizer = false, bool reserved = false, bool ready = true, AuctionGroupRules? auctionRules = null, ContributionCollectionMode collectionMode = ContributionCollectionMode.ManualTracking)
     {
         using var scope = fixture.Factory.Services.CreateScope(); var identities = scope.ServiceProvider.GetRequiredService<IdentityDbContext>(); var db = scope.ServiceProvider.GetRequiredService<GroupsDbContext>(); var now = fixture.Clock.UtcNow;
         var owner = NewUser(now); identities.Users.Add(owner); var users = Enumerable.Range(0, count).Select(_ => NewUser(now)).ToArray();
@@ -36,8 +36,8 @@ public sealed partial class CycleEndpointTests(CycleApiFixture fixture) : IClass
         {
             var organizers = scope.ServiceProvider.GetRequiredService<OrganizerDbContext>(); var profile = OrganizerProfile.CreateForApplication(owner.Id, now); profile.Approve(owner.Id, now); organizers.OrganizerProfiles.Add(profile); await organizers.SaveChangesAsync();
         }
-        var group = Group.Create("Cycle integration group", "", organizer ? GroupCreatorType.Organizer : GroupCreatorType.Platform, owner.Id, new(type, 50000, count, reserved, reserved, 1, 2, 2, DateOnly.FromDateTime(now.UtcDateTime).AddMonths(1), auctionRules), organizer, now);
-        var rules = group.Publish(organizer, now); db.Groups.Add(group); db.RuleVersions.Add(rules);
+        var group = Group.Create("Cycle integration group", "", organizer ? GroupCreatorType.Organizer : GroupCreatorType.Platform, owner.Id, new(type, 50000, count, reserved, reserved, 1, 2, 2, DateOnly.FromDateTime(now.UtcDateTime).AddMonths(1), auctionRules, CollectionMode: collectionMode), organizer, now, scope.ServiceProvider.GetRequiredService<GroupMemberPolicy>());
+        var rules = group.Publish(organizer, now, scope.ServiceProvider.GetRequiredService<GroupMemberPolicy>()); db.Groups.Add(group); db.RuleVersions.Add(rules);
         for (var i = 0; i < count; i++)
         {
             var member = GroupMembership.Apply(group.Id, users[i].Id, now); member.Approve(reserved && i == 0 ? 1 : group.ApproveMember(now), now); db.Memberships.Add(member); db.TermsAcceptances.Add(member.Accept(rules, now));
@@ -62,7 +62,7 @@ public sealed partial class CycleEndpointTests(CycleApiFixture fixture) : IClass
     private static async Task<HttpResponseMessage> Send(HttpClient client, HttpRequestMessage request) { using (request) return await client.SendAsync(request); }
     private static async Task<ContributionOperationResult> Result(Task<HttpResponseMessage> task) { using var response = await task; Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync()); return (await response.Content.ReadFromJsonAsync<ContributionOperationResult>(Json))!; }
 
-    [Theory] [InlineData(20, false, GroupType.Random, false)] [InlineData(50, false, GroupType.Auction, false)] [InlineData(20, true, GroupType.Random, true)] [InlineData(20, true, GroupType.Auction, true)]
+    [Theory] [InlineData(2, false, GroupType.Random, false)] [InlineData(2, true, GroupType.Random, true)] [InlineData(2, false, GroupType.Auction, false)] [InlineData(20, false, GroupType.Random, false)] [InlineData(50, false, GroupType.Auction, false)] [InlineData(20, true, GroupType.Random, true)] [InlineData(20, true, GroupType.Auction, true)]
     public async Task ActivationAtomicallyCreatesScheduleAndEveryObligation(int count, bool organizer, GroupType type, bool reserved)
     {
         var s = await Seed(count, type, organizer, reserved); using var owner = Owner(s); var cycles = await Activate(owner, s);

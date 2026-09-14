@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><ProjectReference Include="../../src/Modules/Payments/Dhanvi.Modules.Payments.Infrastructure/Dhanvi.Modules.Payments.Infrastructure.csproj" /></ItemGroup>
   <ItemGroup><ProjectReference Include="../../src/Modules/Ledger/Dhanvi.Modules.Ledger.Application/Dhanvi.Modules.Ledger.Application.csproj" /></ItemGroup>
   <PropertyGroup><IsPackable>false</IsPackable><IsTestProject>true</IsTestProject></PropertyGroup>
   <ItemGroup>
@@ -14,5 +15,5 @@
 <ProjectReference Include="../../src/Modules/Contributions/Dhanvi.Modules.Contributions.Domain/Dhanvi.Modules.Contributions.Domain.csproj" />
 </ItemGroup>
 <ItemGroup><ProjectReference Include="../../src/Modules/RandomDraws/Dhanvi.Modules.RandomDraws.Application/Dhanvi.Modules.RandomDraws.Application.csproj" /><ProjectReference Include="../../src/Modules/RandomDraws/Dhanvi.Modules.RandomDraws.Infrastructure/Dhanvi.Modules.RandomDraws.Infrastructure.csproj" /></ItemGroup>
-<ItemGroup><ProjectReference Include="../../src/Modules/Auctions/Dhanvi.Modules.Auctions.Application/Dhanvi.Modules.Auctions.Application.csproj" /></ItemGroup></Project>
+<ItemGroup><ProjectReference Include="../../src/Modules/Auctions/Dhanvi.Modules.Auctions.Application/Dhanvi.Modules.Auctions.Application.csproj" /><ProjectReference Include="..\..\src\Modules\Payouts\Dhanvi.Modules.Payouts.Application\Dhanvi.Modules.Payouts.Application.csproj" /></ItemGroup></Project>
 

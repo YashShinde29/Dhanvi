@@ -15,8 +15,33 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 namespace Dhanvi.Modules.Ledger.Infrastructure;
 
-internal sealed class LedgerPostingService(ILedgerSourceReader sources, IConfiguration configuration, IOptions<LedgerPolicyOptions> policy, IDateTimeProvider clock) : ILedgerPostingService
+internal sealed partial class LedgerPostingService(ILedgerSourceReader sources, IConfiguration configuration, IOptions<LedgerPolicyOptions> policy, IDateTimeProvider clock,
+    IEnumerable<ICapturedPaymentReader> payments, IEnumerable<IPayoutLedgerReader> payouts) : ILedgerPostingService
 {
+    public async Task<Guid> CapturePaymentAsync(Guid paymentId, DbTransaction transaction, CancellationToken ct)
+    {
+        var outcome = await Run(transaction, async (db, tx) =>
+        {
+            var source = await payments.Single().ReadAsync(paymentId, tx, ct);
+            await sources.LockGroupAsync(source.GroupId, tx, ct);
+            var fingerprint = Convert.ToHexStringLower(SHA256.HashData(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(source)));
+            var existing = await db.Journals.SingleOrDefaultAsync(j => j.EventType == AccountingEventType.PaymentCaptured && j.EventId == paymentId, ct);
+            if (existing is not null)
+            {
+                BusinessRuleException.Require(existing.SourceFingerprint == fingerprint, "LEDGER_EVENT_REUSED", "Capture differs from its posted journal.");
+                return new PostingOutcome("POSTED", existing.Id, null, true);
+            }
+            var accounts = await db.Accounts.Where(a => a.IsActive).ToDictionaryAsync(a => a.Code, ct);
+            JournalLineInput Line(string code, decimal debit, decimal credit, Guid? member) => new(accounts[code].Id, debit, credit, "INR",
+                source.GroupId, source.CycleId, member, null, null, "Payment", source.PaymentId, "Verified Razorpay test capture", source.PaymentId, source.ContributionId);
+            var journal = JournalEntry.Post(await Number(db, ct), AccountingEventType.PaymentCaptured, paymentId, "Payments", fingerprint,
+                "Verified test capture into gateway clearing", source.TimeZone, source.CapturedAt, clock.UtcNow, source.UserId, null, FeeRecognitionPolicy.Deferred,
+                [Line(ChartOfAccounts.PaymentGatewayClearing, source.Amount, 0, null), Line(ChartOfAccounts.GroupPool, 0, source.Amount, source.MembershipId)]);
+            await Persist(db, tx, journal, "LEDGER_JOURNAL_POSTED", ct);
+            return new PostingOutcome("POSTED", journal.Id, null);
+        }, ct);
+        return outcome.JournalId!.Value;
+    }
     public Task<PostingOutcome> PostAsync(AccountingEventType type, Guid eventId, Guid actor, string? correlationId, DbTransaction? transaction, CancellationToken ct) =>
         Run(transaction, async (db, tx) =>
         {
@@ -43,7 +68,11 @@ internal sealed class LedgerPostingService(ILedgerSourceReader sources, IConfigu
         }, ct);
 
     public Task<PostingOutcome> ReverseAsync(Guid originalJournalId, Guid reversalEventId, string reason, Guid actor, string? correlationId, CancellationToken ct) =>
-        Run(null, async (db, tx) =>
+        ReverseCore(originalJournalId, reversalEventId, reason, actor, correlationId, null, ct);
+    public Task<PostingOutcome> ReverseInTransactionAsync(Guid originalJournalId, Guid reversalEventId, string reason, Guid actor, DbTransaction transaction, CancellationToken ct) =>
+        ReverseCore(originalJournalId, reversalEventId, reason, actor, null, transaction, ct);
+    private Task<PostingOutcome> ReverseCore(Guid originalJournalId, Guid reversalEventId, string reason, Guid actor, string? correlationId, DbTransaction? transaction, CancellationToken ct) =>
+        Run(transaction, async (db, tx) =>
         {
             BusinessRuleException.Require(reversalEventId != Guid.Empty && !string.IsNullOrWhiteSpace(reason), "INVALID_REVERSAL", "A reversal event and reason are required.");
             var original = await db.Journals.Include(j => j.Lines).SingleOrDefaultAsync(j => j.Id == originalJournalId, ct) ?? throw new NotFoundException("Journal not found.");

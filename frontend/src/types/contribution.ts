@@ -1,4 +1,7 @@
 export interface MonthlyCycle {
+  collectionMode: "MANUAL_TRACKING" | "RAZORPAY";
+  financiallySettledAmount: number;
+  financiallySettledMemberCount: number;
   id: string;
   groupId: string;
   cycleNumber: number;
@@ -31,6 +34,9 @@ export interface ContributionEntry {
   reversesEntryId: string | null;
 }
 export interface Contribution {
+  collectionMode: "MANUAL_TRACKING" | "RAZORPAY";
+  financiallySettledAmount: number;
+  financialStatus: string;
   id: string;
   groupId: string;
   groupName: string;

@@ -1,5 +1,7 @@
 # Dhanvi
 
+Prompt 8 incoming Razorpay Test payments and their verification are documented in the [final Prompt 8 report](docs/prompt-8-verification.md). It supersedes older milestone statements below about payments and Ledger being deferred; payout execution remains deferred.
+
 Dhanvi is a production-minded foundation for a community savings platform. The current milestone implements authentication, user accounts, platform roles, profiles, organizer application approval, and savings groups, activation, monthly schedules, and manual contribution tracking, and verifiable random/organizer-reserved selection through SELECTION_COMPLETED in a .NET 10 modular monolith with a Next.js frontend and PostgreSQL. Auction bidding and calculated payout rights are implemented; financial execution, payments, real payouts, and ledger behavior remain deferred. See [Auction engine](docs/auction-engine.md) and [Windows verification](docs/prompt-6-windows-verification.md). See [Groups and membership foundation](docs/groups-foundation.md) for rules, APIs, migration, concurrency, frontend pages, and operational details. See [Monthly cycles and contribution tracking](docs/cycles-and-contributions.md) for the activation transaction, timezone, idempotency, reversals, new APIs, and migration. See [Random and organizer-reserved selection](docs/random-and-reserved-selection.md) for the V1 algorithm, proof format, payout-right semantics, APIs, and migration.
 
 ## Architecture

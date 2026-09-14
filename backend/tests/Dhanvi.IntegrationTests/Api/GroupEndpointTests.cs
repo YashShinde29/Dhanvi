@@ -24,6 +24,21 @@ public sealed class GroupEndpointTests(IdentityApiFixture fixture) : IClassFixtu
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseUpper) } };
     private static SaveGroupRequest Request(GroupType type = GroupType.Random, bool participates = false) => new("Integration group " + Guid.NewGuid(), "Test group", type, 50000, 20, participates, participates, 1, 2, 2, DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(3)));
+    [Theory] [InlineData(1, false)] [InlineData(2, true)] [InlineData(3, true)] [InlineData(50, true)] [InlineData(51, false)]
+    public async Task TestingPolicyAppliesToCreateUpdateAndPublish(int count, bool valid)
+    {
+        using var admin = await Client("ADMIN");
+        var request = Request() with { MemberLimit = count, GroupValue = count * 2500m };
+        using var response = await admin.PostAsJsonAsync("/api/v1/admin/groups", request, Json);
+        if (!valid) { Assert.Equal(HttpStatusCode.Conflict, response.StatusCode); Assert.Contains("INVALID_MEMBER_LIMIT", await response.Content.ReadAsStringAsync()); return; }
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+        var group = (await response.Content.ReadFromJsonAsync<GroupDetails>(Json))!;
+        await Success(admin.PutAsJsonAsync($"/api/v1/admin/groups/{group.Id}", request with { GroupValue = count * 5000m }, Json));
+        await Success(admin.PostAsJsonAsync($"/api/v1/admin/groups/{group.Id}/publish", new { }));
+        group = await Get(admin, group.Id);
+        Assert.Equal(count, group.DurationMonths);
+        Assert.Equal(group.GroupValue / count, group.MonthlyContribution);
+    }
     [Theory] [InlineData(GroupType.Random)] [InlineData(GroupType.Auction)]
     public async Task OrganizerCreatesPublishesAndAcceptsOwnRules(GroupType type)
     {

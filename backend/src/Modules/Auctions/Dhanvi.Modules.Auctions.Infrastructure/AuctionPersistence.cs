@@ -11,7 +11,7 @@ public static class AuctionPersistence
     public static void Configure(ModelBuilder model)
     {
         var a = model.Entity<Auction>(); a.ToTable("Auctions", t => {
-            t.HasCheckConstraint("CK_Auction_Rules", "\"GroupValue\" > 0 AND \"MemberLimit\" BETWEEN 20 AND 50 AND \"CycleNumber\" BETWEEN 1 AND 50 AND \"MinimumDiscount\" >= 0 AND \"MaximumDiscount\" >= \"MinimumDiscount\" AND \"MaximumDiscount\" > 0 AND \"MaximumDiscount\" < \"GroupValue\" AND \"BidIncrement\" > 0 AND \"StartsAt\" < \"EndsAt\"");
+            t.HasCheckConstraint("CK_Auction_Rules", "\"GroupValue\" > 0 AND \"MemberLimit\" BETWEEN 2 AND 50 AND \"CycleNumber\" BETWEEN 1 AND 50 AND \"MinimumDiscount\" >= 0 AND \"MaximumDiscount\" >= \"MinimumDiscount\" AND \"MaximumDiscount\" > 0 AND \"MaximumDiscount\" < \"GroupValue\" AND \"BidIncrement\" > 0 AND \"StartsAt\" < \"EndsAt\"");
             t.HasCheckConstraint("CK_Auction_Current", "\"LastBidSequence\" >= 0 AND \"CurrentHighestDiscount\" >= 0 AND \"CurrentHighestDiscount\" <= \"MaximumDiscount\"");
         });
         a.HasKey(x => x.Id); a.HasAlternateKey(x => new { x.Id, x.GroupId, x.CycleId }); a.HasIndex(x => x.CycleId).IsUnique(); a.Property(x => x.Version).IsConcurrencyToken();
@@ -24,7 +24,7 @@ public static class AuctionPersistence
         b.HasOne<GroupMembership>().WithMany().HasForeignKey(x => new { x.MembershipId, x.GroupId }).HasPrincipalKey(x => new { x.Id, x.GroupId }).OnDelete(DeleteBehavior.Restrict);
         a.HasOne<AuctionBid>().WithMany().HasForeignKey(x => new { x.CurrentWinningBidId, x.Id, x.CurrentWinningMembershipId }).HasPrincipalKey(x => new { x.Id, x.AuctionId, x.MembershipId }).OnDelete(DeleteBehavior.Restrict);
         var r = model.Entity<AuctionResult>(); r.ToTable("AuctionResults", t => {
-            t.HasCheckConstraint("CK_AuctionResult_Money", "\"WinningDiscount\" > 0 AND \"WinnerPayout\" > 0 AND \"WinnerPayout\" < \"GroupValue\" AND \"WinnerPayout\" + \"WinningDiscount\" = \"GroupValue\" AND \"MemberLimit\" BETWEEN 20 AND 50 AND \"GrossMemberShare\" > 0 AND \"PlatformFee\" = \"GrossMemberShare\" AND \"GrossMemberShare\" * \"MemberLimit\" = \"WinningDiscount\" AND \"MemberBenefitPool\" + \"PlatformFee\" = \"WinningDiscount\" AND \"MemberBenefitPool\" = \"GrossMemberShare\" * (\"MemberLimit\" - 1)");
+            t.HasCheckConstraint("CK_AuctionResult_Money", "\"WinningDiscount\" > 0 AND \"WinnerPayout\" > 0 AND \"WinnerPayout\" < \"GroupValue\" AND \"WinnerPayout\" + \"WinningDiscount\" = \"GroupValue\" AND \"MemberLimit\" BETWEEN 2 AND 50 AND \"GrossMemberShare\" > 0 AND \"PlatformFee\" = \"GrossMemberShare\" AND \"GrossMemberShare\" * \"MemberLimit\" = \"WinningDiscount\" AND \"MemberBenefitPool\" + \"PlatformFee\" = \"WinningDiscount\" AND \"MemberBenefitPool\" = \"GrossMemberShare\" * (\"MemberLimit\" - 1)");
             t.HasCheckConstraint("CK_AuctionResult_Version", "\"CalculationVersion\" = 'DHANVI_AUCTION_V1' AND \"FeePolicy\" = 'WinnerMemberShare'");
         });
         r.HasKey(x => x.Id); r.HasAlternateKey(x => new { x.Id, x.GroupId }); r.HasIndex(x => x.AuctionId).IsUnique(); r.HasIndex(x => x.CycleId).IsUnique(); r.HasIndex(x => x.SelectionResultId).IsUnique();

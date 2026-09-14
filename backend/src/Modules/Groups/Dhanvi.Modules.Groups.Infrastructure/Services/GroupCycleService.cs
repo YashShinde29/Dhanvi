@@ -16,7 +16,7 @@ using Dhanvi.Modules.Ledger.Application;
 using Dhanvi.Modules.Ledger.Domain;
 namespace Dhanvi.Modules.Groups.Infrastructure.Services;
 
-internal sealed partial class GroupCycleService(GroupsDbContext db, IOrganizerStatusReader organizers, IGroupUserDirectory users, IDateTimeProvider clock, ILedgerPostingService ledger)
+internal sealed partial class GroupCycleService(GroupsDbContext db, IOrganizerStatusReader organizers, IGroupUserDirectory users, IDateTimeProvider clock, ILedgerPostingService ledger, GroupMemberPolicy memberPolicy)
     : IGroupCycleService, IContributionRecordingService
 {
     public async Task<IReadOnlyList<CycleDetails>> ActivateAsync(Guid groupId, GroupActor actor, CancellationToken ct)
@@ -35,7 +35,7 @@ internal sealed partial class GroupCycleService(GroupsDbContext db, IOrganizerSt
         var accepted = rules is null ? 0 : await db.TermsAcceptances.CountAsync(a => a.GroupRuleVersionId == rules.Id && a.RulesHash == rules.RulesHash && db.Memberships.Any(m => m.Id == a.MembershipId && m.GroupId == groupId && m.Status == MembershipStatus.Approved), ct);
         var allAccepted = rules is not null && accepted == members.Count && members.All(m => m.TermsVersionId == rules.Id && m.TermsAcceptedAt.HasValue && m.SlotNumber is >= 1 && m.SlotNumber <= group.MemberLimit);
         var now = clock.UtcNow;
-        group.Activate(members.Count, allAccepted, await Approved(group, ct), existing.Count != 0, now);
+        group.Activate(members.Count, allAccepted, await Approved(group, ct), existing.Count != 0, now, memberPolicy);
         var cycles = CycleSchedule.Generate(group, now);
         db.MonthlyCycles.AddRange(cycles);
         foreach (var member in members)
@@ -127,5 +127,5 @@ internal sealed partial class GroupCycleService(GroupsDbContext db, IOrganizerSt
     private static ContributionEntryDetails MapEntry(ContributionEntry e) => new(e.Id, e.EntryType, e.Amount, e.Reference, e.Note, e.RecordedByUserId, e.CreatedAt, e.ReversesEntryId);
     private static CycleDetails MapCycle(MonthlyCycle c, string timeZone) => new(c.Id, c.GroupId, c.CycleNumber, c.SelectionMethod, c.Status, c.ContributionDueDate, c.SelectionDate, c.PayoutDate, timeZone,
         c.ExpectedMemberCount, c.ExpectedContributionPerMember, c.ExpectedPoolAmount, c.RecordedContributionAmount, c.FullyRecordedMemberCount, c.ExpectedMemberCount - c.FullyRecordedMemberCount,
-        c.StartedAt, c.ContributionsCompletedAt, c.ReadyForSelectionAt, c.SelectionCompletedAt, c.SelectionResultId);
+        c.StartedAt, c.ContributionsCompletedAt, c.ReadyForSelectionAt, c.SelectionCompletedAt, c.SelectionResultId, c.CollectionMode, c.FinanciallySettledAmount, c.FinanciallySettledMemberCount);
 }

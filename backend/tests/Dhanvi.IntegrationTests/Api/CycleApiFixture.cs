@@ -8,8 +8,9 @@ public sealed class CycleApiFixture : IAsyncLifetime, IAsyncDisposable
     private readonly TestPostgres _postgres = new();
     public AdjustableClock Clock { get; } = new();
     public CountingRandomSource RandomSource { get; } = new();
+    public FakePaymentGateway Gateway { get; } = new();
     public IdentityApiFactory Factory { get; private set; } = null!;
-    public async Task InitializeAsync() { await _postgres.StartAsync(); Factory = new(_postgres.GetConnectionString(), new TestEmailSender(), Clock, RandomSource); using var client = Factory.CreateClient(); using var response = await client.GetAsync("/api/v1/health"); response.EnsureSuccessStatusCode(); }
+    public async Task InitializeAsync() { await _postgres.StartAsync(); Factory = new(_postgres.GetConnectionString(), new TestEmailSender(), Clock, RandomSource, Gateway); using var client = Factory.CreateClient(); using var response = await client.GetAsync("/api/v1/health"); response.EnsureSuccessStatusCode(); }
     public async Task DisposeAsync() { Factory?.Dispose(); await _postgres.DisposeAsync(); }
 }
 public sealed class AdjustableClock : IDateTimeProvider

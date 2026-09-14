@@ -13,7 +13,7 @@ internal static class CyclePersistence
         model.Entity<Group>().Property(x => x.GroupTimeZone).HasMaxLength(100).HasDefaultValue(BusinessCalendar.DefaultTimeZone);
         var c = model.Entity<MonthlyCycle>();
         c.ToTable("MonthlyCycles", t => {
-            t.HasCheckConstraint("CK_Cycle_Expected", "\"CycleNumber\" BETWEEN 1 AND \"ExpectedMemberCount\" AND \"ExpectedMemberCount\" BETWEEN 20 AND 50 AND \"ExpectedContributionPerMember\" > 0 AND \"ExpectedPoolAmount\" = \"ExpectedContributionPerMember\" * \"ExpectedMemberCount\"");
+            t.HasCheckConstraint("CK_Cycle_Expected", "\"CycleNumber\" BETWEEN 1 AND \"ExpectedMemberCount\" AND \"ExpectedMemberCount\" BETWEEN 2 AND 50 AND \"ExpectedContributionPerMember\" > 0 AND \"ExpectedPoolAmount\" = \"ExpectedContributionPerMember\" * \"ExpectedMemberCount\"");
             t.HasCheckConstraint("CK_Cycle_Totals", "\"RecordedContributionAmount\" BETWEEN 0 AND \"ExpectedPoolAmount\" AND \"FullyRecordedMemberCount\" BETWEEN 0 AND \"ExpectedMemberCount\"");
             t.HasCheckConstraint("CK_Cycle_Dates", "\"ContributionDueDate\" <= \"SelectionDate\" AND \"SelectionDate\" <= \"PayoutDate\"");
         });
@@ -21,11 +21,18 @@ internal static class CyclePersistence
         c.Property(x => x.Status).HasConversion<string>(); c.Property(x => x.SelectionMethod).HasConversion<string>();
         c.Property(x => x.ExpectedContributionPerMember).HasPrecision(18, 2); c.Property(x => x.ExpectedPoolAmount).HasPrecision(18, 2); c.Property(x => x.RecordedContributionAmount).HasPrecision(18, 2);
         c.Property(x => x.Version).IsConcurrencyToken(); c.HasIndex(x => new { x.GroupId, x.CycleNumber }).IsUnique(); c.HasIndex(x => x.Status); c.HasIndex(x => x.ContributionDueDate);
+        c.Property(x => x.CollectionMode).HasConversion<string>().HasDefaultValue(ContributionCollectionMode.ManualTracking);
+        c.Property(x => x.FinanciallySettledAmount).HasPrecision(18, 2);
+        c.ToTable("MonthlyCycles", t => t.HasCheckConstraint("CK_Cycle_Financial", "\"FinanciallySettledAmount\" BETWEEN 0 AND \"ExpectedPoolAmount\" AND \"FinanciallySettledMemberCount\" BETWEEN 0 AND \"ExpectedMemberCount\""));
         c.HasOne<Group>().WithMany().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Restrict);
         model.Entity<GroupMembership>().HasAlternateKey(x => new { x.Id, x.GroupId });
         var obligation = model.Entity<Contribution>();
         obligation.ToTable("Contributions", t => t.HasCheckConstraint("CK_Contribution_Amounts", "\"ExpectedAmount\" > 0 AND \"RecordedAmount\" BETWEEN 0 AND \"ExpectedAmount\""));
         obligation.HasKey(x => x.Id); obligation.Property(x => x.Status).HasConversion<string>(); obligation.Property(x => x.ExpectedAmount).HasPrecision(18, 2); obligation.Property(x => x.RecordedAmount).HasPrecision(18, 2); obligation.Property(x => x.Version).IsConcurrencyToken();
+        obligation.Property(x => x.FinancialStatus).HasConversion<string>().HasDefaultValue(ContributionFinancialStatus.Unpaid);
+        obligation.Property(x => x.FinanciallySettledAmount).HasPrecision(18, 2);
+        obligation.HasIndex(x => x.SettledPaymentId).IsUnique();
+        obligation.ToTable("Contributions", t => t.HasCheckConstraint("CK_Contribution_Financial", "(\"FinanciallySettledAmount\" = 0 AND \"SettledPaymentId\" IS NULL AND \"FinancialStatus\" IN ('Unpaid','Refunded')) OR (\"FinanciallySettledAmount\" = \"ExpectedAmount\" AND \"SettledPaymentId\" IS NOT NULL AND \"FinancialStatus\" = 'Settled')"));
         obligation.HasIndex(x => new { x.CycleId, x.MembershipId }).IsUnique(); obligation.HasIndex(x => x.MembershipId); obligation.HasIndex(x => new { x.Status, x.DueDate }); obligation.HasIndex(x => x.DueDate);
         obligation.HasOne<MonthlyCycle>().WithMany().HasForeignKey(x => new { x.CycleId, x.GroupId }).HasPrincipalKey(x => new { x.Id, x.GroupId }).OnDelete(DeleteBehavior.Restrict);
         obligation.HasOne<GroupMembership>().WithMany().HasForeignKey(x => new { x.MembershipId, x.GroupId }).HasPrincipalKey(x => new { x.Id, x.GroupId }).OnDelete(DeleteBehavior.Restrict);

@@ -17,11 +17,25 @@ public interface ILedgerSourceReader
 public sealed record PostingOutcome(string Status, Guid? JournalId, string? Reason, bool Replayed = false);
 public interface ILedgerPostingService
 {
+    Task EnsurePayoutFundedAsync(Guid payoutId, DbTransaction transaction, CancellationToken ct);
+    Task<Guid> SettlePayoutAsync(Guid payoutId, DbTransaction transaction, CancellationToken ct);
+    Task<Guid> CapturePaymentAsync(Guid paymentId, DbTransaction transaction, CancellationToken ct);
+    Task<PostingOutcome> ReverseInTransactionAsync(Guid originalJournalId, Guid reversalEventId, string reason, Guid actor,
+        DbTransaction transaction, CancellationToken ct);
     // Trusted application contract only; there is deliberately no HTTP posting endpoint.
     Task<PostingOutcome> PostAsync(AccountingEventType type, Guid eventId, Guid actor, string? correlationId,
         DbTransaction? transaction, CancellationToken ct);
     Task<PostingOutcome> ReverseAsync(Guid originalJournalId, Guid reversalEventId, string reason, Guid actor,
         string? correlationId, CancellationToken ct);
+}
+public sealed record CapturedPaymentSource(Guid PaymentId, Guid ContributionId, Guid GroupId, Guid CycleId, Guid MembershipId,
+    Guid UserId, decimal Amount, string TimeZone, DateTimeOffset CapturedAt, string ProviderPaymentId);
+public sealed record SettledPayoutSource(Guid Id, Guid GroupId, Guid CycleId, Guid MembershipId, Guid SelectionResultId, Guid? AuctionResultId,
+    decimal Amount, bool Benefit, string TimeZone, Guid Actor, DateTimeOffset RequestedAt, bool MatchedSuccess, Guid AllocationJournalId);
+public interface IPayoutLedgerReader { Task<SettledPayoutSource> ReadAsync(Guid id, DbTransaction transaction, CancellationToken ct); }
+public interface ICapturedPaymentReader
+{
+    Task<CapturedPaymentSource> ReadAsync(Guid paymentId, DbTransaction transaction, CancellationToken ct);
 }
 public sealed class LedgerPolicyOptions
 {

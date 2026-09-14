@@ -25,11 +25,11 @@ public sealed class AuctionResult
     public DateTimeOffset FinalizedAt { get; private set; }
     public Guid FinalizedByUserId { get; private set; }
     public IReadOnlyCollection<AuctionBenefitAllocation> Allocations => _allocations.AsReadOnly();
-    public static AuctionResult Create(Auction auction, AuctionBid winner, Guid selectionResultId, IReadOnlyList<Guid> memberIds, Guid actor, DateTimeOffset now)
+    public static AuctionResult Create(Auction auction, AuctionBid winner, Guid selectionResultId, IReadOnlyList<Guid> memberIds, Guid actor, DateTimeOffset now, GroupMemberPolicy? memberPolicy = null)
     {
         BusinessRuleException.Require(winner.AuctionId == auction.Id && memberIds.Count == auction.MemberLimit && memberIds.Distinct().Count() == auction.MemberLimit && memberIds.Contains(winner.MembershipId),
             "INVALID_AUCTION_RECIPIENTS", "Every original member position, including prior payout recipients, must be represented.");
-        var calculation = AuctionCalculator.Calculate(auction.GroupValue, auction.MemberLimit, winner.DiscountAmount, auction.FeePolicy);
+        var calculation = AuctionCalculator.Calculate(auction.GroupValue, auction.MemberLimit, winner.DiscountAmount, auction.FeePolicy, memberPolicy);
         var result = new AuctionResult { AuctionId = auction.Id, GroupId = auction.GroupId, CycleId = auction.CycleId, SelectionResultId = selectionResultId,
             WinningBidId = winner.Id, WinnerMembershipId = winner.MembershipId, GroupValue = auction.GroupValue, MemberLimit = auction.MemberLimit, WinningDiscount = winner.DiscountAmount,
             WinnerPayout = calculation.WinnerPayout, GrossMemberShare = calculation.GrossMemberShare, PlatformFee = calculation.PlatformFee, MemberBenefitPool = calculation.MemberBenefitPool,

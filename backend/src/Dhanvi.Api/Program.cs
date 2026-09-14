@@ -83,6 +83,8 @@ builder.Services.AddGroupsModule();
 builder.Services.AddRandomDrawsModule();
 builder.Services.AddAuctionsModule();
 builder.Services.AddLedgerModule(builder.Configuration);
+Dhanvi.Modules.Payments.Infrastructure.PaymentsModule.AddPaymentsModule(builder.Services, builder.Configuration);
+Dhanvi.Modules.Payouts.Infrastructure.PayoutsModule.AddPayoutsModule(builder.Services, builder.Configuration);
 builder.Services.AddDhanviOpenTelemetry(builder.Configuration);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
@@ -170,6 +172,8 @@ api.MapSelectionEndpoints();
 api.MapAuctionEndpoints();
 api.MapOrganizerEndpoints();
 api.MapLedgerEndpoints();
+Dhanvi.Modules.Payments.Api.PaymentEndpoints.MapPaymentEndpoints(api);
+Dhanvi.Modules.Payouts.Api.PayoutEndpoints.MapPayoutEndpoints(api);
 
 if (builder.Configuration.GetValue("Database:ApplyMigrations", false))
 {
@@ -179,6 +183,8 @@ if (builder.Configuration.GetValue("Database:ApplyMigrations", false))
     await scope.ServiceProvider.GetRequiredService<OrganizerDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<Dhanvi.Modules.Groups.Infrastructure.Persistence.GroupsDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<LedgerDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<Dhanvi.Modules.Payments.Infrastructure.Persistence.PaymentsDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<Dhanvi.Modules.Payouts.Infrastructure.Persistence.PayoutsDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<LedgerSeeder>().SeedAsync(CancellationToken.None);
     await scope.ServiceProvider.GetRequiredService<IdentitySeeder>().SeedAsync(CancellationToken.None);
 }

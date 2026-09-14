@@ -3,9 +3,9 @@ namespace Dhanvi.Modules.Groups.Application;
 
 public sealed record SaveGroupRequest(string Name, string Description, GroupType GroupType, decimal GroupValue, int MemberLimit,
     bool OrganizerParticipates, bool OrganizerFirstPayout, int ContributionDueDay, int SelectionDay, int PayoutDay, DateOnly StartDate,
-    AuctionGroupRules? AuctionRules = null, RandomGroupRules? RandomRules = null)
+    AuctionGroupRules? AuctionRules = null, RandomGroupRules? RandomRules = null, ContributionCollectionMode CollectionMode = ContributionCollectionMode.ManualTracking)
 {
-    public GroupConfiguration Configuration() => new(GroupType, GroupValue, MemberLimit, OrganizerParticipates, OrganizerFirstPayout, ContributionDueDay, SelectionDay, PayoutDay, StartDate, AuctionRules, RandomRules);
+    public GroupConfiguration Configuration() => new(GroupType, GroupValue, MemberLimit, OrganizerParticipates, OrganizerFirstPayout, ContributionDueDay, SelectionDay, PayoutDay, StartDate, AuctionRules, RandomRules, CollectionMode);
 }
 public sealed record GroupActor(Guid UserId, bool IsAdmin);
 public sealed record GroupFilter(GroupType? GroupType = null, GroupCreatorType? CreatorType = null, GroupStatus? Status = null,
@@ -22,7 +22,7 @@ public sealed record GroupDetails(Guid Id, string Name, string Description, Grou
     bool OrganizerParticipates, bool OrganizerFirstPayout, SelectionMethod FirstCycleSelectionMethod, int ContributionDueDay,
     int SelectionDay, int PayoutDay, DateOnly StartDate, GroupStatus Status, int RulesVersion, bool RulesLocked,
     PublicOrganizer? Organizer, PublishedGroupRules? CurrentRules, MemberDetails? MyMembership, int PendingApplications,
-    AuctionGroupRules? AuctionRules, RandomGroupRules? RandomRules, string? StatusReason, string GroupTimeZone, DateTimeOffset? ActivatedAt, int? CurrentCycleNumber);
+    AuctionGroupRules? AuctionRules, RandomGroupRules? RandomRules, string? StatusReason, string GroupTimeZone, DateTimeOffset? ActivatedAt, int? CurrentCycleNumber, ContributionCollectionMode CollectionMode = ContributionCollectionMode.ManualTracking);
 public interface IGroupService
 {
     Task<GroupDetails> CreateAsync(GroupActor actor, GroupCreatorType creator, SaveGroupRequest request, CancellationToken ct);

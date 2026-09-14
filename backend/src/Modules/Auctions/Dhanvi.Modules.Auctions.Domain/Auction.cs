@@ -29,11 +29,11 @@ public sealed class Auction
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
     public int Version { get; private set; }
-    public static Auction Schedule(Guid groupId, Guid cycleId, int number, decimal value, int members, AuctionGroupRules rules, DateTimeOffset start, DateTimeOffset end, DateTimeOffset now)
+    public static Auction Schedule(Guid groupId, Guid cycleId, int number, decimal value, int members, AuctionGroupRules rules, DateTimeOffset start, DateTimeOffset end, DateTimeOffset now, GroupMemberPolicy? memberPolicy = null)
     {
         BusinessRuleException.Require(start < end && rules.MinimumDiscount >= 0 && rules.MinimumDiscount <= rules.MaximumDiscount && rules.BidIncrement > 0 && rules.BidIncrement < value,
             "INVALID_AUCTION_RULES", "Auction limits, increment and window must be valid.");
-        AuctionCalculator.Calculate(value, members, rules.MaximumDiscount, rules.FeePolicy);
+        AuctionCalculator.Calculate(value, members, rules.MaximumDiscount, rules.FeePolicy, memberPolicy);
         BusinessRuleException.Require(rules.MinimumDiscount * 100 % members == 0 && rules.BidIncrement * 100 % members == 0,
             "INVALID_AUCTION_ALLOCATION_PRECISION", "Configured limits and increment must support exact member shares.");
         return new() { GroupId = groupId, CycleId = cycleId, CycleNumber = number, GroupValue = value, MemberLimit = members,
@@ -46,11 +46,11 @@ public sealed class Auction
         BusinessRuleException.Require(now >= StartsAt && now < EndsAt, "AUCTION_OUTSIDE_WINDOW", "Open the auction within its configured time window.");
         Status = AuctionStatus.Open; OpenedAt = now; Touch(now);
     }
-    public AuctionBid Bid(Guid membershipId, decimal discount, string key, DateTimeOffset now)
+    public AuctionBid Bid(Guid membershipId, decimal discount, string key, DateTimeOffset now, GroupMemberPolicy? memberPolicy = null)
     {
         EnsureOpen();
         BusinessRuleException.Require(now >= OpenedAt && now >= StartsAt && now < EndsAt, "AUCTION_OUTSIDE_WINDOW", "Bidding is outside the server-authoritative auction window.");
-        AuctionCalculator.Calculate(GroupValue, MemberLimit, discount, FeePolicy);
+        AuctionCalculator.Calculate(GroupValue, MemberLimit, discount, FeePolicy, memberPolicy);
         BusinessRuleException.Require(discount >= MinimumDiscount, "DISCOUNT_BELOW_MINIMUM", "Discount is below the configured minimum.");
         BusinessRuleException.Require(discount <= MaximumDiscount, "DISCOUNT_ABOVE_MAXIMUM", "Discount exceeds the configured maximum.");
         BusinessRuleException.Require(LastBidSequence == 0 || discount >= CurrentHighestDiscount + BidIncrement, "BID_INCREMENT_NOT_MET", "Increase the current highest discount by at least the configured increment.");

@@ -1,4 +1,5 @@
 "use client";
+import { PayoutAccountForm } from "@/features/payouts/payout-account";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -135,6 +136,7 @@ export function ProfilePage() {
           </Card>
         </div>
       </div>
+      <PayoutAccountForm />
     </div>
   );
 }
