@@ -1,0 +1,9 @@
+{
+  "name": "@dhanvi/types",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared frontend DTO types",
+  "main": "./src/index.ts",
+  "sideEffects": ["*.css"],
+  "peerDependencies": { "next": "*", "react": "*", "react-dom": "*" }
+}

@@ -26,7 +26,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      Frontend__Origin: ${FRONTEND_ORIGIN:-http://localhost:3000}
+      Frontend__Origin: ${FRONTEND_ORIGIN:-http://localhost:3000;http://localhost:3001}
       Database__ApplyMigrations: "true"
       Jwt__SigningKey: ${JWT_SIGNING_KEY}
       Jwt__SecureCookies: "false"
@@ -44,18 +44,37 @@ services:
       postgres:
         condition: service_healthy
 
-  frontend:
+  user-web:
     build:
-      context: ./frontend
+      context: .
+      dockerfile: apps/user-web/Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:5000/api/v1}
+        NEXT_PUBLIC_USER_APP_URL: ${USER_APP_URL:-http://localhost:3000}
+        NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3001}
     restart: unless-stopped
     environment:
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:5000/api/v1}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+
+  admin-web:
+    build:
+      context: .
+      dockerfile: apps/admin-web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:5000/api/v1}
+        NEXT_PUBLIC_USER_APP_URL: ${USER_APP_URL:-http://localhost:3000}
+        NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3001}
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "${ADMIN_PORT:-3001}:3001"
     depends_on:
       - backend
 

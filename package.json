@@ -1,0 +1,30 @@
+{
+  "name": "dhanvi-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Dhanvi web workspace: member app (3000), admin app (3001) and shared frontend packages.",
+  "engines": { "node": ">=20.9.0" },
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "concurrently -k -n user,admin -c green,blue \"npm run dev:user\" \"npm run dev:admin\"",
+    "dev:user": "npm run dev --workspace @dhanvi/user-web",
+    "dev:admin": "npm run dev --workspace @dhanvi/admin-web",
+    "build": "npm run build:user && npm run build:admin",
+    "build:user": "npm run build --workspace @dhanvi/user-web",
+    "build:admin": "npm run build --workspace @dhanvi/admin-web",
+    "start:user": "npm run start --workspace @dhanvi/user-web",
+    "start:admin": "npm run start --workspace @dhanvi/admin-web",
+    "lint": "eslint .",
+    "typecheck": "tsc -p apps/user-web --noEmit && tsc -p apps/admin-web --noEmit",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "concurrently": "9.2.1",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.4",
+    "typescript": "6.0.3"
+  }
+}

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dhanvi — Architecture Perspectives</title>
+<style>
+  :root {
+    --bg: #0f1420; --bg-elev: #161c2b; --bg-panel: #131927; --border: #2a3345; --text: #e6e9ef; --muted: #98a2b3; --grid: #2a3345; --focus: #93c5fd;
+    --c-actor: #e5e7eb; --c-frontend: #60a5fa; --c-gateway: #f59e0b; --c-service: #34d399; --c-data: #a78bfa; --c-messaging: #f472b6; --c-provider: #fb923c;
+    --c-obs: #22d3ee; --c-deploy: #94a3b8; --c-security: #f87171; --c-batch: #facc15; --c-ci: #c084fc;
+    --e-sync: #60a5fa; --e-async: #f472b6; --e-data: #a78bfa; --e-ext: #fb923c; --e-deploy: #94a3b8; --e-ctrl: #facc15; --e-obs: #22d3ee; --e-ci: #c084fc; --fill-alpha: .16;
+  }
+  :root[data-theme="light"] { --bg: #f7f8fa; --bg-elev: #fff; --bg-panel: #fff; --border: #d5dae3; --text: #111827; --muted: #5b6474; --grid: #d9dee7; --focus: #2563eb;
+    --c-actor: #374151; --c-frontend: #2563eb; --c-gateway: #d97706; --c-service: #059669; --c-data: #7c3aed; --c-messaging: #db2777; --c-provider: #ea580c; --c-obs: #0891b2; --c-deploy: #475569; --c-security: #dc2626; --c-batch: #ca8a04; --c-ci: #9333ea;
+    --e-sync: #2563eb; --e-async: #db2777; --e-data: #7c3aed; --e-ext: #ea580c; --e-deploy: #475569; --e-ctrl: #ca8a04; --e-obs: #0891b2; --e-ci: #9333ea; --fill-alpha: .10; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #f7f8fa; --bg-elev: #fff; --bg-panel: #fff; --border: #d5dae3; --text: #111827; --muted: #5b6474; --grid: #d9dee7; --focus: #2563eb;
+    --c-actor: #374151; --c-frontend: #2563eb; --c-gateway: #d97706; --c-service: #059669; --c-data: #7c3aed; --c-messaging: #db2777; --c-provider: #ea580c; --c-obs: #0891b2; --c-deploy: #475569; --c-security: #dc2626; --c-batch: #ca8a04; --c-ci: #9333ea;
+    --e-sync: #2563eb; --e-async: #db2777; --e-data: #7c3aed; --e-ext: #ea580c; --e-deploy: #475569; --e-ctrl: #ca8a04; --e-obs: #0891b2; --e-ci: #9333ea; --fill-alpha: .10; } }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body { background: var(--bg); color: var(--text); font: 12px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg-elev); }
+  header h1 { margin: 0; font-size: 16px; flex: 1; }
+  button { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible, .node:focus-visible, .legend-head:focus-visible, #views button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  main { flex: 1; display: flex; min-height: 0; }
+  #views { width: 230px; flex: none; border-right: 1px solid var(--border); background: var(--bg-elev); overflow: auto; padding: 8px; }
+  #views h4 { margin: 10px 6px 4px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  #views button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 6px 8px; border-radius: 6px; }
+  #views button[aria-current="true"] { background: var(--bg); border: 1px solid var(--border); }
+  #views .n { display: inline-block; width: 20px; color: var(--muted); }
+  #centre { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #viewhead { padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg-elev); }
+  #viewhead h2 { margin: 0 0 4px; font-size: 15px; }
+  #viewhead .sub { margin: 0; color: var(--muted); max-width: 1000px; }
+  #stage { flex: 1; position: relative; overflow: hidden; cursor: grab; background-color: var(--bg); background-image: radial-gradient(var(--grid) 1px, transparent 1px); background-size: 22px 22px; }
+  #stage.dragging { cursor: grabbing; }
+  #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #zoomctl { position: absolute; right: 12px; top: 12px; display: flex; gap: 4px; }
+  #panel { width: 340px; flex: none; border-left: 1px solid var(--border); background: var(--bg-panel); overflow: auto; padding: 14px 16px; }
+  #panel h3 { margin: 12px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  #panel ul { margin: 0; padding-left: 16px; } #panel li { margin: 3px 0; overflow-wrap: anywhere; }
+  #panel code, .node code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+  svg { overflow: visible; display: block; }
+  .band { fill: var(--bg-elev); fill-opacity: .55; stroke: var(--border); stroke-dasharray: 5 4; rx: 10; }
+  .band-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; fill: var(--muted); }
+  .node rect { fill: var(--nc); fill-opacity: var(--fill-alpha); stroke: var(--nc); stroke-width: 1.5; rx: 8; }
+  .node .title { font-size: 12px; font-weight: 700; fill: var(--text); }
+  .node .meta { font-size: 10px; fill: var(--muted); }
+  .node.gateway rect { stroke-width: 3.5; }
+  .node.dormant rect { stroke-dasharray: 5 4; fill-opacity: .06; }
+  .edge { fill: none; stroke: var(--ec); stroke-width: 1.6; marker-end: url(#arrow); }
+  .edge-label { font-size: 9px; fill: var(--muted); text-anchor: middle; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+  #legend { position: absolute; left: 12px; bottom: 12px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; width: 400px; max-width: calc(100% - 24px); }
+  .legend-head { padding: 6px 10px; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); }
+  #legend.collapsed .legend-body { display: none; } #legend.collapsed .legend-head { border-bottom: 0; }
+  .legend-body { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 14px; padding: 8px 10px; }
+  .legend-body .row { display: flex; align-items: center; gap: 6px; }
+  .legend-body .sq { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid; } .legend-body .ln { width: 24px; border-top: 2px solid; }
+  @media print {
+    @page { size: A3 landscape; margin: 10mm; }
+    body { overflow: visible; background: #fff; color: #000; }
+    header, #views, #zoomctl { display: none; }
+    main { display: block; }
+    #centre { display: block; }
+    #stage { overflow: visible; height: auto; background: #fff; }
+    #world { position: static; transform: none !important; }
+    #panel { width: auto; border: 0; margin-top: 10px; }
+    #legend { position: static; margin-top: 10px; width: auto; }
+  }
+</style>
+</head>
+<body>
+<header><h1>Dhanvi — Architecture Perspectives</h1><button id="theme">Theme</button><button id="print">Print</button></header>
+<main>
+  <nav id="views" aria-label="Perspectives"></nav>
+  <section id="centre">
+    <div id="viewhead"><h2 id="vh-title"></h2><p class="sub" id="vh-sub"></p></div>
+    <div id="stage">
+      <div id="world"><svg id="svg"></svg></div>
+      <div id="zoomctl"><button id="zin" aria-label="Zoom in">＋</button><button id="zout" aria-label="Zoom out">－</button><button id="zfit">Fit</button></div>
+      <div id="legend"><div class="legend-head" tabindex="0" role="button" aria-expanded="true"><span>Legend</span><span>▾</span></div><div class="legend-body" id="legend-body"></div></div>
+    </div>
+  </section>
+  <aside id="panel"></aside>
+</main>
+<script>
+const CAT = { actor: "var(--c-actor)", frontend: "var(--c-frontend)", gateway: "var(--c-gateway)", service: "var(--c-service)", data: "var(--c-data)", messaging: "var(--c-messaging)", provider: "var(--c-provider)", obs: "var(--c-obs)", deploy: "var(--c-deploy)", security: "var(--c-security)", batch: "var(--c-batch)", ci: "var(--c-ci)" };
+const CAT_LABEL = { actor: "Actor", frontend: "Frontend", gateway: "HTTP host (entry)", service: "Backend module", data: "Data store", messaging: "Messaging (none in repo)", provider: "External provider", obs: "Observability", deploy: "Deployment", security: "Security control", batch: "Batch / background", ci: "CI / verification" };
+const EDGE = { sync: { c: "var(--e-sync)", d: "", label: "sync call" }, async: { c: "var(--e-async)", d: "2 4", label: "async / event" }, data: { c: "var(--e-data)", d: "", label: "data read/write" }, ext: { c: "var(--e-ext)", d: "10 4", label: "external / webhook" }, deploy: { c: "var(--e-deploy)", d: "3 3", label: "deploy-time" }, ctrl: { c: "var(--e-ctrl)", d: "6 3", label: "control / config" }, obs: { c: "var(--e-obs)", d: "1 3", label: "telemetry" }, ci: { c: "var(--e-ci)", d: "8 3 2 3", label: "pipeline step" } };
+const ev = (paths) => `<h3>Evidence</h3><ul>${paths.map((p) => `<li><code>${p}</code></li>`).join("")}</ul>`;
+const VIEWS = [
+  { id: "high", n: 1, group: "Structure", label: "High-level Architecture", title: "High-level Architecture", sub: "The whole system in one glance: two browser audiences, two Next.js applications sharing one package set, a single ASP.NET Core modular-monolith host, one PostgreSQL server, and the only external systems that are actually wired (Razorpay in TEST mode and an in-process fake payout provider).", layout: "rows",
+    lanes: [
+      { label: "Users", nodes: [{ id: "member", title: "Member / Organizer", meta: "browser · cookie session", cat: "actor" }, { id: "admin", title: "Administrator", meta: "browser · ADMIN / SUPER_ADMIN", cat: "actor" }] },
+      { label: "Web applications", nodes: [{ id: "userweb", title: "user-web :3000", meta: "Next.js 16 · public + member + organizer", cat: "frontend" }, { id: "pkgs", title: "@dhanvi/* packages", meta: "ui · api-client · auth · features …", cat: "frontend" }, { id: "adminweb", title: "admin-web :3001", meta: "Next.js 16 · operations", cat: "frontend" }] },
+      { label: "Backend", nodes: [{ id: "api", title: "Dhanvi.Api :5000", meta: "ASP.NET Core · /api/v1 · 9 modules in-process", cat: "gateway" }] },
+      { label: "Data & providers", nodes: [{ id: "pg", title: "PostgreSQL", meta: "1 database · schema per module", cat: "data" }, { id: "rzp", title: "Razorpay (TEST)", meta: "orders · payments · webhooks", cat: "provider" }, { id: "fake", title: "Fake payout provider", meta: "in-process, persisted in DB", cat: "provider" }] },
+    ],
+    edges: [["member", "userweb", "sync", "HTTPS"], ["admin", "adminweb", "sync", "HTTPS"], ["member", "api", "sync", "/api/v1 · credentials: include"], ["admin", "api", "sync", "/api/v1"], ["userweb", "pkgs", "ctrl", "imports"], ["adminweb", "pkgs", "ctrl", "imports"], ["api", "pg", "data", "EF Core · Npgsql"], ["api", "rzp", "ext", "HTTPS Basic auth · webhooks back (HMAC)"], ["api", "fake", "sync", "IPayoutGateway"], ["member", "rzp", "ext", "hosted Checkout.js"]],
+    notes: [
+      { h: "What this shows", items: ["A <strong>modular monolith</strong>: every backend module is compiled into one process (<code>Dhanvi.Api</code>) and reached through one HTTP host. There is no API gateway, service mesh, message broker or separate worker in the repository.", "Two independently built Next.js applications (member app on 3000, admin portal on 3001) share code through npm-workspace packages resolved via tsconfig paths.", "One PostgreSQL server holds every module's schema; cross-module work happens inside one database transaction via application contracts."] },
+      { h: "Key decisions", items: ["Authentication authority is the backend only: 15-minute JWT access + 30-day rotated refresh token, both delivered as HttpOnly <code>SameSite=Strict</code> cookies scoped to the host, so one login serves both apps.", "Money movement is deliberately constrained: incoming payments only through Razorpay <em>TEST</em> keys (startup validation), outgoing payouts only through a FAKE provider (<code>Payouts:Provider</code> must be FAKE).", "Financial truth lives in a double-entry Ledger module; modules never mutate each other's tables directly."] },
+      { h: "Not present (by evidence)", items: ["No Kubernetes/Helm, no CI workflow, no message broker or outbox table, no cache, no object storage, no email provider (NullEmailSender), no notification module code."] },
+      { h: "Evidence", items: ["<code>backend/src/Dhanvi.Api/Program.cs</code>", "<code>docker-compose.yml</code>", "<code>package.json</code>, <code>tsconfig.base.json</code>, <code>apps/*/package.json</code>", "<code>packages/api-client/src/api-client.ts</code>", "<code>backend/src/Modules/Payments/*/PaymentsModule.cs</code>, <code>RazorpayGateway.cs</code>", "<code>backend/src/Modules/Payouts/*/PayoutsModule.cs</code>, <code>FakePayoutGateway.cs</code>", "<code>backend/src/Modules/Identity/*/Api/IdentityEndpoints.cs</code> (AuthenticationCookies)"] },
+    ] },
+  { id: "low", n: 2, group: "Structure", label: "Low-level Architecture", title: "Low-level Architecture — every module, every store", sub: "Each backend module with its four-project layering, the schema it owns in PostgreSQL, and the application contracts that connect modules. Domain-only projects (Memberships, Cycles, Contributions) live inside the Groups boundary; README-only modules are shown dormant.", layout: "rows",
+    lanes: [
+      { label: "HTTP host", nodes: [{ id: "api", title: "Dhanvi.Api", meta: "Program.cs · CORS · JWT · rate limits · ProblemDetails", cat: "gateway" }] },
+      { label: "Modules (Api · Application · Domain · Infrastructure)", nodes: [
+        { id: "identity", title: "Identity", meta: "auth · users · roles · refresh tokens", cat: "service" }, { id: "organizers", title: "Organizers", meta: "applications · approval · suspension", cat: "service" },
+        { id: "groups", title: "Groups", meta: "+ Memberships · Cycles · Contributions domains", cat: "service" }, { id: "random", title: "RandomDraws", meta: "DHANVI_RANDOM_V1 · verifiable", cat: "service" },
+        { id: "auctions", title: "Auctions", meta: "DHANVI_AUCTION_V1 · integer paise", cat: "service" }, { id: "payments", title: "Payments", meta: "Razorpay TEST · verify · reconcile", cat: "service" },
+        { id: "payouts", title: "Payouts", meta: "obligations · approval · FAKE execution", cat: "service" }, { id: "ledger", title: "Ledger", meta: "double-entry · immutable · reversals", cat: "service" },
+        { id: "audit", title: "Audit", meta: "append-only log · no API", cat: "service" }, { id: "shared", title: "SharedKernel", meta: "exceptions · clock · calendar", cat: "service" }, { id: "planned", title: "Admin · Notifications", meta: "README placeholders only", cat: "service", dormant: true }] },
+      { label: "PostgreSQL schemas (one database)", nodes: [
+        { id: "s_identity", title: "identity", meta: "users, roles, user_roles, refresh_tokens, password_reset_tokens, email_verification_tokens", cat: "data" }, { id: "s_org", title: "organizers", meta: "organizer_profiles, organizer_applications", cat: "data" },
+        { id: "s_groups", title: "groups", meta: "Groups, GroupMemberships, GroupRuleVersions, GroupTermsAcceptances, GroupAuditEvents, MonthlyCycles, Contributions, ContributionEntries, IdempotencyRecords, SelectionResults, SelectionEligibleMembers, Auctions, AuctionBids, AuctionResults, AuctionBenefitAllocations", cat: "data" },
+        { id: "s_payments", title: "payments", meta: "Payments, PaymentHistory, PaymentProviderEvents, PaymentRefunds (+ immutability triggers)", cat: "data" }, { id: "s_payouts", title: "payouts", meta: "PayoutObligations, PayoutAttempts, PayoutBeneficiaries, PayoutProviderEvents, PayoutReconciliationHistory, FakeProviderPayouts", cat: "data" },
+        { id: "s_ledger", title: "ledger", meta: "LedgerAccounts, JournalEntries, JournalLines", cat: "data" }, { id: "s_audit", title: "audit", meta: "audit_logs", cat: "data" }, { id: "s_hangfire", title: "hangfire", meta: "Hangfire.PostgreSql · no jobs scheduled", cat: "data", dormant: true }] },
+    ],
+    edges: [["api", "identity", "sync", "MapIdentityEndpoints"], ["api", "organizers", "sync", "MapOrganizerEndpoints"], ["api", "groups", "sync", "MapGroups/Cycle endpoints"], ["api", "random", "sync", "MapSelectionEndpoints"], ["api", "auctions", "sync", "MapAuctionEndpoints"], ["api", "payments", "sync", "MapPaymentEndpoints"], ["api", "payouts", "sync", "MapPayoutEndpoints"], ["api", "ledger", "sync", "MapLedgerEndpoints"], ["api", "audit", "sync", "AddAuditModule"], ["api", "s_hangfire", "data", "AddHangfire (dormant)"],
+      ["organizers", "identity", "sync", "role assignment (same tx)"], ["payments", "groups", "sync", "IContributionSettlementService"], ["payments", "ledger", "sync", "ILedgerPostingService"], ["auctions", "ledger", "sync", "allocation journals"], ["payouts", "ledger", "sync", "IPayoutLedgerReader"], ["payouts", "groups", "sync", "ICycleSettlementStore"], ["random", "groups", "sync", "selection → cycle"], ["groups", "identity", "sync", "IGroupUserDirectory"],
+      ["identity", "s_identity", "data", "IdentityDbContext"], ["organizers", "s_org", "data", "OrganizerDbContext"], ["groups", "s_groups", "data", "GroupsDbContext"], ["random", "s_groups", "data", "SelectionResults"], ["auctions", "s_groups", "data", "Auction* tables"], ["payments", "s_payments", "data", "PaymentsDbContext"], ["payouts", "s_payouts", "data", "PayoutsDbContext"], ["ledger", "s_ledger", "data", "LedgerDbContext"], ["audit", "s_audit", "data", "AuditDbContext (enlists caller tx)"]],
+    notes: [
+      { h: "What this shows", items: ["Every implemented module and the exact tables it owns. Modules share the server but not the schema; each context keeps its own <code>__EFMigrationsHistory</code>.", "RandomDraws and Auctions persist through <code>GroupsDbContext</code> so that selection results commit atomically with the cycle they resolve."] },
+      { h: "Owned state & protections", items: ["<strong>payments</strong>: DB triggers reject UPDATE/DELETE/TRUNCATE on <code>PaymentHistory</code>, <code>PaymentProviderEvents</code>, <code>PaymentRefunds</code>; deferred constraints tie contribution settlement to a captured payment.", "<strong>ledger</strong>: journals are immutable and balanced; corrections are reversing journals referencing the original.", "<strong>groups</strong>: contribution entries are append-only (records + reversals); <code>IdempotencyRecords</code> replay organizer/admin operations.", "<strong>hangfire</strong>: schema is created by Hangfire.PostgreSql but no job is ever enqueued — dormant."] },
+      { h: "Layering", items: ["Api → Application → Domain; Infrastructure implements Application contracts. <code>Dhanvi.ArchitectureTests</code> enforce forbidden references at compile/test time."] },
+      { h: "Evidence", items: ["<code>backend/src/Modules/*/Dhanvi.Modules.*.Infrastructure/Persistence/*DbContext.cs</code>", "<code>backend/src/Modules/*/Dhanvi.Modules.*.Infrastructure/Persistence/Migrations/*</code>", "<code>backend/src/Modules/Payments/*/Persistence/PaymentDatabaseProtections.cs</code>", "<code>backend/src/Modules/README.md</code>, <code>backend/src/Modules/Admin/README.md</code>, <code>Notifications/README.md</code>", "<code>backend/tests/Dhanvi.ArchitectureTests</code>", "<code>backend/src/Dhanvi.Api/Program.cs</code> (AddHangfire, endpoint mapping)"] },
+    ] },
+  { id: "dataflow", n: 3, group: "Behaviour", label: "Data Flow", title: "Data Flow — a member pays a Razorpay TEST contribution", sub: "The most important end-to-end transaction: eligibility → backend-authoritative order → hosted Checkout → server-side signature verification → provider fetch → contribution settlement → double-entry journal → audit, with the webhook and admin reconciliation as idempotent alternates.", layout: "cols",
+    lanes: [
+      { label: "Member browser", nodes: [{ id: "ui", title: "PaymentCheckout", meta: "features/payments/payment-checkout.tsx", cat: "frontend" }, { id: "cjs", title: "Razorpay Checkout.js", meta: "hosted UI · handler callback", cat: "provider" }] },
+      { label: "Dhanvi.Api · Payments", nodes: [{ id: "elig", title: "GET payment-eligibility", meta: "locks contribution · canPay", cat: "service" }, { id: "order", title: "POST contributions/{id}/payments", meta: "Idempotency-Key · amount from obligation", cat: "service" }, { id: "verify", title: "POST payments/{id}/verify", meta: "HMAC(order|payment, key secret)", cat: "service" }, { id: "apply", title: "Apply()", meta: "advisory lock · FOR UPDATE · once", cat: "service" }, { id: "webhook", title: "POST payments/webhooks/razorpay", meta: "HMAC over raw body · event key", cat: "service" }, { id: "reconcile", title: "refresh / admin reconcile", meta: "provider lookup · sticky mismatch", cat: "service" }] },
+      { label: "Other modules", nodes: [{ id: "settle", title: "Groups · SettleAsync", meta: "FinanciallySettledAmount · cycle readiness", cat: "service" }, { id: "post", title: "Ledger · CapturePaymentAsync", meta: "Dr 1010 clearing / Cr 2000 group pool", cat: "service" }, { id: "auditw", title: "Audit · AuditLog", meta: "PAYMENT_* actions", cat: "service" }] },
+      { label: "Stores & provider", nodes: [{ id: "pg", title: "PostgreSQL", meta: "payments · groups · ledger · audit (one tx)", cat: "data" }, { id: "rzp", title: "Razorpay API (TEST)", meta: "orders · payments/{id}", cat: "provider" }] },
+    ],
+    edges: [["ui", "elig", "sync", "1 eligibility"], ["ui", "order", "sync", "2 create order"], ["order", "rzp", "ext", "3 POST orders"], ["ui", "cjs", "ext", "4 open Checkout (key id, order id, amount)"], ["cjs", "rzp", "ext", "5 hosted payment"], ["cjs", "ui", "async", "6 handler(order, payment, signature)"], ["ui", "verify", "sync", "7 verify"], ["verify", "rzp", "ext", "8 GET payment + order"], ["verify", "apply", "sync", "9 Apply"], ["apply", "settle", "sync", "10 settle contribution"], ["apply", "post", "sync", "11 post journal"], ["apply", "auditw", "sync", "12 audit"], ["apply", "pg", "data", "commit once"], ["rzp", "webhook", "ext", "payment.captured (alternate path)"], ["webhook", "apply", "sync", "same Apply · event stored once"], ["ui", "reconcile", "sync", "Check status (alternate)"], ["reconcile", "apply", "sync", "same Apply"]],
+    notes: [
+      { h: "What this shows", items: ["Numbered steps are the happy path; dashed external edges leave the process. All three entry points (verify, webhook, reconcile) converge on one <code>Apply()</code> guarded by a PostgreSQL advisory lock keyed on the provider payment id and <code>SELECT … FOR UPDATE</code> on the Payment row, so settlement and the journal happen exactly once."] },
+      { h: "Key decisions", items: ["Amount, currency and receipt are decided by the backend from the contribution obligation; Checkout receives them read-only. The response DTO exposes the public key only.", "Verification checks the persisted <code>ProviderOrderId</code>, the HMAC, then fetches the provider payment and order and rejects any amount/currency/capture mismatch as a sticky <code>RECONCILIATION_REQUIRED</code> hold — never silently corrected.", "Webhook signature uses <code>Payment_WebhookSecret</code> over the raw bytes; the event key (<code>X-Razorpay-Event-Id</code> or body hash) makes duplicates no-ops and rejects reuse with a different payload.", "A confirmed full refund creates a <em>reversing</em> journal and reopens the contribution; the original journal is preserved."] },
+      { h: "Verified", items: ["Executed end-to-end against Razorpay TEST on 2026-09-15 (docs/razorpay-test-smoke-report.md): order → Checkout → verify → CAPTURED → settled → JRN-1/2 → live reconciliation → real refund → reversing JRN-3."] },
+      { h: "Evidence", items: ["<code>packages/features/src/payments/payment-checkout.tsx</code>", "<code>backend/src/Modules/Payments/*/PaymentService.cs</code>, <code>RazorpayGateway.cs</code>, <code>PaymentEndpoints.cs</code>", "<code>backend/src/Modules/Groups/*/Services/ContributionSettlementService.cs</code>", "<code>backend/src/Modules/Ledger/*</code> (ILedgerPostingService, ChartOfAccounts)", "<code>backend/tests/Dhanvi.IntegrationTests/Api/PaymentEndpointTests.cs</code>", "<code>docs/razorpay-test-smoke-report.md</code>"] },
+    ] },
+  { id: "deploy", n: 4, group: "Operations", label: "Deployment Architecture", title: "Deployment Architecture — Docker Compose (the only definition)", sub: "What actually exists for running the system: one compose file with four services on a single host network, three Dockerfiles, migrations applied by the API at startup, and the local dotnet run / npm run dev workflow. No Kubernetes, Helm, Terraform or cloud manifests are in the repository.", layout: "rows",
+    lanes: [
+      { label: "Host ports", nodes: [{ id: "p3000", title: ":3000", meta: "FRONTEND_PORT → user-web", cat: "deploy" }, { id: "p3001", title: ":3001", meta: "ADMIN_PORT → admin-web", cat: "deploy" }, { id: "p5000", title: ":5000", meta: "BACKEND_PORT → backend 8080", cat: "deploy" }, { id: "p5432", title: ":5432", meta: "POSTGRES_PORT → postgres", cat: "deploy" }] },
+      { label: "docker-compose.yml services (network: default)", nodes: [{ id: "cuser", title: "user-web", meta: "apps/user-web/Dockerfile · node:22-alpine · standalone", cat: "frontend" }, { id: "cadmin", title: "admin-web", meta: "apps/admin-web/Dockerfile · node:22-alpine · standalone", cat: "frontend" }, { id: "cbackend", title: "backend", meta: "backend/Dockerfile · aspnet:10.0 · Development env", cat: "gateway" }, { id: "cpg", title: "postgres", meta: "postgres:17-alpine · healthcheck pg_isready", cat: "data" }] },
+      { label: "Startup work & state", nodes: [{ id: "migr", title: "Migrate 7 DbContexts", meta: "Database__ApplyMigrations=true", cat: "deploy" }, { id: "seed", title: "LedgerSeeder · IdentitySeeder", meta: "chart of accounts · optional super admin", cat: "deploy" }, { id: "vol", title: "volume dhanvi-postgres-data", meta: "/var/lib/postgresql/data", cat: "data" }, { id: "envf", title: ".env (root, git-ignored)", meta: ".env.example documents every key", cat: "security" }] },
+      { label: "Not in repo", nodes: [{ id: "k8s", title: "Kubernetes / Helm", meta: "no manifests, no values files", cat: "deploy", dormant: true }, { id: "ingress", title: "Ingress / TLS / reverse proxy", meta: "not defined", cat: "deploy", dormant: true }, { id: "cicd", title: "CI/CD", meta: "no .github/workflows", cat: "ci", dormant: true }] },
+    ],
+    edges: [["p3000", "cuser", "deploy", "3000:3000"], ["p3001", "cadmin", "deploy", "3001:3001"], ["p5000", "cbackend", "deploy", "5000:8080"], ["p5432", "cpg", "deploy", "5432:5432"], ["cbackend", "cpg", "data", "Host=postgres · depends_on healthy"], ["cuser", "cbackend", "sync", "browser → NEXT_PUBLIC_API_BASE_URL"], ["cadmin", "cbackend", "sync", "browser → API (public URL)"], ["cbackend", "migr", "ctrl", "on start"], ["migr", "seed", "ctrl", "then"], ["cpg", "vol", "data", "persists"], ["envf", "cbackend", "ctrl", "Jwt · Frontend__Origin · Razorpay · seed admin"], ["envf", "cuser", "ctrl", "build args NEXT_PUBLIC_*"]],
+    notes: [
+      { h: "What this shows", items: ["Compose is the sole deployment artefact. The API applies migrations and seeds on boot, so there is no separate migration job. Web apps are built with <code>output: 'standalone'</code> traced from the workspace root and run as a non-root user.", "Frontends talk to the API from the <em>browser</em> (public base URL), not container-to-container; that is why CORS must list both origins."] },
+      { h: "Key decisions / caveats", items: ["<code>NEXT_PUBLIC_*</code> values are baked at image build time (Dockerfile ARG/ENV); changing the API URL means rebuilding.", "The backend container runs with <code>ASPNETCORE_ENVIRONMENT=Development</code> in Compose, which enables Swagger, the Hangfire dashboard and the 2-member group policy — not a production posture.", "<code>Jwt__SecureCookies=false</code> in Compose because there is no TLS; production defaults to true."] },
+      { h: "Local workflow", items: ["<code>dotnet run --project backend/src/Dhanvi.Api</code> with env vars; <code>npm run dev</code> starts both apps via concurrently; PostgreSQL local or Compose."] },
+      { h: "Evidence", items: ["<code>docker-compose.yml</code>, <code>.env.example</code>, <code>.dockerignore</code>", "<code>backend/Dockerfile</code>, <code>apps/user-web/Dockerfile</code>, <code>apps/admin-web/Dockerfile</code>", "<code>apps/*/next.config.ts</code> (standalone, outputFileTracingRoot)", "<code>backend/src/Dhanvi.Api/Program.cs</code> (ApplyMigrations block)", "<code>README.md</code> (Run with Docker, manual development)"] },
+    ] },
+  { id: "integration", n: 5, group: "Operations", label: "Integration Architecture", title: "Integration Architecture — external systems and how each is authenticated", sub: "Every boundary the system crosses: Razorpay REST API (backend, Basic auth), Razorpay Checkout (browser, public key), Razorpay webhooks (inbound, HMAC), the in-process FAKE payout provider, the log-only email sender, optional OTLP export, and the independent draw verifier.", layout: "cols",
+    lanes: [
+      { label: "Inbound to Dhanvi.Api", nodes: [{ id: "browsers", title: "Browsers (3000 / 3001)", meta: "cookie or bearer · CORS allow-list", cat: "actor" }, { id: "rzpwh", title: "Razorpay webhook", meta: "X-Razorpay-Signature · X-Razorpay-Event-Id", cat: "provider" }, { id: "verifier", title: "tools/verify-random-draw.py", meta: "reads public /selection/verify JSON", cat: "ci" }] },
+      { label: "Dhanvi.Api", nodes: [{ id: "auth", title: "JWT bearer / cookie auth", meta: "Jwt:SigningKey · policies", cat: "security" }, { id: "payments", title: "Payments module", meta: "RazorpayPaymentGateway (HttpClient 15s)", cat: "service" }, { id: "payouts", title: "Payouts module", meta: "IPayoutGateway", cat: "service" }, { id: "identity", title: "Identity module", meta: "IEmailSender", cat: "service" }, { id: "otelx", title: "OpenTelemetry", meta: "OTLP exporter if endpoint set", cat: "obs" }] },
+      { label: "Outbound targets", nodes: [{ id: "rzpapi", title: "api.razorpay.com/v1", meta: "Basic key_id:key_secret · TEST keys only", cat: "provider" }, { id: "fake", title: "FakePayoutGateway", meta: "in-process · payouts.FakeProviderPayouts", cat: "provider" }, { id: "email", title: "NullEmailSender", meta: "logs only · no SMTP/API", cat: "provider", dormant: true }, { id: "collector", title: "OTLP collector", meta: "not shipped · optional", cat: "obs", dormant: true }, { id: "cjs", title: "checkout.razorpay.com", meta: "loaded by member browser", cat: "provider" }] },
+    ],
+    edges: [["browsers", "auth", "sync", "dhanvi_access / dhanvi_refresh cookies · Authorization: Bearer"], ["rzpwh", "payments", "ext", "POST /payments/webhooks/razorpay (anonymous route, HMAC verified)"], ["verifier", "auth", "sync", "GET …/selection/verify (public proof)"], ["payments", "rzpapi", "ext", "orders · payments · refunds observed"], ["payouts", "fake", "sync", "fund account · payout · status"], ["identity", "email", "ext", "password reset (dormant)"], ["otelx", "collector", "obs", "OTEL_EXPORTER_OTLP_ENDPOINT (dormant)"], ["browsers", "cjs", "ext", "public rzp_test_ key · order id · amount"]],
+    notes: [
+      { h: "What this shows", items: ["Only one real external integration exists (Razorpay, TEST mode) and it is used in two directions: outbound REST calls from the backend and inbound webhooks. Everything else is in-process, log-only, or optional."] },
+      { h: "Auth on each integration", items: ["<strong>Browser → API</strong>: HttpOnly cookies (or bearer) validated with <code>Jwt:SigningKey</code>; CORS allows only <code>Frontend:Origins</code> with credentials; login and password-reset endpoints are rate-limited.", "<strong>API → Razorpay</strong>: HTTP Basic with <code>Payment_RazorpayKeyId:Payment_RazorpayKeySecret</code>; options validation rejects non-<code>rzp_test_</code> keys.", "<strong>Razorpay → API</strong>: HMAC-SHA256 of the raw body with <code>Payment_WebhookSecret</code>, fixed-time compare; disabled when <code>Payment_WebhookEnabled=false</code>. Local hosts need a public HTTPS tunnel to receive it.", "<strong>Browser → Checkout.js</strong>: public key only; the Checkout handler returns order/payment/signature which the backend verifies with the key secret.", "<strong>Payouts</strong>: no credentials — provider is FAKE by configuration and the module throws on any other value."] },
+      { h: "Evidence", items: ["<code>backend/src/Modules/Payments/*/RazorpayGateway.cs</code>, <code>PaymentsModule.cs</code>, <code>PaymentEndpoints.cs</code>", "<code>backend/src/Modules/Payouts/*/PayoutsModule.cs</code>, <code>FakePayoutGateway.cs</code>", "<code>backend/src/Modules/Identity/*/Email/NullEmailSender.cs</code>, <code>IdentityModule.cs</code>", "<code>backend/src/Dhanvi.Api/Infrastructure/OpenTelemetryExtensions.cs</code>", "<code>packages/features/src/payments/payment-checkout.tsx</code>", "<code>tools/verify-random-draw.py</code>, <code>docs/examples/random-v1-test-vector.json</code>"] },
+    ] },
+  { id: "scheduler", n: 6, group: "Operations", label: "Scheduler & Batch", title: "Scheduler & Batch — what runs without a request", sub: "There is no cron, hosted service or poller in this code base. Hangfire is registered with PostgreSQL storage but never given a job; every time-based behaviour is evaluated on request or performed by a user/admin action. Client-side polling exists in two screens.", layout: "rows",
+    lanes: [
+      { label: "Registered but idle", nodes: [{ id: "hf", title: "Hangfire server + dashboard", meta: "AddHangfire · UsePostgreSqlStorage · /hangfire (dev)", cat: "batch", dormant: true }, { id: "hfs", title: "schema hangfire", meta: "created by Hangfire.PostgreSql", cat: "data", dormant: true }] },
+      { label: "Time-based logic evaluated on request", nodes: [{ id: "overdue", title: "POST …/mark-overdue", meta: "organizer/admin action · BusinessCalendar (IST)", cat: "service" }, { id: "window", title: "Auction open/close window", meta: "server checks canOpen/canClose against schedule", cat: "service" }, { id: "hold", title: "Payout account 24h hold", meta: "availableAt compared on use", cat: "service" }, { id: "tokens", title: "Token expiry", meta: "JWT 15 min · refresh 30 d · reset 30 min", cat: "security" }] },
+      { label: "Client-side polling", nodes: [{ id: "poll1", title: "PaymentCheckout", meta: "reload eligibility every 5 s while pending", cat: "frontend" }, { id: "poll2", title: "AuctionPanel", meta: "GET auction every 5 s", cat: "frontend" }] },
+      { label: "Not implemented", nodes: [{ id: "none", title: "Cron · queues · outbox · reconciliation scheduler", meta: "none; reconciliation is manual (refresh / admin reconcile)", cat: "batch", dormant: true }] },
+    ],
+    edges: [["hf", "hfs", "data", "storage only"], ["poll2", "window", "sync", "polls auction state (GET)"]],
+    notes: [
+      { h: "What this shows", items: ["Nothing in the repository schedules work. Cycle transitions (collecting → ready for selection → selection completed → payout) happen inside user-initiated transactions; overdue marking and payment reconciliation are explicit admin/organizer/member actions."] },
+      { h: "Key decisions", items: ["Hangfire is wired in <code>Program.cs</code> (skipped in the Testing environment) but a repository-wide search finds no <code>RecurringJob</code>, <code>BackgroundJob</code>, <code>IHostedService</code> or <code>BackgroundService</code>. Treat it as dormant infrastructure or remove it.", "Automated reconciliation scheduling and a scheduled overdue job are listed as not implemented in <code>docs/prompt-8-verification.md</code> and <code>docs/cycles-and-contributions.md</code>."] },
+      { h: "Evidence", items: ["<code>backend/src/Dhanvi.Api/Program.cs</code> (AddHangfire, AddHangfireServer, UseHangfireDashboard)", "<code>backend/src/Modules/Groups/*/Api/CycleEndpoints.cs</code> (mark-overdue)", "<code>backend/src/Modules/Auctions/*</code> (window enforcement)", "<code>packages/features/src/payments/payment-checkout.tsx</code>, <code>packages/features/src/auctions/auction-panel.tsx</code> (5 s polling)", "<code>docs/prompt-8-verification.md</code>, <code>docs/cycles-and-contributions.md</code>"] },
+    ] },
+  { id: "observability", n: 7, group: "Cross-cutting", label: "Observability & Logging", title: "Observability & Logging", sub: "Structured JSON logs with a correlation id on every request, OpenTelemetry traces and metrics that export only when an OTLP endpoint is configured, health endpoints, and the immutable business-level audit/history tables that serve as the operational record. No collector, dashboards or alerting ship with the repo.", layout: "rows",
+    lanes: [
+      { label: "Request pipeline", nodes: [{ id: "corr", title: "CorrelationIdMiddleware", meta: "X-Correlation-ID in → out · LogContext", cat: "obs" }, { id: "reqlog", title: "UseSerilogRequestLogging", meta: "method · path · status · elapsed", cat: "obs" }, { id: "exc", title: "GlobalExceptionHandler + ProblemDetails", meta: "typed error codes (e.g. INVALID_PAYMENT_SIGNATURE)", cat: "obs" }] },
+      { label: "Telemetry sinks", nodes: [{ id: "console", title: "Serilog JSON → stdout", meta: "Application=Dhanvi.Api · CorrelationId", cat: "obs" }, { id: "otel", title: "OpenTelemetry", meta: "AspNetCore · HttpClient · runtime metrics", cat: "obs" }, { id: "otlp", title: "OTLP exporter", meta: "only if OTEL_EXPORTER_OTLP_ENDPOINT", cat: "obs", dormant: true }, { id: "health", title: "/api/v1/health · /health/ready", meta: "JSON status · health checks (no DB probe)", cat: "obs" }] },
+      { label: "Business-level records (PostgreSQL)", nodes: [{ id: "audit", title: "audit.audit_logs", meta: "USER_*, PAYMENT_*, LEDGER_JOURNAL_POSTED …", cat: "data" }, { id: "hist", title: "payments.PaymentHistory · PaymentProviderEvents", meta: "append-only · trigger-protected", cat: "data" }, { id: "gaudit", title: "groups.GroupAuditEvents", meta: "group / cycle / selection events", cat: "data" }, { id: "phist", title: "payouts.PayoutReconciliationHistory · PayoutProviderEvents", meta: "provider observations", cat: "data" }] },
+      { label: "Frontend", nodes: [{ id: "fe", title: "Next.js apps", meta: "no client telemetry · errors surfaced via friendlyError()", cat: "frontend" }] },
+    ],
+    edges: [["corr", "reqlog", "sync", "next()"], ["reqlog", "exc", "sync", "next()"], ["corr", "console", "obs", "CorrelationId property"], ["reqlog", "console", "obs", "request log"], ["exc", "console", "obs", "exception log"], ["otel", "otlp", "obs", "traces + metrics (dormant)"], ["fe", "corr", "sync", "fetch · X-Correlation-ID readable"]],
+    notes: [
+      { h: "What this shows", items: ["Operational observability is minimal but coherent: every request gets a correlation id that is echoed back and stamped on all logs; traces/metrics are instrumented and exportable via OTLP."] },
+      { h: "Key decisions", items: ["Logs are JSON on stdout (12-factor); Compose does not aggregate them. EF command logging is Warning in base config, Debug in Development.", "Provider error payloads from Razorpay are deliberately <em>not</em> logged (they may contain customer data).", "The durable operational record is in the database: audit logs, payment history/events and reconciliation history are immutable by trigger, which is what the admin UI's \"Activity\" sections read.", "<code>/health/ready</code> registers no checks, so it does not prove database connectivity."] },
+      { h: "Not implemented", items: ["Collector, Prometheus/Grafana, alerting, log shipping, client-side error reporting, consolidated audit browser UI."] },
+      { h: "Evidence", items: ["<code>backend/src/Dhanvi.Api/Middleware/CorrelationIdMiddleware.cs</code>, <code>GlobalExceptionHandler.cs</code>", "<code>backend/src/Dhanvi.Api/Infrastructure/OpenTelemetryExtensions.cs</code>", "<code>backend/src/Dhanvi.Api/Program.cs</code> (UseSerilog, AddHealthChecks, MapHealthChecks)", "<code>backend/src/Dhanvi.Api/appsettings.json</code>, <code>appsettings.Development.json</code> (Serilog levels)", "<code>backend/src/Modules/Payments/*/Persistence/PaymentDatabaseProtections.cs</code>", "<code>packages/utils/src/errors.ts</code>"] },
+    ] },
+  { id: "security", n: 8, group: "Cross-cutting", label: "Security & Networking", title: "Security & Networking", sub: "Trust boundaries and the controls at each: browser session cookies, CORS allow-list, JWT validation and role policies, rate limits, backend-only provider secrets with TEST-only enforcement, signature verification for Checkout and webhooks, and database-level immutability. Network segmentation beyond Compose's default network is not defined.", layout: "rows",
+    lanes: [
+      { label: "Browser boundary", nodes: [{ id: "cookies", title: "HttpOnly cookies", meta: "dhanvi_access 15m · dhanvi_refresh 30d · SameSite=Strict · Secure=Jwt:SecureCookies", cat: "security" }, { id: "guards", title: "Client route guards", meta: "ProtectedPage · allowedRoles per app (UX only)", cat: "frontend" }, { id: "cors", title: "CORS allow-list", meta: "Frontend:Origins 3000 + 3001 · credentials · never AllowAnyOrigin", cat: "security" }] },
+      { label: "API boundary", nodes: [{ id: "jwt", title: "JWT validation", meta: "issuer · audience · HS256 key ≥ 32 chars · 30 s skew", cat: "security" }, { id: "policies", title: "Authorization policies", meta: "AuthenticatedUser · OrganizerOnly · AdminOnly · SuperAdminOnly + ownership checks", cat: "security" }, { id: "rate", title: "Rate limiting", meta: "authentication 10/min · password-reset 5/15 min (per IP)", cat: "security" }, { id: "refresh", title: "Refresh rotation", meta: "SHA-256 hashed · reuse detection · revocation", cat: "security" }, { id: "pwd", title: "Password policy", meta: "PasswordPolicy:* · hashed storage", cat: "security" }] },
+      { label: "Provider boundary", nodes: [{ id: "secrets", title: "Backend-only secrets", meta: "Payment_RazorpayKeySecret · Payment_WebhookSecret · Jwt:SigningKey (env, git-ignored .env)", cat: "security" }, { id: "testonly", title: "TEST-only enforcement", meta: "rzp_test_ + Environment=TEST validated at startup · Payouts FAKE only", cat: "security" }, { id: "sig", title: "Signature verification", meta: "Checkout HMAC(order|payment) · webhook HMAC(raw body) · fixed-time compare", cat: "security" }, { id: "idem", title: "Idempotency", meta: "Idempotency-Key headers · advisory locks · event keys", cat: "security" }] },
+      { label: "Data boundary", nodes: [{ id: "trig", title: "DB triggers & constraints", meta: "immutable payment history/events · settlement consistency · ledger balance", cat: "data" }, { id: "net", title: "Network", meta: "Compose default bridge; postgres port published to host; no TLS, no network policy", cat: "deploy", dormant: true }] },
+    ],
+    edges: [["cookies", "jwt", "sync", "cookie → bearer (OnMessageReceived)"], ["cors", "jwt", "ctrl", "preflight then auth"], ["jwt", "policies", "sync", "claims: sub, role"], ["policies", "idem", "sync", "handlers"], ["rate", "jwt", "ctrl", "login / reset"], ["refresh", "cookies", "sync", "rotate on /auth/refresh"], ["secrets", "sig", "ctrl", "keys"], ["testonly", "secrets", "ctrl", "ValidateOnStart"], ["sig", "idem", "sync", "then apply once"], ["idem", "trig", "data", "commit"], ["guards", "cookies", "ctrl", "reads session via /users/me"]],
+    notes: [
+      { h: "What this shows", items: ["Defence is layered at four boundaries. The frontend split (3000 vs 3001) is an organisational boundary only — the backend authorises every call and returns 403 for admin endpoints to non-admins regardless of origin."] },
+      { h: "Key decisions", items: ["Cookies are host-scoped, so both apps share one session; <code>SameSite=Strict</code> is safe because API and apps are same-site (localhost).", "Secrets are read from environment/config only; <code>.env</code> is git-ignored and <code>.env.example</code> carries placeholders. Frontend bundles never receive key or webhook secrets (verified by scan in docs/razorpay-test-smoke-report.md).", "Production money movement is structurally impossible: Razorpay options validation and the Payouts module both throw on non-TEST/non-FAKE configuration.", "Refund after selection and over-settlement are blocked in code and by deferred DB constraints."] },
+      { h: "Gaps (not implemented)", items: ["TLS termination / reverse proxy, network policies, secret manager integration, MFA, email verification, KYC, CSRF token (relies on SameSite=Strict + JSON APIs), security headers middleware, dependency/secret scanning in CI (no CI)."] },
+      { h: "Evidence", items: ["<code>backend/src/Dhanvi.Api/Program.cs</code> (CORS, JWT, policies, rate limiter)", "<code>backend/src/Modules/Identity/*/Api/IdentityEndpoints.cs</code> (AuthenticationCookies)", "<code>backend/src/Modules/Payments/*/RazorpayGateway.cs</code> (RazorpayOptions.Valid, RazorpaySignatures)", "<code>backend/src/Modules/Payouts/*/PayoutsModule.cs</code>", "<code>packages/auth/src/protected-page.tsx</code>, <code>packages/auth/src/roles.ts</code>", "<code>.gitignore</code>, <code>.env.example</code>", "<code>backend/tests/Dhanvi.IntegrationTests/Api/CorsPolicyTests.cs</code>"] },
+    ] },
+  { id: "cicd", n: 9, group: "Operations", label: "CI/CD Pipeline", title: "CI/CD Pipeline — not implemented; this is the local verification chain", sub: "The repository contains no pipeline definition (no .github/workflows, GitLab CI, Azure Pipelines or similar). What exists is a reproducible local verification chain documented in README and the docs/ reports; it is drawn here as the de-facto pipeline that a CI system would run.", layout: "cols",
+    lanes: [
+      { label: "Backend (dotnet)", nodes: [{ id: "restore", title: "dotnet restore", meta: "Dhanvi.sln · NuGet audit", cat: "ci" }, { id: "build", title: "dotnet build -c Release", meta: "0 warnings policy", cat: "ci" }, { id: "unit", title: "Dhanvi.UnitTests", meta: "214 tests", cat: "ci" }, { id: "arch", title: "Dhanvi.ArchitectureTests", meta: "14 tests · layer rules", cat: "ci" }, { id: "integ", title: "Dhanvi.IntegrationTests", meta: "184 tests · Testcontainers PostgreSQL · FakePaymentGateway", cat: "ci" }, { id: "ef", title: "dotnet ef migrations has-pending-model-changes", meta: "7 contexts", cat: "ci" }] },
+      { label: "Frontend (npm workspace)", nodes: [{ id: "npmci", title: "npm install / ci", meta: "workspaces apps/* packages/*", cat: "ci" }, { id: "lint", title: "npm run lint", meta: "eslint (next core-web-vitals + ts)", cat: "ci" }, { id: "tsc", title: "npm run typecheck", meta: "tsc per app", cat: "ci" }, { id: "ntest", title: "npm test", meta: "node --test tests/*.test.mjs (structure, policy, regressions)", cat: "ci" }, { id: "nbuild", title: "npm run build", meta: "next build user-web then admin-web", cat: "ci" }] },
+      { label: "Images & gates", nodes: [{ id: "dbuild", title: "docker compose build", meta: "3 images", cat: "deploy" }, { id: "diff", title: "git diff --check · secret scan", meta: "manual, documented in docs/*.md", cat: "security" }, { id: "nocd", title: "No deploy stage · no registry · no environments", meta: "not implemented", cat: "ci", dormant: true }] },
+    ],
+    edges: [["restore", "build", "ci", ""], ["build", "unit", "ci", ""], ["unit", "arch", "ci", ""], ["arch", "integ", "ci", "Docker required"], ["integ", "ef", "ci", ""], ["npmci", "lint", "ci", ""], ["lint", "tsc", "ci", ""], ["tsc", "ntest", "ci", ""], ["ntest", "nbuild", "ci", ""], ["ef", "dbuild", "ci", "then"], ["nbuild", "dbuild", "ci", "then"], ["dbuild", "diff", "ci", ""], ["diff", "nocd", "ci", "stops here"]],
+    notes: [
+      { h: "What this shows", items: ["The order in which checks are run by hand today. Every box exists as a real command or test project; only the dormant box is missing. Adding CI means encoding exactly this chain."] },
+      { h: "Key decisions", items: ["Integration tests run the real migrations against disposable PostgreSQL (Testcontainers) and exercise payments with <code>FakePaymentGateway</code>; the suite never touches Razorpay. <code>DHANVI_TEST_POSTGRES</code> can point at an existing server instead.", "Frontend structural tests guard the app split (ports, route placement, no cross-app imports, single fetch client) and UX regressions (dialog focus trap)."] },
+      { h: "Evidence", items: ["No <code>.github/</code>, <code>.gitlab-ci.yml</code> or pipeline files exist (repository root listing)", "<code>README.md</code> (Tests and checks)", "<code>backend/Dhanvi.sln</code>, <code>backend/tests/*</code>, <code>backend/tests/Dhanvi.IntegrationTests/Database/TestPostgres.cs</code>", "<code>package.json</code> scripts, <code>eslint.config.mjs</code>, <code>tests/*.test.mjs</code>", "<code>docs/prompt-8-verification.md</code>, <code>docs/frontend-apps.md</code>, <code>docs/workflow-guidance.md</code> (recorded results)"] },
+    ] },
+  { id: "scale", n: 10, group: "Cross-cutting", label: "Scalability & DR", title: "Scalability & Disaster Recovery", sub: "How the system could scale and recover given what is implemented: stateless API replicas are possible because sessions are cookie/JWT based, but the Hangfire server, startup migrations and the single PostgreSQL instance are the shared points. No backup, replica, or multi-region configuration exists in the repository.", layout: "rows",
+    lanes: [
+      { label: "Stateless tier (scale out possible)", nodes: [{ id: "web", title: "user-web / admin-web", meta: "standalone Next servers · no server state", cat: "frontend" }, { id: "api", title: "Dhanvi.Api replicas", meta: "JWT/cookie auth · no in-memory session · rate limiter is per-instance", cat: "gateway" }] },
+      { label: "Consistency mechanisms (what makes replicas safe)", nodes: [{ id: "locks", title: "PostgreSQL locks", meta: "pg_advisory_xact_lock · SELECT … FOR UPDATE", cat: "data" }, { id: "idem", title: "Idempotency", meta: "Idempotency-Key · event keys · IdempotencyRecords", cat: "security" }, { id: "immut", title: "Immutable history", meta: "append-only tables · reversing journals", cat: "data" }] },
+      { label: "Single points", nodes: [{ id: "pg", title: "PostgreSQL (one instance)", meta: "one Compose volume · no replica · no backup job", cat: "data" }, { id: "migr", title: "Startup migrations", meta: "every replica runs MigrateAsync on boot", cat: "deploy" }, { id: "hf", title: "Hangfire server", meta: "registered per instance · idle", cat: "batch", dormant: true }, { id: "fakeprov", title: "Fake payout store", meta: "payouts.FakeProviderPayouts survives restarts", cat: "provider" }] },
+      { label: "DR / recovery posture", nodes: [{ id: "recon", title: "Reconciliation as recovery", meta: "refresh / reconcile rebuilds payment state from Razorpay", cat: "service" }, { id: "proof", title: "Verifiable draws", meta: "seed commitment + eligible snapshot · external verifier", cat: "service" }, { id: "nobackup", title: "Backups · PITR · failover", meta: "not defined in repo", cat: "deploy", dormant: true }] },
+    ],
+    edges: [["web", "api", "sync", "public API URL"], ["api", "locks", "data", "serialises settlement"], ["api", "idem", "ctrl", "replays are no-ops"], ["locks", "immut", "data", "commit"], ["api", "pg", "data", "all state"], ["api", "migr", "ctrl", "Database:ApplyMigrations"], ["api", "hf", "ctrl", "AddHangfireServer"], ["pg", "fakeprov", "data", "same database"], ["recon", "pg", "data", "re-derives from provider"], ["pg", "nobackup", "deploy", "missing"]],
+    notes: [
+      { h: "What this shows", items: ["Horizontal scaling of the web and API tiers is feasible without code changes because no request state lives in process; correctness under concurrency is delegated to PostgreSQL locks and idempotency keys (covered by concurrent verify/webhook tests)."] },
+      { h: "Constraints to plan for", items: ["Rate limiting is in-memory per instance (no shared store) — limits multiply with replicas.", "Every API instance applies migrations on start when <code>Database:ApplyMigrations=true</code>; run migrations once from a single job in multi-replica deployments.", "Hangfire would start one server per replica if jobs are ever added; today it is idle.", "The database is a single instance with a Docker volume; no backup, PITR or replica configuration exists — this is the DR gap.", "Recovery of payment truth is possible by reconciliation against Razorpay (orders are keyed by receipt <code>dh_&lt;paymentId&gt;</code>); the fake payout provider state is only as durable as the same database."] },
+      { h: "Evidence", items: ["<code>backend/src/Modules/Payments/*/PaymentService.cs</code> (advisory locks, FOR UPDATE, event keys)", "<code>backend/src/Dhanvi.Api/Program.cs</code> (rate limiter, Hangfire, migrations)", "<code>docker-compose.yml</code> (single postgres, one volume)", "<code>backend/tests/Dhanvi.IntegrationTests/Api/PaymentEndpointTests.cs</code> (concurrency cases)", "<code>backend/src/Modules/Payouts/*/FakePayoutGateway.cs</code>", "<code>backend/src/Modules/RandomDraws/README.md</code>, <code>tools/verify-random-draw.py</code>"] },
+    ] },
+];
+
+/* ---------------- Layout engine (no hand-placed coordinates) ---------------- */
+const NW = 210, NH = 60, GAP = 24, LANE_PAD = 34, LANE_GAP = 46, M = 30;
+function layout(view) {
+  const pos = {}; const bands = [];
+  if (view.layout === "rows") {
+    const maxN = Math.max(...view.lanes.map((l) => l.nodes.length)), perRow = Math.min(maxN, 6);
+    let y = M;
+    view.lanes.forEach((lane) => {
+      const rows = Math.ceil(lane.nodes.length / perRow);
+      const cols = Math.min(lane.nodes.length, perRow);
+      const width = cols * NW + (cols - 1) * GAP + LANE_PAD * 2; const height = LANE_PAD + rows * NH + (rows - 1) * GAP + LANE_PAD / 2;
+      const laneW = perRow * NW + (perRow - 1) * GAP + LANE_PAD * 2; const offset = (laneW - width) / 2;
+      lane.nodes.forEach((n, i) => { const r = Math.floor(i / perRow), c = i % perRow; pos[n.id] = { x: M + offset + LANE_PAD + c * (NW + GAP), y: y + LANE_PAD + r * (NH + GAP), w: NW, h: NH, n }; });
+      bands.push({ x: M, y, w: laneW, h: height, label: lane.label }); y += height + LANE_GAP;
+    });
+    return { pos, bands, W: M * 2 + Math.min(maxN, 6) * NW + (Math.min(maxN, 6) - 1) * GAP + LANE_PAD * 2, H: y - LANE_GAP + M };
+  }
+  const maxN = Math.max(...view.lanes.map((l) => l.nodes.length)); let x = M;
+  const laneH = LANE_PAD + maxN * NH + (maxN - 1) * GAP + LANE_PAD / 2;
+  view.lanes.forEach((lane) => {
+    lane.nodes.forEach((n, i) => { pos[n.id] = { x: x + LANE_PAD, y: M + LANE_PAD + i * (NH + GAP), w: NW, h: NH, n }; });
+    bands.push({ x, y: M, w: NW + LANE_PAD * 2, h: laneH, label: lane.label }); x += NW + LANE_PAD * 2 + LANE_GAP;
+  });
+  return { pos, bands, W: x - LANE_GAP + M, H: M * 2 + laneH };
+}
+
+/* ---------------- Rendering ---------------- */
+const SVGNS = "http://www.w3.org/2000/svg";
+const el = (t, a = {}, p) => { const n = document.createElementNS(SVGNS, t); for (const k in a) n.setAttribute(k, a[k]); if (p) p.appendChild(n); return n; };
+const svg = document.getElementById("svg");
+const state = { view: null, scale: 1, tx: 0, ty: 0, size: { W: 0, H: 0 } };
+function anchor(a, b) { const ax = a.x + a.w / 2, ay = a.y + a.h / 2, bx = b.x + b.w / 2, by = b.y + b.h / 2; if (Math.abs(by - ay) < a.h) return { x: bx > ax ? a.x + a.w : a.x, y: ay, v: false }; return { x: ax, y: by > ay ? a.y + a.h : a.y, v: true }; }
+function placeLabel(p1, c1, c2, p2, text, placed) {
+  const at = (t) => { const u = 1 - t; return { x: u*u*u*p1.x + 3*u*u*t*c1.x + 3*u*t*t*c2.x + t*t*t*p2.x, y: u*u*u*p1.y + 3*u*u*t*c1.y + 3*u*t*t*c2.y + t*t*t*p2.y }; };
+  const w = text.length * 5.2 + 8; let best = at(0.5);
+  outer: for (const t of [0.5, 0.38, 0.62, 0.28, 0.72, 0.2, 0.8, 0.12, 0.88]) for (const dy of [0, -13, 13, -26, 26]) { const p0 = at(t); const pt = { x: p0.x, y: p0.y + dy }; if (!placed.some((q) => Math.abs(q.y - pt.y) < 12 && Math.abs(q.x - pt.x) < (q.w + w) / 2 + 4)) { best = pt; break outer; } }
+  placed.push({ x: best.x, y: best.y, w }); return best;
+}
+function wrap(text, max) { const words = String(text).split(" "); const lines = [""]; for (const w of words) { if ((lines[lines.length - 1] + " " + w).trim().length > max) lines.push(w); else lines[lines.length - 1] = (lines[lines.length - 1] + " " + w).trim(); } return lines.slice(0, 2).map((l, i, arr) => (i === 1 && arr.length === 2 && l.length > max ? l.slice(0, max - 1) + "…" : l)); }
+function renderView(view) {
+  state.view = view; const L = layout(view); state.size = { W: L.W, H: L.H };
+  svg.innerHTML = ""; svg.setAttribute("width", L.W); svg.setAttribute("height", L.H);
+  const defs = el("defs", {}, svg); const mk = el("marker", { id: "arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse" }, defs); el("path", { d: "M0,0 L10,5 L0,10 z", fill: "var(--muted)" }, mk);
+  for (const b of L.bands) { el("rect", { x: b.x, y: b.y, width: b.w, height: b.h, class: "band" }, svg); const t = el("text", { x: b.x + 12, y: b.y + 18, class: "band-label" }, svg); t.textContent = b.label; }
+  const seen = new Set(); const placed = [];
+  for (const [from, to, kind, label] of view.edges) {
+    const key = from + "→" + to; if (seen.has(key)) { console.warn("duplicate edge", key); continue; } seen.add(key);
+    const a = L.pos[from], b = L.pos[to]; if (!a || !b) { console.warn("edge references unknown node", from, to); continue; }
+    const p1 = anchor(a, b), p2 = anchor(b, a); const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const c1 = p1.v ? { x: p1.x, y: p1.y + dy * .45 } : { x: p1.x + dx * .45, y: p1.y }; const c2 = p2.v ? { x: p2.x, y: p2.y - dy * .45 } : { x: p2.x - dx * .45, y: p2.y };
+    const e = EDGE[kind]; el("path", { d: `M${p1.x},${p1.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${p2.x},${p2.y}`, class: "edge", style: `--ec:${e.c};stroke-dasharray:${e.d}` }, svg);
+    if (label) { const { x: mx, y: my } = placeLabel(p1, c1, c2, p2, label, placed); const t = el("text", { x: mx, y: my - 3, class: "edge-label" }, svg); t.textContent = label; }
+  }
+  for (const id in L.pos) {
+    const p = L.pos[id], n = p.n;
+    const g = el("g", { class: `node${n.cat === "gateway" ? " gateway" : ""}${n.dormant ? " dormant" : ""}`, tabindex: "0", role: "img", "aria-label": `${n.title}. ${n.meta}`, style: `--nc:${CAT[n.cat]}`, transform: `translate(${p.x},${p.y})` }, svg);
+    el("rect", { width: p.w, height: p.h }, g);
+    const title = el("text", { x: 10, y: 22, class: "title" }, g); title.textContent = n.title.length > 28 ? n.title.slice(0, 27) + "…" : n.title;
+    wrap(n.meta, 35).forEach((line, i) => { const t = el("text", { x: 10, y: 38 + i * 12, class: "meta" }, g); t.textContent = line; });
+    g.addEventListener("focus", () => { g.querySelector("rect").setAttribute("stroke-width", "3"); }); g.addEventListener("blur", () => { g.querySelector("rect").setAttribute("stroke-width", n.cat === "gateway" ? "3.5" : "1.5"); });
+  }
+  document.getElementById("vh-title").textContent = `${view.n}. ${view.title}`; document.getElementById("vh-sub").textContent = view.sub;
+  document.getElementById("panel").innerHTML = view.notes.map((s) => `<h3>${s.h}</h3><ul>${s.items.map((i) => `<li>${i}</li>`).join("")}</ul>`).join("");
+  document.querySelectorAll("#views button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.id === view.id)));
+  fit();
+}
+/* ---------------- Pan / zoom ---------------- */
+const stage = document.getElementById("stage"), world = document.getElementById("world");
+const apply = () => { world.style.transform = `translate(${state.tx}px,${state.ty}px) scale(${state.scale})`; };
+function fit() { const r = stage.getBoundingClientRect(); state.scale = Math.max(.25, Math.min(2.4, Math.min((r.width - 40) / state.size.W, (r.height - 40) / state.size.H, 1.3))); state.tx = (r.width - state.size.W * state.scale) / 2; state.ty = 20; apply(); }
+function zoom(f, px, py) { const r = stage.getBoundingClientRect(); px = px ?? r.width / 2; py = py ?? r.height / 2; const next = Math.max(.25, Math.min(2.4, state.scale * f)); state.tx = px - (px - state.tx) * (next / state.scale); state.ty = py - (py - state.ty) * (next / state.scale); state.scale = next; apply(); }
+let drag = null;
+stage.addEventListener("mousedown", (e) => { if (e.target.closest("#legend") || e.target.closest("#zoomctl")) return; drag = { x: e.clientX, y: e.clientY, tx: state.tx, ty: state.ty }; stage.classList.add("dragging"); });
+window.addEventListener("mousemove", (e) => { if (!drag) return; state.tx = drag.tx + e.clientX - drag.x; state.ty = drag.ty + e.clientY - drag.y; apply(); });
+window.addEventListener("mouseup", () => { drag = null; stage.classList.remove("dragging"); });
+stage.addEventListener("wheel", (e) => { e.preventDefault(); const r = stage.getBoundingClientRect(); zoom(e.deltaY < 0 ? 1.1 : .9, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+document.getElementById("zin").addEventListener("click", () => zoom(1.2)); document.getElementById("zout").addEventListener("click", () => zoom(1 / 1.2)); document.getElementById("zfit").addEventListener("click", fit);
+window.addEventListener("resize", fit);
+/* ---------------- Nav, theme, print, legend ---------------- */
+const nav = document.getElementById("views"); let lastGroup = "";
+for (const v of VIEWS) { if (v.group !== lastGroup) { const h = document.createElement("h4"); h.textContent = v.group; nav.appendChild(h); lastGroup = v.group; } const b = document.createElement("button"); b.dataset.id = v.id; b.innerHTML = `<span class="n">${v.n}</span>${v.label}`; b.addEventListener("click", () => { location.hash = v.id; }); nav.appendChild(b); }
+function open() { const id = location.hash.replace("#", "") || "high"; renderView(VIEWS.find((v) => v.id === id) ?? VIEWS[0]); }
+window.addEventListener("hashchange", open);
+document.getElementById("print").addEventListener("click", () => window.print());
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) { if (t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme"); themeBtn.textContent = "Theme: " + (t || "auto"); }
+themeBtn.addEventListener("click", () => { const cur = document.documentElement.getAttribute("data-theme"); const next = cur === "dark" ? "light" : cur === "light" ? null : "dark"; try { next ? localStorage.setItem("dhanvi-arch-theme", next) : localStorage.removeItem("dhanvi-arch-theme"); } catch {} applyTheme(next); });
+try { applyTheme(localStorage.getItem("dhanvi-arch-theme")); } catch { applyTheme(null); }
+const legend = document.getElementById("legend"), head = legend.querySelector(".legend-head");
+const toggleLegend = () => { legend.classList.toggle("collapsed"); head.setAttribute("aria-expanded", String(!legend.classList.contains("collapsed"))); head.lastElementChild.textContent = legend.classList.contains("collapsed") ? "▸" : "▾"; };
+head.addEventListener("click", toggleLegend); head.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleLegend(); } });
+document.getElementById("legend-body").innerHTML = `<div>${Object.entries(CAT).map(([k, c]) => `<div class="row"><span class="sq" style="border-color:${c};background:color-mix(in srgb, ${c} 20%, transparent)"></span>${CAT_LABEL[k]}</div>`).join("")}<div class="row"><span class="sq" style="border-color:var(--muted);border-style:dashed"></span>dashed box = dormant / not implemented</div></div>` +
+  `<div>${Object.values(EDGE).map((e) => `<div class="row"><span class="ln" style="border-color:${e.c};border-top-style:${e.d ? "dashed" : "solid"}"></span>${e.label}</div>`).join("")}<div class="row" style="color:var(--muted)">Drag to pan · wheel / ＋ － to zoom · Fit resets</div></div>`;
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { document.activeElement?.blur?.(); } });
+open();
+</script>
+</body>
+</html>

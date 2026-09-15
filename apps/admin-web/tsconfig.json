@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@dhanvi/ui": ["../../packages/ui/src/index.ts"],
+      "@dhanvi/ui/*": ["../../packages/ui/src/*"],
+      "@dhanvi/api-client": ["../../packages/api-client/src/index.ts"],
+      "@dhanvi/auth": ["../../packages/auth/src/index.ts"],
+      "@dhanvi/config": ["../../packages/config/src/index.ts"],
+      "@dhanvi/types": ["../../packages/types/src/index.ts"],
+      "@dhanvi/utils": ["../../packages/utils/src/index.ts"],
+      "@dhanvi/features/*": ["../../packages/features/src/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts", "../../packages/**/*.ts", "../../packages/**/*.tsx"],
+  "exclude": ["node_modules", "../../packages/**/node_modules"]
+}

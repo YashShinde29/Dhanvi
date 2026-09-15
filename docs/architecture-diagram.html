@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dhanvi — Architecture Diagram</title>
+<style>
+  :root {
+    --bg: #0f1420; --bg-elev: #161c2b; --bg-panel: #131927; --border: #2a3345; --text: #e6e9ef; --muted: #98a2b3; --grid: #2a3345;
+    --accent: #4ade80; --focus: #93c5fd;
+    --c-frontend: #60a5fa; --c-gateway: #f59e0b; --c-service: #34d399; --c-data: #a78bfa; --c-messaging: #f472b6;
+    --c-provider: #fb923c; --c-obs: #22d3ee; --c-deploy: #94a3b8; --c-security: #f87171; --c-batch: #facc15; --c-ci: #c084fc; --c-actor: #e5e7eb;
+    --e-sync-public: #60a5fa; --e-sync-internal: #34d399; --e-async-kafka: #f472b6; --e-async-outbox: #f9a8d4; --e-data: #a78bfa;
+    --e-provider: #fb923c; --e-observability: #22d3ee; --e-deploy: #94a3b8;
+    --node-fill-alpha: 0.16;
+  }
+  :root[data-theme="light"] { --bg: #f7f8fa; --bg-elev: #ffffff; --bg-panel: #ffffff; --border: #d5dae3; --text: #111827; --muted: #5b6474; --grid: #d9dee7; --focus: #2563eb;
+    --c-frontend: #2563eb; --c-gateway: #d97706; --c-service: #059669; --c-data: #7c3aed; --c-messaging: #db2777; --c-provider: #ea580c; --c-obs: #0891b2; --c-deploy: #475569; --c-security: #dc2626; --c-batch: #ca8a04; --c-ci: #9333ea; --c-actor: #374151;
+    --e-sync-public: #2563eb; --e-sync-internal: #059669; --e-async-kafka: #db2777; --e-async-outbox: #be185d; --e-data: #7c3aed; --e-provider: #ea580c; --e-observability: #0891b2; --e-deploy: #475569; --node-fill-alpha: 0.10; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #f7f8fa; --bg-elev: #ffffff; --bg-panel: #ffffff; --border: #d5dae3; --text: #111827; --muted: #5b6474; --grid: #d9dee7; --focus: #2563eb;
+    --c-frontend: #2563eb; --c-gateway: #d97706; --c-service: #059669; --c-data: #7c3aed; --c-messaging: #db2777; --c-provider: #ea580c; --c-obs: #0891b2; --c-deploy: #475569; --c-security: #dc2626; --c-batch: #ca8a04; --c-ci: #9333ea; --c-actor: #374151;
+    --e-sync-public: #2563eb; --e-sync-internal: #059669; --e-async-kafka: #db2777; --e-async-outbox: #be185d; --e-data: #7c3aed; --e-provider: #ea580c; --e-observability: #0891b2; --e-deploy: #475569; --node-fill-alpha: 0.10; } }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body { background: var(--bg); color: var(--text); font: 12px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; }
+  header { padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg-elev); display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 16px; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); background: var(--bg); }
+  .toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--bg-elev); flex-wrap: wrap; }
+  .tabs { display: flex; gap: 4px; }
+  button, input[type="search"] { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button[aria-pressed="true"], .filter[aria-pressed="true"] { background: var(--bg-panel); border-color: var(--text); }
+  .filter[aria-pressed="false"] { opacity: 0.45; text-decoration: line-through; }
+  .filter[disabled] { opacity: 0.45; cursor: not-allowed; text-decoration: none; }
+  .filter .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  button:focus-visible, input:focus-visible, .node:focus-visible, .legend-head:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .node:focus-visible rect { stroke: var(--focus) !important; stroke-width: 3; }
+  input[type="search"] { width: 220px; }
+  .spacer { flex: 1; }
+  main { flex: 1; display: flex; min-height: 0; }
+  #stage { flex: 1; position: relative; overflow: hidden; cursor: grab; background-color: var(--bg);
+    background-image: radial-gradient(var(--grid) 1px, transparent 1px); background-size: 22px 22px; }
+  #stage.dragging { cursor: grabbing; }
+  #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  svg.view { display: none; overflow: visible; }
+  svg.view.active { display: block; }
+  .node { cursor: pointer; transition: opacity .15s; }
+  .node rect { fill: var(--nc); fill-opacity: var(--node-fill-alpha); stroke: var(--nc); stroke-width: 1.5; rx: 8; }
+  .node.gateway rect { stroke-width: 3.5; }
+  .node:hover rect { fill-opacity: 0.32; }
+  .node .title { font-size: 12px; font-weight: 700; fill: var(--text); }
+  .node .meta { font-size: 10px; fill: var(--muted); }
+  .node.hit rect { stroke: var(--text); stroke-width: 3; }
+  .node.selected rect { stroke: var(--text); stroke-width: 3; fill-opacity: 0.34; }
+  .dim { opacity: 0.16; }
+  .edge { fill: none; stroke: var(--ec); stroke-width: 1.5; }
+  .edge.optional { stroke-dasharray: 4 4; opacity: 0.55; }
+  .edge-label { font-size: 9px; fill: var(--muted); text-anchor: middle; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+  .edge-label.optional { opacity: 0.7; }
+  .edge-group.dim { opacity: 0.08; }
+  .k-sync-public { --ec: var(--e-sync-public); }
+  .k-sync-internal { --ec: var(--e-sync-internal); stroke-dasharray: 6 3; }
+  .k-async-kafka { --ec: var(--e-async-kafka); stroke-dasharray: 2 4; }
+  .k-async-outbox { --ec: var(--e-async-outbox); stroke-dasharray: 8 3 2 3; }
+  .k-data { --ec: var(--e-data); }
+  .k-provider { --ec: var(--e-provider); stroke-dasharray: 10 4; }
+  .k-observability { --ec: var(--e-observability); stroke-dasharray: 1 3; }
+  .k-deploy { --ec: var(--e-deploy); stroke-dasharray: 3 3; }
+  .hidden { display: none !important; }
+  #panel { width: 340px; flex: none; border-left: 1px solid var(--border); background: var(--bg-panel); overflow: auto; padding: 14px 16px; }
+  #panel h2 { margin: 0 0 6px; font-size: 15px; }
+  #panel h3 { margin: 14px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  #panel ul { margin: 0; padding-left: 16px; }
+  #panel li { margin: 2px 0; overflow-wrap: anywhere; }
+  #panel code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+  .catpill { display: inline-block; font-size: 10px; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; margin-bottom: 8px; }
+  .empty { color: var(--muted); }
+  .conn { display: grid; grid-template-columns: 14px 1fr; gap: 6px; align-items: baseline; margin: 3px 0; }
+  .conn .sw { width: 12px; height: 3px; border-radius: 2px; margin-top: 7px; }
+  .conn button { padding: 0; border: 0; background: none; color: var(--text); text-decoration: underline; cursor: pointer; font-size: 12px; }
+  #legend { position: absolute; left: 12px; bottom: 12px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; width: 420px; max-width: calc(100% - 24px); box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+  .legend-head { padding: 6px 10px; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); }
+  #legend.collapsed .legend-body { display: none; }
+  #legend.collapsed .legend-head { border-bottom: 0; }
+  .legend-body { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; padding: 8px 10px; }
+  .legend-body .row { display: flex; align-items: center; gap: 6px; }
+  .legend-body .sq { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid; }
+  .legend-body .ln { width: 24px; height: 0; border-top: 2px solid; }
+  .legend-body .hint { grid-column: 1 / -1; color: var(--muted); font-size: 11px; padding-top: 4px; border-top: 1px dashed var(--border); }
+  @media print {
+    @page { size: A3 landscape; margin: 10mm; }
+    body { overflow: visible; background: #fff; color: #000; }
+    header, .toolbar { display: none; }
+    main { display: block; }
+    #stage { overflow: visible; height: auto; background: #fff; cursor: default; }
+    #world { position: static; transform: none !important; }
+    #panel { display: none; }
+    #legend { position: static; box-shadow: none; width: auto; margin-top: 8px; }
+    .dim { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Dhanvi — Architecture Diagram</h1>
+  <span class="sub">Modular monolith (.NET 10, one PostgreSQL) with two Next.js apps; evidence-based component map.</span>
+  <span class="pills">
+    <span class="pill">.NET 10 · ASP.NET Core minimal APIs</span><span class="pill">EF Core + Npgsql · PostgreSQL 17/18</span>
+    <span class="pill">Next.js 16 · React 19 · npm workspaces</span><span class="pill">Razorpay TEST (incoming)</span><span class="pill">FAKE payouts</span>
+    <span class="pill">Docker Compose only · no K8s · no CI workflow</span>
+  </span>
+</header>
+<div class="toolbar" role="toolbar" aria-label="Diagram controls">
+  <div class="tabs" role="tablist"><button id="tab-overview" aria-pressed="false" data-view="overview">Overview</button><button id="tab-detailed" aria-pressed="true" data-view="detailed">Detailed</button></div>
+  <input id="search" type="search" placeholder="Search nodes (id, title, config…)" aria-label="Search nodes">
+  <div id="filters" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+  <span class="spacer"></span>
+  <button id="showall">Show all</button><button id="reset">Reset view</button><button id="theme">Theme</button><button id="print">Print</button>
+</div>
+<main>
+  <div id="stage">
+    <div id="world"><svg class="view active" id="svg-detailed"></svg><svg class="view" id="svg-overview"></svg></div>
+    <div id="legend"><div class="legend-head" tabindex="0" role="button" aria-expanded="true"><span>Legend</span><span>▾</span></div><div class="legend-body" id="legend-body"></div></div>
+  </div>
+  <aside id="panel" aria-live="polite"><p class="empty">Select a node to see its ownership, configuration, routes and connections. Drag to pan, scroll to zoom.</p></aside>
+</main>
+<script>
+/* ---------------- Data model ---------------- */
+const CATS = {
+  frontend:  { label: "Frontend",           color: "var(--c-frontend)" },
+  gateway:   { label: "HTTP host (entry)",  color: "var(--c-gateway)" },
+  service:   { label: "Backend module",     color: "var(--c-service)" },
+  data:      { label: "Data store",         color: "var(--c-data)" },
+  messaging: { label: "Messaging",          color: "var(--c-messaging)" },
+  provider:  { label: "External provider",  color: "var(--c-provider)" },
+  obs:       { label: "Observability",      color: "var(--c-obs)" },
+  deploy:    { label: "Deployment",         color: "var(--c-deploy)" },
+};
+const FILTER_GROUPS = [
+  ["Frontend", ["frontend"]], ["Services", ["gateway", "service"]], ["Data stores", ["data"]], ["Messaging", ["messaging"]],
+  ["External providers", ["provider"]], ["Observability", ["obs"]], ["Deployment", ["deploy"]],
+];
+/* Sourced from: docker-compose.yml, .env.example, package.json, apps/user-web/{package.json,next.config.ts,.env.example,Dockerfile},
+   apps/admin-web/{package.json,next.config.ts,.env.example,Dockerfile}, apps/<m>/src/shell/*.tsx, packages/<m>/package.json,
+   packages/config/src/env.ts, packages/api-client/src/*.ts, packages/auth/src/*.ts, packages/features/src/payments/payment-checkout.tsx,
+   backend/Dockerfile, backend/src/Dhanvi.Api/{Program.cs,appsettings.json,appsettings.Development.json,appsettings.Testing.json},
+   backend/src/Dhanvi.Api/Infrastructure/OpenTelemetryExtensions.cs, backend/src/Dhanvi.Api/Middleware/*.cs,
+   backend/src/Modules/<m>/README.md, backend/src/Modules/<m>/*.Api/*Endpoints.cs, backend/src/Modules/<m>/*.Infrastructure/*Module.cs,
+   backend/src/Modules/<m>/*.Infrastructure/Persistence/*DbContext.cs and Migrations/*, backend/src/Modules/Identity/<m>/IdentitySeeder.cs,
+   backend/src/Modules/Identity/<m>/Email/NullEmailSender.cs, backend/src/Modules/Payments/<m>/RazorpayGateway.cs, PaymentsModule.cs,
+   backend/src/Modules/Payments/<m>/Persistence/PaymentDatabaseProtections.cs, backend/src/Modules/Payouts/<m>/FakePayoutGateway.cs, PayoutsModule.cs,
+   backend/tests/Dhanvi.IntegrationTests/{Database/TestPostgres.cs,Api/DhanviApiFactory.cs,Api/FakePaymentGateway.cs}, tools/verify-random-draw.py,
+   docs/frontend-apps.md, docs/prompt-8-verification.md, docs/razorpay-test-smoke-report.md, README.md. */
+const INFO = {
+  browser: { cat: "frontend", title: "Member / Organizer browser", summary: "Any modern browser. Loads the member app and Razorpay's hosted Checkout script directly. Session is an HttpOnly cookie pair scoped to the host, so one sign-in covers both apps on localhost.",
+    owned: [], config: [], ports: [], routes: [], topicsOut: [], topicsIn: [], uatProd: "Cookies are SameSite=Strict; Secure flag follows Jwt:SecureCookies (false in Compose/dev, true by default).", optional: [] },
+  adminbrowser: { cat: "frontend", title: "Administrator browser", summary: "Same session mechanism as members; only ADMIN / SUPER_ADMIN accounts pass the admin app's route guard (packages/auth/src/protected-page.tsx). The backend authorises every call independently.",
+    owned: [], config: [], ports: [], routes: [], topicsOut: [], topicsIn: [], uatProd: "", optional: [] },
+  userweb: { cat: "frontend", title: "user-web (Dhanvi member app)", summary: "Next.js 16 App Router app for public, member and organizer flows. Mounts Razorpay Checkout (handler-based; no redirect callback). Old /admin/* URLs redirect to the admin portal (next.config.ts).",
+    owned: [], config: ["NEXT_PUBLIC_API_BASE_URL", "NEXT_PUBLIC_APP_KIND=user", "NEXT_PUBLIC_ADMIN_URL", "NEXT_PUBLIC_MIN_GROUP_MEMBERS (dev/test only)"], ports: ["3000 (next dev -p 3000 / standalone server.js, PORT=3000)"],
+    routes: ["/, /login, /register, /forgot-password, /reset-password", "/dashboard, /profile, /become-organizer, /organizer/application-status", "/groups, /groups/[id], /groups/[id]/cycles/[cycleId]/{auction,selection/verify}, /my-groups", "/contributions, /payments, /payments/[id], /payouts, /payouts/[id], /ledger", "/organizer, /organizer/groups[/create|/[id]|/[id]/applications|/[id]/payouts|/[id]/cycles/[cycleId]/{contributions,auction}], /organizer/applications", "/admin/:path* → 307 to admin-web"],
+    topicsOut: [], topicsIn: [], uatProd: "Production build keeps the 20-member minimum regardless of NEXT_PUBLIC_MIN_GROUP_MEMBERS (packages/config/src/env.ts).", optional: [] },
+  adminweb: { cat: "frontend", title: "admin-web (Dhanvi Admin Portal)", summary: "Next.js 16 app for platform operations: organizer approvals, platform groups, payments & reconciliation, payouts, ledger. No marketing site; / redirects to /dashboard. robots noindex.",
+    owned: [], config: ["NEXT_PUBLIC_API_BASE_URL", "NEXT_PUBLIC_APP_KIND=admin", "NEXT_PUBLIC_USER_APP_URL", "NEXT_PUBLIC_MIN_GROUP_MEMBERS (dev/test only)"], ports: ["3001 (next dev -p 3001 / PORT=3001)"],
+    routes: ["/login, /dashboard, /organizers, /profile", "/groups, /groups/create, /groups/[id], /groups/[id]/cycles/[cycleId]/{contributions,auction}", "/payments, /payments/[id]", "/payouts, /payouts/[id]", "/ledger, /ledger/trial-balance, /ledger/accounts, /ledger/journals/[id], /ledger/groups/[groupId]"],
+    topicsOut: [], topicsIn: [], uatProd: "", optional: [] },
+  packages: { cat: "frontend", title: "Shared frontend packages (@dhanvi/*)", summary: "Plain TypeScript workspaces consumed via tsconfig paths: ui (design system + globals.css), api-client (one fetch client with cookie credentials and a single 401 refresh), auth (AuthProvider, ProtectedPage, roles), types, utils (formatting, status catalog, guidance), config (env), features (screens, shells, workflow guidance).",
+    owned: [], config: ["packages/config/src/env.ts reads NEXT_PUBLIC_API_BASE_URL, NEXT_PUBLIC_APP_KIND, NEXT_PUBLIC_USER_APP_URL, NEXT_PUBLIC_ADMIN_URL, NEXT_PUBLIC_MIN_GROUP_MEMBERS"], ports: [], routes: [], topicsOut: [], topicsIn: [], uatProd: "", optional: [] },
+  api: { cat: "gateway", title: "Dhanvi.Api host (ASP.NET Core modular monolith)", summary: "The single HTTP entrypoint — there is no separate gateway or reverse proxy in the repository. Program.cs composes every module, CORS (explicit origins), JWT bearer/cookie auth, authorization policies, rate limiting, ProblemDetails, correlation IDs, Serilog and OpenTelemetry, then maps all endpoints under /api/v1.",
+    owned: [], config: ["ConnectionStrings:DefaultConnection", "Frontend:Origins[] / Frontend__Origin (';'-separated)", "Database:ApplyMigrations", "Jwt:Issuer, Jwt:Audience, Jwt:SigningKey, Jwt:AccessTokenMinutes=15, Jwt:RefreshTokenDays=30, Jwt:PasswordResetMinutes=30, Jwt:SecureCookies", "PasswordPolicy:*", "GroupPolicy:MinimumMembers / MaximumMembers (20/50 prod; 2/50 Development & Testing)", "ASPNETCORE_ENVIRONMENT, ASPNETCORE_URLS", "OTEL_EXPORTER_OTLP_ENDPOINT (optional)"],
+    ports: ["5000 → container 8080 (Compose BACKEND_PORT; Dockerfile EXPOSE 8080)", "5000 via dotnet run (launchSettings.json)"],
+    routes: ["GET /api/v1/health, GET /api/v1/health/ready", "/swagger, /hangfire (Development environment only)", "Rate limits: 'authentication' 10/min per IP, 'password-reset' 5/15min per IP", "Policies: AuthenticatedUser, OrganizerOnly, AdminOnly (ADMIN|SUPER_ADMIN), SuperAdminOnly"],
+    topicsOut: [], topicsIn: [], uatProd: "Testing environment skips Hangfire registration; Development enables Swagger + Hangfire dashboard + 2-member groups. Compose sets Database__ApplyMigrations=true.", optional: ["Hangfire server is registered (PostgreSQL storage) but no recurring or enqueued jobs exist anywhere in the code — dormant."] },
+  identity: { cat: "service", title: "Identity module", summary: "Registration, login, refresh-token rotation (SHA-256 hashed, reuse-protected), logout, forgot/reset password, profile & password change, roles (USER, ORGANIZER, ADMIN, SUPER_ADMIN). Writes HttpOnly cookies dhanvi_access / dhanvi_refresh.",
+    owned: ["schema identity: users, roles, user_roles, refresh_tokens, password_reset_tokens, email_verification_tokens"], config: ["Jwt:*", "PasswordPolicy:*", "DHANVI_SEED_ADMIN_ENABLED / _EMAIL / _PASSWORD (IdentitySeeder, idempotent)"], ports: [],
+    routes: ["POST /auth/register, /auth/login, /auth/refresh, /auth/logout, /auth/forgot-password, /auth/reset-password", "GET/PUT /users/me, PUT /users/me/password"], topicsOut: [], topicsIn: [], uatProd: "", optional: ["Email verification tokens table exists but no send/confirm endpoint or provider is implemented.", "IEmailSender is NullEmailSender (logs only)."] },
+  organizers: { cat: "service", title: "Organizers module", summary: "Organizer application, admin approval/rejection/suspension; approval assigns the ORGANIZER role through the Identity contract and records an audit entry in the same transaction.",
+    owned: ["schema organizers: organizer_profiles, organizer_applications"], config: [], ports: [], routes: ["POST /organizers/apply, GET /organizers/me", "GET /admin/organizer-applications, POST /admin/organizer-applications/{id}/approve|reject, POST /admin/organizers/{userId}/suspend"], topicsOut: [], topicsIn: [], uatProd: "", optional: [] },
+  groups: { cat: "service", title: "Groups module (+ Memberships, Cycles, Contributions domains)", summary: "Group aggregate: rules versions/hash, membership applications, terms acceptance, readiness, activation (creates the full monthly schedule), manual contribution records/reversals, overdue marking, idempotency receipts, financial settlement contract used by Payments. Memberships/Cycles/Contributions are domain-only projects inside this boundary.",
+    owned: ["schema groups: Groups, GroupMemberships, GroupRuleVersions, GroupTermsAcceptances, GroupAuditEvents, MonthlyCycles, Contributions, ContributionEntries, IdempotencyRecords (+ SelectionResults, SelectionEligibleMembers, Auctions, AuctionBids, AuctionResults, AuctionBenefitAllocations owned by RandomDraws/Auctions but persisted through GroupsDbContext)"],
+    config: ["GroupPolicy:MinimumMembers / MaximumMembers", "Payment_RazorpayEnabled (gates Razorpay collection mode on group creation)"], ports: [],
+    routes: ["GET /groups, /groups/{id}; POST /groups/{id}/applications|accept-terms|confirm-ready; GET /groups/{id}/organizer/contact; GET /my-groups", "/organizer/groups[/...] and /admin/groups[/...]: create, update, publish, confirm-ready, cancel, suspend (admin), applications approve/reject, members", "POST /groups/{id}/activate; GET /groups/{id}/cycles[/{cycleId}], /groups/{id}/my-contributions, /me/contributions", "/{organizer|admin}/groups/{id}/cycles/{cycleId}/contributions[/{id}/record|reverse], POST .../mark-overdue"],
+    topicsOut: [], topicsIn: [], uatProd: "Development/Testing allow 2–50 members; production 20–50 (DevelopmentGroupMemberRange migration + GroupMemberPolicy).", optional: [] },
+  randomdraws: { cat: "service", title: "RandomDraws module (DHANVI_RANDOM_V1)", summary: "Seed-committed, verifiable random selection and organizer-reserved first-cycle selection. Persists immutable SelectionResults and eligible snapshots through the Groups transaction; exposes a public verification proof (tools/verify-random-draw.py reproduces it).",
+    owned: ["groups.SelectionResults, groups.SelectionEligibleMembers (via GroupsDbContext)"], config: [], ports: [], routes: ["GET /groups/{g}/cycles/{c}/selection, /selection/preview, /selection/verify; POST /selection (execute)"], topicsOut: [], topicsIn: [], uatProd: "", optional: [] },
+  auctions: { cat: "service", title: "Auctions module (DHANVI_AUCTION_V1)", summary: "Discount bidding with integer-paise exactness, open/close window enforced server-side, immutable bids and results, benefit allocations and platform fee calculation feeding the Ledger.",
+    owned: ["groups.Auctions, AuctionBids, AuctionResults, AuctionBenefitAllocations (via GroupsDbContext)"], config: [], ports: [], routes: ["GET /groups/{g}/cycles/{c}/auction, /auction/my-bids, /auction/result; POST /auction/bids (Idempotency-Key), /auction/open, /auction/close"], topicsOut: [], topicsIn: [], uatProd: "", optional: [] },
+  payments: { cat: "service", title: "Payments module (Razorpay TEST, incoming)", summary: "Creates Razorpay orders from backend-authoritative contribution amounts, verifies Checkout signatures (HMAC over order|payment with the key secret), verifies webhooks (HMAC over raw body with the webhook secret), reconciles with the provider, settles contributions and posts Ledger journals exactly once (advisory locks + immutable event history).",
+    owned: ["schema payments: Payments, PaymentHistory (append-only, DB triggers), PaymentProviderEvents (immutable), PaymentRefunds"], config: ["Payment_RazorpayEnabled, Payment_RazorpayKeyId, Payment_RazorpayKeySecret, Payment_RazorpayCheckoutReturnBaseUrl, Payment_WebhookEnabled, Payment_WebhookSecret", "Legacy aliases: Payments:Razorpay:Enabled, RAZORPAY_ENVIRONMENT (must be TEST), RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET"], ports: [],
+    routes: ["GET /contributions/{id}/payment-eligibility; POST /contributions/{id}/payments (Idempotency-Key)", "GET /payments, /payments/{id}; POST /payments/{id}/verify, /payments/{id}/refresh", "GET /admin/payments, /admin/payments/{id}; POST /admin/payments/{id}/reconcile", "POST /payments/webhooks/razorpay (anonymous; signature required)"],
+    topicsOut: [], topicsIn: [], uatProd: "Startup validation rejects anything but rzp_test_ keys and Environment=TEST; production mode is disabled by design.", optional: ["Public webhook delivery requires a public HTTPS URL (not part of the local setup)."] },
+  payouts: { cat: "service", title: "Payouts module (FAKE provider only)", summary: "Prepares cycle settlement obligations (winner payout, member auction benefit, platform fee) from funded selections, admin approval of beneficiary, execution through an in-database fake provider, retry and reconciliation, member payout accounts with a 24-hour hold.",
+    owned: ["schema payouts: PayoutObligations, PayoutAttempts, PayoutBeneficiaries, PayoutProviderEvents, PayoutReconciliationHistory, FakeProviderPayouts"], config: ["Payouts:Provider (must be FAKE; anything else throws at startup)", "Payouts:Fake:Outcome = Success | Pending | Failed"], ports: [],
+    routes: ["GET /me/payouts, /me/payouts/{id}; GET/POST /users/me/payout-account", "GET /organizer/groups/{groupId}/payouts", "GET /admin/payouts, /admin/payouts/{id}; POST /admin/payouts/{id}/approve|execute|retry|reconcile", "POST /admin/cycles/{cycleId}/prepare-settlement, /admin/cycles/{cycleId}/evaluate-settlement"],
+    topicsOut: [], topicsIn: [], uatProd: "No HTTP payout provider adapter exists; RazorpayX or any production payout rail is intentionally absent.", optional: [] },
+  ledger: { cat: "service", title: "Ledger module (double-entry)", summary: "Immutable, balanced journal entries with reversal-only corrections, per-line dimensions (group, cycle, membership, payment, contribution), seeded chart of accounts (incl. 1010 payment gateway clearing, 2000 group pool liability), trial balance and member ledger views.",
+    owned: ["schema ledger: LedgerAccounts, JournalEntries, JournalLines"], config: [], ports: [], routes: ["GET /admin/ledger/journals[/{id}], /admin/ledger/trial-balance, /admin/ledger/accounts[/{code}/balance], /admin/ledger/groups/{groupId}[/balances]", "GET /me/ledger"], topicsOut: [], topicsIn: [], uatProd: "", optional: [] },
+  audit: { cat: "service", title: "Audit module", summary: "Append-only platform audit log written in the same database transaction as identity, organizer, payment and ledger actions (AuditDbContext enlisted on the caller's connection).",
+    owned: ["schema audit: audit_logs"], config: [], ports: [], routes: ["No HTTP endpoints — there is no audit browser API in this release."], topicsOut: [], topicsIn: [], uatProd: "", optional: [] },
+  shared: { cat: "service", title: "SharedKernel", summary: "Cross-module primitives: BusinessRuleException/NotFound/Forbidden, IDateTimeProvider, BusinessCalendar (Asia/Kolkata business dates), IdempotencyRecord. Referenced by every module; architecture tests enforce layer dependencies.",
+    owned: [], config: [], ports: [], routes: [], topicsOut: [], topicsIn: [], uatProd: "", optional: [] },
+  planned: { cat: "service", title: "Planned modules: Admin, Notifications (README only)", summary: "backend/src/Modules/Admin and Notifications contain only a README placeholder. No projects, code or wiring exist — shown here so nobody assumes they are implemented.",
+    owned: [], config: [], ports: [], routes: [], topicsOut: [], topicsIn: [], uatProd: "", optional: ["Dormant: documentation-only placeholders."] },
+  postgres: { cat: "data", title: "PostgreSQL (single server, one database)", summary: "One database with one schema and one __EFMigrationsHistory per module; migrations applied at API startup when Database:ApplyMigrations=true (Compose) or via dotnet ef. Database triggers protect payment history/event immutability and settlement consistency. Advisory locks and SELECT … FOR UPDATE guard concurrent settlement.",
+    owned: ["schemas: identity, organizers, audit, groups, ledger, payments, payouts, hangfire"], config: ["POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_PORT (Compose)", "ConnectionStrings__DefaultConnection (backend)"], ports: ["5432 (Compose postgres:17-alpine; local dev used PostgreSQL 18)"], routes: [], topicsOut: [], topicsIn: [], uatProd: "Integration tests use Testcontainers PostgreSQL or DHANVI_TEST_POSTGRES.", optional: [] },
+  hangfire: { cat: "data", title: "Hangfire storage (schema hangfire)", summary: "Hangfire.PostgreSql storage and server are registered outside the Testing environment, and the dashboard is mapped in Development. No RecurringJob/BackgroundJob is ever scheduled in the code base, so this is dormant infrastructure.",
+    owned: ["schema hangfire (created by Hangfire.PostgreSql)"], config: ["Uses ConnectionStrings:DefaultConnection"], ports: [], routes: ["/hangfire dashboard (Development only)"], topicsOut: [], topicsIn: [], uatProd: "", optional: ["Dormant: no jobs enqueued or scheduled."] },
+  razorpay: { cat: "provider", title: "Razorpay API (TEST mode)", summary: "https://api.razorpay.com/v1 — orders, payments, order payments, refunds observed. Basic auth with Key ID + Key Secret from the backend only. 15s timeout; error payloads are never logged.",
+    owned: [], config: ["Payment_RazorpayKeyId / Payment_RazorpayKeySecret (backend only)"], ports: ["443"], routes: ["POST orders; GET orders/{id}, orders?receipt=…, orders/{id}/payments, payments/{id}"], topicsOut: ["Webhooks: payment.authorized, payment.captured, payment.failed, order.paid, refund.created, refund.processed, refund.failed, payment.refunded → POST /api/v1/payments/webhooks/razorpay"], topicsIn: [], uatProd: "TEST keys only; production keys are rejected at startup.", optional: ["Webhook delivery to localhost is not reachable without a public tunnel."] },
+  checkoutjs: { cat: "provider", title: "Razorpay Checkout (checkout.razorpay.com)", summary: "Hosted checkout.js loaded by the member browser from packages/features/src/payments/payment-checkout.tsx. Receives the public rzp_test_ key, backend-created order id, backend amount, INR and the internal Payment id in notes. Its JavaScript handler posts the three response fields to the API for verification.",
+    owned: [], config: [], ports: ["443"], routes: [], topicsOut: [], topicsIn: [], uatProd: "", optional: [] },
+  fakepayout: { cat: "provider", title: "Fake payout provider (in-process)", summary: "FakePayoutGateway simulates fund accounts and payouts, persisting to payouts.FakeProviderPayouts so requests survive restarts. Outcome is chosen by Payouts:Fake:Outcome. No network calls, credentials or production adapter exist.",
+    owned: ["payouts.FakeProviderPayouts"], config: ["Payouts:Provider=FAKE", "Payouts:Fake:Outcome"], ports: [], routes: [], topicsOut: [], topicsIn: [], uatProd: "", optional: ["Stand-in for a real payout rail; not an external system."] },
+  email: { cat: "provider", title: "Email (NullEmailSender)", summary: "IEmailSender is registered as NullEmailSender, which only logs that a password-reset was requested. No SMTP/API provider is configured.",
+    owned: [], config: [], ports: [], routes: [], topicsOut: [], topicsIn: [], uatProd: "Configure a real IEmailSender before production.", optional: ["Dormant: log-only implementation."] },
+  serilog: { cat: "obs", title: "Serilog (JSON console)", summary: "Structured JSON logs to stdout, enriched with Application=Dhanvi.Api and CorrelationId (pushed by CorrelationIdMiddleware from X-Correlation-ID or the trace id). Request logging via UseSerilogRequestLogging. EF command logging at Warning in production config, Debug in Development.",
+    owned: [], config: ["Serilog:MinimumLevel:* (appsettings.json / appsettings.Development.json)"], ports: [], routes: ["Response header X-Correlation-ID on every request"], topicsOut: [], topicsIn: [], uatProd: "", optional: [] },
+  otel: { cat: "obs", title: "OpenTelemetry (traces + metrics)", summary: "ASP.NET Core, HttpClient and runtime instrumentation are always on; the OTLP exporter is added only when OTEL_EXPORTER_OTLP_ENDPOINT is set. No collector, Prometheus, Grafana or Jaeger is defined in the repository.",
+    owned: [], config: ["OTEL_EXPORTER_OTLP_ENDPOINT (optional)"], ports: [], routes: [], topicsOut: [], topicsIn: [], uatProd: "", optional: ["OTLP export is dormant unless the endpoint variable is provided; no collector ships with Compose."] },
+  health: { cat: "obs", title: "Health, Swagger & dashboards", summary: "GET /api/v1/health (JSON status) and /api/v1/health/ready (ASP.NET health checks, no DB check registered). Swagger UI and the Hangfire dashboard are mapped only in Development. Compose healthchecks exist for postgres (pg_isready) but not for the apps.",
+    owned: [], config: [], ports: [], routes: ["/api/v1/health, /api/v1/health/ready, /swagger (dev), /hangfire (dev)"], topicsOut: [], topicsIn: [], uatProd: "", optional: [] },
+  compose: { cat: "deploy", title: "docker-compose.yml", summary: "Services: postgres (postgres:17-alpine, volume dhanvi-postgres-data, healthcheck), backend (backend/Dockerfile, Development environment, migrations on start), user-web and admin-web (workspace-aware Dockerfiles, standalone Next output). Root .env supplies variables; .env.example documents them.",
+    owned: ["volume dhanvi-postgres-data"], config: ["POSTGRES_*, BACKEND_PORT=5000, FRONTEND_PORT=3000, ADMIN_PORT=3001, FRONTEND_ORIGIN, USER_APP_URL, ADMIN_APP_URL, NEXT_PUBLIC_API_BASE_URL, JWT_SIGNING_KEY, DHANVI_SEED_ADMIN_*, PAYMENTS_RAZORPAY_ENABLED, RAZORPAY_ENVIRONMENT, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET"], ports: ["5432, 5000→8080, 3000, 3001"], routes: [], topicsOut: [], topicsIn: [], uatProd: "This is the only deployment definition. No Kubernetes, Helm, Terraform or cloud manifests exist.", optional: [] },
+  images: { cat: "deploy", title: "Container images (3 Dockerfiles)", summary: "backend/Dockerfile: dotnet/sdk:10.0 build → dotnet/aspnet:10.0 runtime, EXPOSE 8080. apps/user-web/Dockerfile and apps/admin-web/Dockerfile: node:22-alpine, npm ci for the workspace, next build (standalone traced from the workspace root), non-root user, CMD node apps/<app>/server.js.",
+    owned: [], config: ["Build args NEXT_PUBLIC_API_BASE_URL, NEXT_PUBLIC_USER_APP_URL, NEXT_PUBLIC_ADMIN_URL are baked in at build time"], ports: ["8080 (backend), 3000 (user-web), 3001 (admin-web)"], routes: [], topicsOut: [], topicsIn: [], uatProd: "", optional: [] },
+  migrate: { cat: "deploy", title: "Startup migrations & seeders", summary: "When Database:ApplyMigrations=true, Program.cs migrates Audit, Identity, Organizers, Groups, Ledger, Payments and Payouts contexts in order, then runs LedgerSeeder (chart of accounts, idempotent) and IdentitySeeder (optional super admin). There is no separate migration job.",
+    owned: [], config: ["Database:ApplyMigrations", "DHANVI_SEED_ADMIN_ENABLED / _EMAIL / _PASSWORD"], ports: [], routes: [], topicsOut: [], topicsIn: [], uatProd: "Manual path: dotnet ef database update per module context (README).", optional: [] },
+  tests: { cat: "deploy", title: "Automated verification (local)", summary: "backend: Dhanvi.UnitTests, Dhanvi.ArchitectureTests, Dhanvi.IntegrationTests (WebApplicationFactory + Testcontainers PostgreSQL, FakePaymentGateway). Frontend workspace: eslint, tsc, node --test tests/*.test.mjs, next build per app. No CI workflow (.github/, GitLab CI, etc.) exists — all checks run locally.",
+    owned: [], config: ["DHANVI_TEST_POSTGRES (optional test-server connection instead of Testcontainers)"], ports: [], routes: [], topicsOut: [], topicsIn: [], uatProd: "", optional: ["CI/CD pipeline: not implemented in this repository."] },
+};
+const SHORT_LABEL = {
+  browser: "Member / Organizer browser", adminbrowser: "Admin browser", userweb: "user-web · :3000", adminweb: "admin-web · :3001", packages: "@dhanvi/* packages",
+  api: "Dhanvi.Api host :5000→8080", identity: "Identity", organizers: "Organizers", groups: "Groups · Memberships · Cycles", randomdraws: "RandomDraws (RANDOM_V1)", auctions: "Auctions (AUCTION_V1)",
+  payments: "Payments (Razorpay TEST)", payouts: "Payouts (FAKE provider)", ledger: "Ledger (double-entry)", audit: "Audit", shared: "SharedKernel", planned: "Admin / Notifications (docs)",
+  postgres: "PostgreSQL · :5432", hangfire: "Hangfire storage (dormant)", razorpay: "Razorpay API (TEST)", checkoutjs: "Razorpay Checkout.js", fakepayout: "Fake payout provider", email: "NullEmailSender (log only)",
+  serilog: "Serilog JSON console", otel: "OpenTelemetry (OTLP opt.)", health: "Health · Swagger · Hangfire UI", compose: "docker-compose.yml", images: "Dockerfiles (3)", migrate: "Startup migrations + seed", tests: "Local test suites (no CI)",
+};
+const META = {
+  browser: "actor · cookies dhanvi_access/refresh", adminbrowser: "actor · ADMIN / SUPER_ADMIN", userweb: "Next.js 16 · apps/user-web", adminweb: "Next.js 16 · apps/admin-web", packages: "ui · api-client · auth · types · utils · config · features",
+  api: "ASP.NET Core · /api/v1 · CORS · JWT · rate limits", identity: "schema identity", organizers: "schema organizers", groups: "schema groups", randomdraws: "SelectionResults (groups schema)", auctions: "Auction* tables (groups schema)",
+  payments: "schema payments · Razorpay TEST", payouts: "schema payouts · FAKE", ledger: "schema ledger · double-entry", audit: "schema audit · append-only", shared: "exceptions · clock · calendar", planned: "no code · dormant",
+  postgres: "schemas per module · EF migrations", hangfire: "server registered · no jobs", razorpay: "api.razorpay.com/v1 · Basic auth", checkoutjs: "loaded by member browser", fakepayout: "in-process · payouts.FakeProviderPayouts", email: "dormant · IEmailSender",
+  serilog: "stdout · X-Correlation-ID", otel: "traces + metrics", health: "/health · /health/ready", compose: "postgres · backend · user-web · admin-web", images: "dotnet 10 · node 22", migrate: "Database:ApplyMigrations", tests: "unit · architecture · integration · node --test",
+};
+
+/* ---------------- View builders ---------------- */
+const NW = 196, NH = 62, GX = 26, GY = 74;
+function mk(id, col, row, cat, opts = {}) { return { id, x: 40 + col * (NW + GX), y: 40 + row * (NH + GY), w: NW, h: NH, cat, label: SHORT_LABEL[id] ?? INFO[id].title, meta: META[id] ?? "", isGateway: !!opts.gateway }; }
+function buildDetailed() {
+  const nodes = [], edges = [];
+  const add = (from, to, kind, label, optional = false) => edges.push({ from, to, kind, label, optional });
+  nodes.push(mk("browser", 0.5, 0, "frontend"), mk("adminbrowser", 3.5, 0, "frontend"));
+  nodes.push(mk("userweb", 0.5, 1, "frontend"), mk("packages", 2, 1, "frontend"), mk("adminweb", 3.5, 1, "frontend"));
+  nodes.push(mk("api", 2, 2, "gateway", { gateway: true }));
+  const mods = ["identity", "organizers", "groups", "randomdraws", "auctions", "payments", "payouts", "ledger", "audit", "shared", "planned"];
+  mods.forEach((id, i) => nodes.push(mk(id, i % 5, 3 + Math.floor(i / 5), "service")));
+  nodes.push(mk("postgres", 0, 6, "data"), mk("hangfire", 1, 6, "data"), mk("razorpay", 2, 6, "provider"), mk("checkoutjs", 3, 6, "provider"), mk("fakepayout", 4, 6, "provider"));
+  nodes.push(mk("email", 4, 7, "provider"), mk("serilog", 0, 7, "obs"), mk("otel", 1, 7, "obs"), mk("health", 2, 7, "obs"));
+  nodes.push(mk("compose", 0, 8, "deploy"), mk("images", 1, 8, "deploy"), mk("migrate", 2, 8, "deploy"), mk("tests", 3, 8, "deploy"));
+  add("browser", "userweb", "sync-public", "HTTPS · pages (:3000)");
+  add("adminbrowser", "adminweb", "sync-public", "HTTPS · pages (:3001)");
+  add("browser", "checkoutjs", "provider", "loads checkout.js · opens Checkout");
+  add("browser", "api", "sync-public", "fetch /api/v1 · credentials: include");
+  add("adminbrowser", "api", "sync-public", "fetch /api/v1 · admin endpoints");
+  add("userweb", "packages", "sync-internal", "imports @dhanvi/* (tsconfig paths)");
+  add("adminweb", "packages", "sync-internal", "imports @dhanvi/* (tsconfig paths)");
+  add("userweb", "adminweb", "sync-public", "/admin/:path* → 307 redirect");
+  add("packages", "api", "sync-internal", "apiClient → NEXT_PUBLIC_API_BASE_URL");
+  ["identity", "organizers", "groups", "randomdraws", "auctions", "payments", "payouts", "ledger"].forEach((m) => add("api", m, "sync-internal", "Map*Endpoints"));
+  add("api", "audit", "sync-internal", "AddAuditModule (no endpoints)");
+  add("api", "shared", "sync-internal", "IDateTimeProvider · exceptions");
+  add("api", "planned", "sync-internal", "not registered", true);
+  add("organizers", "identity", "sync-internal", "role assignment (same tx) · status reader");
+  add("organizers", "audit", "sync-internal", "audit entry");
+  add("identity", "audit", "sync-internal", "USER_* audit entries");
+  add("payments", "groups", "sync-internal", "IContributionSettlementService");
+  add("payments", "ledger", "sync-internal", "ILedgerPostingService");
+  add("payments", "audit", "sync-internal", "PAYMENT_* audit entries");
+  add("randomdraws", "groups", "sync-internal", "selection → cycle");
+  add("auctions", "groups", "sync-internal", "auction → cycle");
+  add("auctions", "ledger", "sync-internal", "selection / allocation journals");
+  add("randomdraws", "ledger", "sync-internal", "selection journal");
+  add("payouts", "ledger", "sync-internal", "IPayoutLedgerReader");
+  add("payouts", "groups", "sync-internal", "ICycleSettlementStore (settlement cycles)");
+  add("ledger", "audit", "sync-internal", "LEDGER_JOURNAL_POSTED");
+  add("groups", "identity", "sync-internal", "IGroupUserDirectory (names)");
+  ["identity", "organizers", "groups", "payments", "payouts", "ledger", "audit"].forEach((m) => add(m, "postgres", "data", "EF Core · own schema"));
+  add("randomdraws", "postgres", "data", "via groups schema");
+  add("auctions", "postgres", "data", "via groups schema");
+  add("api", "hangfire", "data", "Hangfire.PostgreSql storage · no jobs", true);
+  add("payments", "razorpay", "provider", "HTTPS Basic auth · orders/payments");
+  add("razorpay", "api", "provider", "webhook POST /payments/webhooks/razorpay (HMAC)", true);
+  add("checkoutjs", "razorpay", "provider", "hosted payment flow");
+  add("payouts", "fakepayout", "provider", "IPayoutGateway (FAKE)");
+  add("identity", "email", "provider", "IEmailSender → log only", true);
+  add("api", "serilog", "observability", "JSON logs · CorrelationId");
+  add("api", "otel", "observability", "ASP.NET / HttpClient / runtime instrumentation");
+  add("api", "health", "observability", "/health · /swagger (dev) · /hangfire (dev)");
+  add("compose", "images", "deploy", "build: backend, user-web, admin-web");
+  add("compose", "postgres", "deploy", "postgres:17-alpine + volume");
+  add("compose", "api", "deploy", "env: ConnectionStrings, Jwt, Frontend, Razorpay");
+  add("compose", "userweb", "deploy", "PORT 3000 · build args");
+  add("compose", "adminweb", "deploy", "PORT 3001 · build args");
+  add("migrate", "postgres", "deploy", "Migrate 7 contexts · seed ledger/admin");
+  add("tests", "postgres", "deploy", "Testcontainers PostgreSQL", true);
+  return { nodes, edges, W: 5 * (NW + GX) + 80, H: 9 * (NH + GY) + 40 };
+}
+function buildOverview() {
+  const nodes = [], edges = [];
+  const add = (from, to, kind, label, optional = false) => edges.push({ from, to, kind, label, optional });
+  nodes.push(mk("browser", 0, 0, "frontend"), mk("adminbrowser", 3, 0, "frontend"));
+  nodes.push(mk("userweb", 0, 1, "frontend"), mk("packages", 1.5, 1, "frontend"), mk("adminweb", 3, 1, "frontend"));
+  nodes.push(mk("api", 1.5, 2, "gateway", { gateway: true }));
+  nodes.push({ ...mk("cluster", 1.5, 3, "service"), id: "cluster", label: "9 Backend Services (modules)", meta: "Identity · Organizers · Groups · RandomDraws · Auctions · Payments · Payouts · Ledger · Audit" });
+  nodes.push(mk("postgres", 0, 4, "data"), mk("razorpay", 1.5, 4, "provider"), mk("fakepayout", 3, 4, "provider"));
+  nodes.push(mk("serilog", 0, 5, "obs"), mk("otel", 1.5, 5, "obs"), mk("compose", 3, 5, "deploy"));
+  add("browser", "userweb", "sync-public", "HTTPS :3000");
+  add("adminbrowser", "adminweb", "sync-public", "HTTPS :3001");
+  add("browser", "api", "sync-public", "/api/v1 · cookies");
+  add("adminbrowser", "api", "sync-public", "/api/v1 · admin");
+  add("userweb", "packages", "sync-internal", "@dhanvi/*");
+  add("adminweb", "packages", "sync-internal", "@dhanvi/*");
+  add("api", "cluster", "sync-internal", "in-process module calls (/api/v1)");
+  add("cluster", "postgres", "data", "EF Core · 7 schemas + hangfire");
+  add("cluster", "razorpay", "provider", "orders / payments (TEST) · webhooks in", false);
+  add("cluster", "fakepayout", "provider", "FAKE payouts (in-DB)");
+  add("api", "serilog", "observability", "JSON logs");
+  add("api", "otel", "observability", "traces · metrics (OTLP optional)");
+  add("compose", "api", "deploy", "postgres + backend + 2 web apps");
+  return { nodes, edges, W: 4 * (NW + GX) + 80, H: 6 * (NH + GY) + 40 };
+}
+INFO.cluster = { cat: "service", title: "9 Backend Services (modules)", summary: "All modules run in one ASP.NET Core process and share one PostgreSQL database with a schema per module. Switch to the Detailed tab to inspect each module.", owned: ["identity, organizers, groups, ledger, payments, payouts, audit schemas"], config: [], ports: [], routes: ["All under /api/v1"], topicsOut: [], topicsIn: [], uatProd: "", optional: [] };
+
+/* ---------------- Rendering ---------------- */
+const SVG = "http://www.w3.org/2000/svg";
+const views = { detailed: buildDetailed(), overview: buildOverview() };
+const state = { view: "detailed", selected: null, scale: 1, tx: 0, ty: 0, hidden: new Set() };
+function el(tag, attrs = {}, parent) { const n = document.createElementNS(SVG, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; }
+function anchor(n, other) {
+  const cx = n.x + n.w / 2, cy = n.y + n.h / 2, ocx = other.x + other.w / 2, ocy = other.y + other.h / 2;
+  if (Math.abs(ocy - cy) < n.h) return { x: ocx > cx ? n.x + n.w : n.x, y: cy, side: "h" };
+  return { x: cx, y: ocy > cy ? n.y + n.h : n.y, side: "v" };
+}
+function render(name) {
+  const v = views[name], svg = document.getElementById("svg-" + name);
+  svg.innerHTML = ""; svg.setAttribute("width", v.W); svg.setAttribute("height", v.H);
+  const byId = Object.fromEntries(v.nodes.map((n) => [n.id, n]));
+  const seen = new Set(); const placed = []; const eg = el("g", { class: "edges" }, svg);
+  for (const e of v.edges) {
+    const key = e.from + "→" + e.to; if (seen.has(key)) { console.warn("duplicate edge suppressed", key); continue; } seen.add(key);
+    const a = byId[e.from], b = byId[e.to]; if (!a || !b) continue;
+    const p1 = anchor(a, b), p2 = anchor(b, a);
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const c1 = p1.side === "v" ? { x: p1.x, y: p1.y + dy * 0.45 } : { x: p1.x + dx * 0.45, y: p1.y };
+    const c2 = p2.side === "v" ? { x: p2.x, y: p2.y - dy * 0.45 } : { x: p2.x - dx * 0.45, y: p2.y };
+    const d = `M${p1.x},${p1.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${p2.x},${p2.y}`;
+    const g = el("g", { class: "edge-group", "data-from": e.from, "data-to": e.to }, eg);
+    el("path", { d, class: `edge k-${e.kind}${e.optional ? " optional" : ""}` }, g);
+    const text = e.label + (e.optional ? " (optional)" : "");
+    const { x: mx, y: my } = placeLabel(p1, c1, c2, p2, text, placed);
+    const t = el("text", { x: mx, y: my - 3, class: `edge-label${e.optional ? " optional" : ""}` }, g); t.textContent = text;
+  }
+  for (const n of v.nodes) {
+    const g = el("g", { class: `node${n.isGateway ? " gateway" : ""}`, tabindex: "0", role: "button", "data-id": n.id, "data-cat": n.cat, style: `--nc:${CATS[n.cat].color}`, transform: `translate(${n.x},${n.y})` }, svg);
+    g.setAttribute("aria-label", n.label);
+    el("rect", { width: n.w, height: n.h }, g);
+    const t = el("text", { x: 10, y: 24, class: "title" }, g); t.textContent = fit(n.label, 27);
+    const m = el("text", { x: 10, y: 43, class: "meta" }, g); m.textContent = fit(n.meta, 36);
+    g.addEventListener("click", () => select(n.id));
+    g.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select(n.id); } });
+  }
+}
+function fit(s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+/* Labels slide along their curve (t = .5, .38, .62, …) until they no longer collide with an already placed label. */
+function placeLabel(p1, c1, c2, p2, text, placed) {
+  const at = (t) => { const u = 1 - t; return { x: u*u*u*p1.x + 3*u*u*t*c1.x + 3*u*t*t*c2.x + t*t*t*p2.x, y: u*u*u*p1.y + 3*u*u*t*c1.y + 3*u*t*t*c2.y + t*t*t*p2.y }; };
+  const w = text.length * 5.2 + 8; let best = at(0.5);
+  outer: for (const t of [0.5, 0.38, 0.62, 0.28, 0.72, 0.2, 0.8, 0.12, 0.88]) for (const dy of [0, -13, 13, -26, 26]) { const p0 = at(t); const pt = { x: p0.x, y: p0.y + dy }; if (!placed.some((q) => Math.abs(q.y - pt.y) < 12 && Math.abs(q.x - pt.x) < (q.w + w) / 2 + 4)) { best = pt; break outer; } }
+  placed.push({ x: best.x, y: best.y, w }); return best;
+}
+function select(id) {
+  state.selected = id; applyClasses(); renderPanel(id);
+}
+function applyClasses() {
+  const v = views[state.view], svg = document.getElementById("svg-" + state.view);
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  const neighbours = new Set(); if (state.selected) { neighbours.add(state.selected); for (const e of v.edges) { if (e.from === state.selected) neighbours.add(e.to); if (e.to === state.selected) neighbours.add(e.from); } }
+  const matches = (id) => { if (!q) return true; const i = INFO[id]; const hay = [id, i.title, i.summary, ...(i.config || []), ...(i.routes || []), ...(i.owned || [])].join(" ").toLowerCase(); return hay.includes(q); };
+  const visible = new Set();
+  svg.querySelectorAll(".node").forEach((g) => {
+    const id = g.dataset.id, cat = g.dataset.cat, hidden = state.hidden.has(cat);
+    g.classList.toggle("hidden", hidden); if (!hidden) visible.add(id);
+    const hit = q && matches(id);
+    g.classList.toggle("hit", !!hit);
+    g.classList.toggle("selected", id === state.selected);
+    g.classList.toggle("dim", !hidden && ((q && !hit) || (state.selected && !neighbours.has(id))));
+  });
+  svg.querySelectorAll(".edge-group").forEach((g) => {
+    const f = g.dataset.from, t = g.dataset.to;
+    g.classList.toggle("hidden", !visible.has(f) || !visible.has(t));
+    g.classList.toggle("dim", (q && !(matches(f) && matches(t))) || (state.selected && !(f === state.selected || t === state.selected)));
+  });
+}
+function renderPanel(id) {
+  const p = document.getElementById("panel"); const i = INFO[id]; const v = views[state.view];
+  if (!i) { p.innerHTML = '<p class="empty">Select a node to see its ownership, configuration, routes and connections.</p>'; return; }
+  const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  const list = (h, arr, code) => arr && arr.length ? `<h3>${h}</h3><ul>${arr.map((x) => `<li>${code ? "<code>" + esc(x) + "</code>" : esc(x)}</li>`).join("")}</ul>` : "";
+  const conns = v.edges.filter((e) => e.from === id || e.to === id).map((e) => { const other = e.from === id ? e.to : e.from; const dir = e.from === id ? "→" : "←"; return `<div class="conn"><span class="sw" style="background:var(--e-${e.kind})"></span><span>${dir} <button data-go="${other}">${esc(SHORT_LABEL[other] ?? (INFO[other] || {}).title ?? other)}</button> <span class="empty">· ${e.kind}${e.optional ? " · optional" : ""}</span><br><span class="empty">${esc(e.label)}</span></span></div>`; }).join("");
+  p.innerHTML = `<h2>${esc(i.title)}</h2><span class="catpill" style="color:${CATS[i.cat].color}">${CATS[i.cat].label}</span><p>${esc(i.summary)}</p>` +
+    list("Owned state", i.owned) + list("Config keys", i.config, true) + list("Ports", i.ports) + list("Routes", i.routes) + list("Publishes", i.topicsOut) + list("Consumes", i.topicsIn) +
+    (i.uatProd ? `<h3>UAT / Prod differences</h3><p>${esc(i.uatProd)}</p>` : "") + list("Optional features", i.optional) +
+    `<h3>Connections (${v.edges.filter((e) => e.from === id || e.to === id).length})</h3>${conns || '<p class="empty">None in this view.</p>'}`;
+  p.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => select(b.dataset.go)));
+}
+
+/* ---------------- Pan / zoom ---------------- */
+const stage = document.getElementById("stage"), world = document.getElementById("world");
+function applyTransform() { world.style.transform = `translate(${state.tx}px,${state.ty}px) scale(${state.scale})`; }
+function fitView() {
+  const v = views[state.view]; const r = stage.getBoundingClientRect();
+  const s = Math.min((r.width - 40) / v.W, (r.height - 40) / v.H, 1.2); state.scale = Math.max(0.25, Math.min(2.4, s));
+  state.tx = (r.width - v.W * state.scale) / 2; state.ty = 20; applyTransform();
+}
+let drag = null;
+stage.addEventListener("mousedown", (e) => { if (e.target.closest(".node") || e.target.closest("#legend")) return; drag = { x: e.clientX, y: e.clientY, tx: state.tx, ty: state.ty }; stage.classList.add("dragging"); });
+window.addEventListener("mousemove", (e) => { if (!drag) return; state.tx = drag.tx + e.clientX - drag.x; state.ty = drag.ty + e.clientY - drag.y; applyTransform(); });
+window.addEventListener("mouseup", () => { drag = null; stage.classList.remove("dragging"); });
+stage.addEventListener("wheel", (e) => {
+  e.preventDefault(); const r = stage.getBoundingClientRect(); const px = e.clientX - r.left, py = e.clientY - r.top;
+  const next = Math.max(0.25, Math.min(2.4, state.scale * (e.deltaY < 0 ? 1.1 : 0.9)));
+  state.tx = px - (px - state.tx) * (next / state.scale); state.ty = py - (py - state.ty) * (next / state.scale); state.scale = next; applyTransform();
+}, { passive: false });
+
+/* ---------------- Toolbar ---------------- */
+function setView(name) {
+  state.view = name; state.selected = null;
+  document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === name)));
+  document.querySelectorAll("svg.view").forEach((s) => s.classList.toggle("active", s.id === "svg-" + name));
+  applyClasses(); renderPanel(null); fitView();
+}
+document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+document.getElementById("search").addEventListener("input", applyClasses);
+const filters = document.getElementById("filters");
+for (const [label, cats] of FILTER_GROUPS) {
+  const b = document.createElement("button"); b.className = "filter"; b.setAttribute("aria-pressed", "true"); b.innerHTML = `<span class="dot" style="background:${CATS[cats[0]].color}"></span>${label}`;
+  const present = Object.values(views).some((v) => v.nodes.some((n) => cats.includes(n.cat)));
+  if (!present) { b.disabled = true; b.title = "No message broker, queue or outbox exists in this repository"; b.innerHTML += " (none)"; }
+  b.addEventListener("click", () => { const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", String(on)); cats.forEach((c) => on ? state.hidden.delete(c) : state.hidden.add(c)); applyClasses(); });
+  filters.appendChild(b);
+}
+document.getElementById("showall").addEventListener("click", () => { state.hidden.clear(); state.selected = null; document.getElementById("search").value = ""; filters.querySelectorAll(".filter:not([disabled])").forEach((b) => b.setAttribute("aria-pressed", "true")); applyClasses(); renderPanel(null); });
+document.getElementById("reset").addEventListener("click", fitView);
+document.getElementById("print").addEventListener("click", () => window.print());
+const themeBtn = document.getElementById("theme");
+function applyTheme(t) { if (t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme"); themeBtn.textContent = "Theme: " + (t || "auto"); }
+themeBtn.addEventListener("click", () => { const cur = document.documentElement.getAttribute("data-theme"); const next = cur === "dark" ? "light" : cur === "light" ? null : "dark"; try { next ? localStorage.setItem("dhanvi-arch-theme", next) : localStorage.removeItem("dhanvi-arch-theme"); } catch {} applyTheme(next); });
+try { applyTheme(localStorage.getItem("dhanvi-arch-theme")); } catch { applyTheme(null); }
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { state.selected = null; document.getElementById("search").value = ""; applyClasses(); renderPanel(null); } });
+const legend = document.getElementById("legend"), legendHead = legend.querySelector(".legend-head");
+function toggleLegend() { legend.classList.toggle("collapsed"); legendHead.setAttribute("aria-expanded", String(!legend.classList.contains("collapsed"))); legendHead.lastElementChild.textContent = legend.classList.contains("collapsed") ? "▸" : "▾"; }
+legendHead.addEventListener("click", toggleLegend); legendHead.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleLegend(); } });
+const EDGE_KINDS = { "sync-public": "sync · public HTTP", "sync-internal": "sync · in-process / internal", "async-kafka": "async · broker (none in repo)", "async-outbox": "async · outbox (none in repo)", data: "data read/write", provider: "external provider", observability: "telemetry", deploy: "deploy-time" };
+document.getElementById("legend-body").innerHTML = `<div>${Object.entries(CATS).map(([k, c]) => `<div class="row"><span class="sq" style="border-color:${c.color};background:color-mix(in srgb, ${c.color} 20%, transparent)"></span>${c.label}${k === "messaging" ? " (none)" : ""}</div>`).join("")}</div>` +
+  `<div>${Object.entries(EDGE_KINDS).map(([k, l]) => `<div class="row"><span class="ln" style="border-color:var(--e-${k})"></span>${l}</div>`).join("")}<div class="row"><span class="ln" style="border-color:var(--muted);border-top-style:dashed"></span>dashed + faded = optional / dormant</div></div>` +
+  `<div class="hint">Drag to pan · wheel to zoom · click or Enter on a node for details and neighbours · Esc clears · filters hide categories</div>`;
+
+render("detailed"); render("overview"); setView("detailed");
+window.addEventListener("resize", fitView);
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "@dhanvi/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed API client and service modules for the Dhanvi backend",
+  "main": "./src/index.ts",
+  "sideEffects": ["*.css"],
+  "peerDependencies": { "next": "*", "react": "*", "react-dom": "*" }
+}

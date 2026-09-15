@@ -1,0 +1,9 @@
+{
+  "name": "@dhanvi/config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Public runtime configuration (API base URL, app URLs, group policy)",
+  "main": "./src/index.ts",
+  "sideEffects": ["*.css"],
+  "peerDependencies": { "next": "*", "react": "*", "react-dom": "*" }
+}

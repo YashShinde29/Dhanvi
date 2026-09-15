@@ -1,0 +1,9 @@
+{
+  "name": "@dhanvi/auth",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Auth context, role helpers and route guards",
+  "main": "./src/index.ts",
+  "sideEffects": ["*.css"],
+  "peerDependencies": { "next": "*", "react": "*", "react-dom": "*" }
+}

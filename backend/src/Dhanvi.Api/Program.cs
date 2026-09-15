@@ -61,8 +61,13 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+// Explicit browser origins only: the member web app and the admin web app. Never AllowAnyOrigin with credentials.
+// Frontend:Origin (env-friendly, ';' or ',' separated) overrides the Frontend:Origins array from appsettings.
+var frontendOrigins = builder.Configuration["Frontend:Origin"] is { Length: > 0 } single
+    ? single.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    : builder.Configuration.GetSection("Frontend:Origins").Get<string[]>() is { Length: > 0 } configured ? configured : ["http://localhost:3000", "http://localhost:3001"];
 builder.Services.AddCors(options => options.AddPolicy("Frontend", policy => policy
-    .WithOrigins(builder.Configuration["Frontend:Origin"] ?? "http://localhost:3000")
+    .WithOrigins(frontendOrigins)
     .AllowAnyHeader()
     .AllowAnyMethod()
     .AllowCredentials()));

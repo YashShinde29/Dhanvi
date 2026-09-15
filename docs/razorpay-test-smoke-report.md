@@ -1,91 +1,81 @@
 # Razorpay TEST incoming contribution verification
 
-The actual Razorpay TEST payment could not be attempted: none of the six required exported variables was visible to the process executing this task. The external smoke-test portion was stopped before any Razorpay API call. No real order, payment, refund, or provider event was created. No credential values were printed or copied into files.
+Verified on 2026-09-15 against the existing Prompt 8 implementation. An actual Razorpay TEST-mode incoming contribution payment was completed end-to-end: backend order creation, real Razorpay Checkout in the member UI, server-side signature verification, captured settlement, Ledger posting, live reconciliation, and a real full refund with a reversing journal. Prompt 8 and Prompt 9 were not redesigned; no payout, production, or live-mode operation was performed.
 
 ## Environment detection
 
-| Required variable | Process visibility |
+The six exact variables were not inherited by the process running this verification (variables exported in a separate terminal do not reach an already-running parent process). They were supplied to the backend process at launch time only, through a session-local launcher outside the repository, under the exact names below. No credential value was printed, logged, committed, or copied into any repository, test, screenshot, or report file.
+
+| Variable | Result |
 |---|---|
-| `Payment_RazorpayEnabled` | MISSING |
-| `Payment_RazorpayKeyId` | MISSING |
-| `Payment_RazorpayKeySecret` | MISSING |
-| `Payment_RazorpayCheckoutReturnBaseUrl` | MISSING |
-| `Payment_WebhookEnabled` | MISSING |
-| `Payment_WebhookSecret` | MISSING |
+| `Payment_RazorpayEnabled` | `true` |
+| `Payment_RazorpayKeyId` | `rzp_test_****Tunc` (public TEST key) |
+| `Payment_RazorpayKeySecret` | configured |
+| `Payment_RazorpayCheckoutReturnBaseUrl` | `http://localhost:3000/checkout/return` |
+| `Payment_WebhookEnabled` | `true` |
+| `Payment_WebhookSecret` | configured |
 
-These names need to be inherited by the process launching the existing backend. No request to paste or reveal their values is necessary. A variable exported into a separate terminal does not alter an already-running parent process or its other children.
+The working copy of the tracked `.env.example` briefly contained the real values before this run. It was restored to its committed placeholder content; the values were preserved only in the git-ignored root `.env`, which is the documented Compose location. HEAD, all reachable Git history, frontend source, and the production bundle contain none of the three values.
 
-## Minimal integration fixes
+## Configuration binding and startup
 
-- `PaymentsModule.cs` now binds the six exact names. Explicit values, including `false`, take precedence over the older `Payments:Razorpay:Enabled` / `RAZORPAY_*` names. Legacy configuration remains supported.
-- `RazorpayGateway.cs` binds/validates the optional return base URL and webhook switch while retaining the TEST environment and `rzp_test_` key restriction. Invalid configured return URLs fail validation. The key secret and webhook secret remain independent backend options. Webhook verification rejects requests when disabled.
-- `PaymentService.cs` rejects a disabled webhook before signature parsing, provider lookups or financial mutations.
-- `GroupService.cs` recognizes `Payment_RazorpayEnabled` when validating Razorpay collection mode, so enabling the payment module also enables eligible group creation through the existing API.
-- `payment-checkout.tsx` explicitly passes the internal Payment ID in Checkout notes, alongside the existing backend order ID, amount, INR currency and public TEST key. No secrets are added to the Checkout response or frontend.
-- `RazorpayConfigurationTests.cs` tests all six names, environment-provider handling of single underscores, alias precedence, startup validation, TEST-only guards, separate signature secrets and webhook disabling using synthetic fixtures only.
-- `PaymentConfigurationEndpointTests.cs` checks disabled webhook routing without parsing or settlement.
-- `IdentityApiFixture.cs` isolates offline API tests from inherited manual-smoke credentials. Existing contribution payment tests retain `FakePaymentGateway`.
+`PaymentsModule.AddPaymentsModule` binds the six names directly from `IConfiguration` (process environment included by `WebApplication.CreateBuilder`) with `ValidateOnStart`; legacy `Payments:Razorpay:Enabled` / `RAZORPAY_*` names remain as fallbacks. `RazorpayOptions.Valid()` enforces `TEST`, an `rzp_test_` key, a loopback-or-HTTPS return URL, and a webhook secret when webhooks are enabled. The key secret and webhook secret are separate options; the webhook secret is never used for Checkout signatures and vice versa. No code change was required for binding.
 
-The backend is the existing modular monolith, `Dhanvi.Api`, not a separate payment-service executable. `WebApplication.CreateBuilder(args)` includes exported process environment variables, and `AddPaymentsModule` uses that configuration with `ValidateOnStart`. `dotnet run` does not automatically load `services/.env` or the repository `.env`. No dotenv loader, new startup workflow, payment redesign, payout changes, or migration was introduced.
+Backend: `dotnet run --no-launch-profile -c Release` from `backend/src/Dhanvi.Api` with `ASPNETCORE_ENVIRONMENT=Development`, local PostgreSQL 18 database `dhanvi_smoke`, `Database__ApplyMigrations=true`. All module migrations applied (Audit, Identity, Organizers, Groups, Ledger, Payments, Payouts); the Ledger seeder created account `1010` Razorpay test payment gateway clearing and `2000` Group pool liability. Startup validation passed with Razorpay enabled. Backend URL `http://localhost:5000`; frontend `npm run dev` at `http://localhost:3000`.
 
-The existing backend command remains `dotnet run --project backend/src/Dhanvi.Api`, using .NET 10 and the already-required PostgreSQL/JWT settings. The existing frontend command remains `npm run dev` from `frontend`. This verification used the repository's installed .NET 10 SDK because the system default SDK is .NET 9.
+## Checkout return URL
 
-## Checkout and return URL
+The existing Checkout uses Razorpay's JavaScript `handler`, which POSTs `razorpay_order_id`, `razorpay_payment_id`, and `razorpay_signature` to the authenticated `POST /api/v1/payments/{id}/verify`. There is no redirect `callback_url`, so no `/checkout/return` page is required or was added; the configured return base URL is bound and validated but inert. No duplicate return flow was created.
 
-The existing Checkout flow uses the JavaScript `handler` to POST the three Razorpay response fields to the authenticated backend verification endpoint. It does not use a redirect callback, and the repository has no `/checkout/return` route. The supplied return-base setting is now bound and validated, but it does not change this flow or establish a new callback endpoint. Razorpay documents the handler and callback-URL approaches separately; adding a callback URL would bypass the existing handler. [Razorpay Standard Checkout integration](https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/integration-steps/).
+## Scenario built through the public API only
 
-Code inspection confirms that order creation accepts a contribution ID and idempotency key, not a caller-provided amount. The backend reads the eligible member contribution and creates the order from its outstanding amount. Checkout receives a `CheckoutView` containing the internal Payment ID, backend ProviderOrderId, amount in minor units, currency and public key. Key Secret and Webhook Secret are not in that DTO.
+Seeded super admin created a platform group with `collectionMode: RAZORPAY`, value ₹200, two members (Development policy allows 2), start date 2026-09-16. Two registered members applied, were approved, accepted the rules version/hash; admin confirmed readiness and activated. Cycle 1 opened `CollectingContributions` with two ₹100 obligations. Payment eligibility returned `canPay: true`, `remainingAmount: 100.00`.
 
-Verification checks the persisted order ID, the HMAC over persisted order ID and supplied payment ID, fetched provider identity/order/amount/currency/captured state, and the immutable internal amount. Only a verified provider capture settles the contribution. A frontend callback alone is not settlement. Reconciliation mismatches remain on hold rather than being silently corrected.
-
-## Requested smoke-test results
+## Smoke-test results
 
 | Item | Result |
 |---|---|
-| Exported variables detected | No ? all six names listed above are missing |
-| Razorpay gateway startup | Real-credential startup blocked; enabled TEST configuration and startup validation pass with synthetic offline fixtures |
-| Payment-service URL | Existing backend URL: `http://localhost:5000`; no persistent API process was launched for the blocked smoke test |
-| Frontend URL | Existing development URL: `http://localhost:3000`; no persistent frontend process was launched for the blocked smoke test |
-| Actual Razorpay TEST order | NOT ATTEMPTED ? missing environment |
-| Internal Payment ID | None created for an external smoke test |
-| Razorpay Order ID | None created for an external smoke test |
-| Actual Checkout | NOT OPENED ? no real TEST order; integration inspected |
-| Backend signature verification | Existing logic inspected; synthetic signature/API regressions tested offline |
-| Authoritative payment status | No external payment; offline provider capture verifies `CAPTURED` |
-| Contribution financial settlement | No external settlement; offline tests verify `FinanciallySettledAmount` and capture linkage separately from manual recorded status |
-| Ledger journal | No external journal; offline tests verify exactly one capture journal, debit payment-gateway clearing / credit group-pool liability, exact amount and balanced lines |
-| Reconciliation | No actual Razorpay lookup; offline matching, mismatch holds and repeated reconciliation verified |
-| Webhook route | `/api/v1/payments/webhooks/razorpay`; offline route/signature/disabled-switch tests |
-| Public webhook delivery | NOT TESTED; no public endpoint or tunnel created |
-| Refund | No external refund; existing offline full-refund/reversal and post-selection protections retained |
-| Duplicate events / idempotency | Offline regression tests; real-provider duplicates NOT TESTED |
-| Concurrency | Offline PostgreSQL order/verification/webhook/reconciliation concurrency tests; no real-provider concurrency test |
+| Razorpay TEST order creation | `POST /contributions/{id}/payments` with an `Idempotency-Key` and an empty body created internal Payment `e168ca03-…` and Razorpay order `order_TcDSlxt2rJbRwM`, amount 10000 paise (₹100.00) determined by the backend from the obligation, currency INR, environment TEST. Response contained the public `rzp_test_` key only; exact-value scan of the response for both secrets: 0 matches. |
+| Checkout opened | Real Razorpay Checkout (Test Mode ribbon, ₹100, "Dhanvi · Razorpay Test") opened from the member `/contributions` card. Driven headlessly through the actual UI: Pay → Continue to Razorpay → contact → Netbanking → Canara Bank → Razorpay demo bank → Success. |
+| Payment 1 (`e168ca03`, `pay_TcDX885AxaBvae`) | The headless browser was closed before the handler fired, so `/verify` never arrived. Member `POST /payments/{id}/refresh` (live reconciliation) fetched provider order and payment, matched identity/amount/currency/captured state, and settled: `CAPTURED`, `MATCHED`, journal `JRN-000000000001`. This exercised the lost-callback recovery path. |
+| Payment 2 (`d2245411`, `pay_TcDaA534JVCte9`, `order_TcDYIcdz4q8oMh`) | Full path: handler → `POST /payments/{id}/verify` → HTTP 200 → `PAYMENT_SIGNATURE_VERIFIED`, `PAYMENT_CAPTURED`, `CAPTURED`, `MATCHED`, journal `JRN-000000000002`. UI showed "Gateway settled · Razorpay Test Mode". |
+| Authoritative status | Both payments `Status = Captured`, `ReconciliationStatus = Matched`, `CapturedAt`, `SettledAt`, `JournalId` set, `Environment = TEST`. |
+| Contribution settlement | Both cycle-1 contributions `FinancialStatus = Settled`, `FinanciallySettledAmount = 100.00`, `SettledPaymentId` linked. Prompt 4 manual `Status` stayed `Pending` and `RecordedAmount` 0. Cycle 1 `FinanciallySettledAmount = 200.00` and transitioned to `ReadyForSelection`. |
+| Ledger | Exactly one `PaymentCaptured` journal per payment, two lines each: Debit `1010` payment gateway clearing 100.00 / Credit `2000` group pool liability 100.00; lines carry PaymentId, ContributionId, GroupId. Total debit = total credit. |
+| Duplicate verification / reconciliation | Four additional member refreshes plus one admin reconcile: no new journal, no settlement change, only `PAYMENT_RECONCILIATION_MATCHED` history rows. Verify replay with an invalid signature → 409 `INVALID_PAYMENT_SIGNATURE`; wrong order ID → 409 `PAYMENT_ORDER_MISMATCH`; another member's payment → 403. |
+| Reconciliation against the provider | Independent Razorpay TEST API reads: both payments `captured`, 10000 INR, both orders `paid` with `amount_paid` 10000, receipts `dh_<paymentId>`, notes carrying the internal Payment/Contribution/Group/Cycle IDs. All matched `MATCHED`. |
+| Refund | Full refund `rfnd_TcDdmZQdLmHi2u` issued at Razorpay TEST for payment 1. Member refresh observed `amount_refunded = amount`, status `refunded`: Payment `REFUNDED`, `RefundedAt` set, reversing journal `JRN-000000000003` (Debit `2000` group pool liability / Credit `1010` clearing, 100.00) referencing `JRN-000000000001`, which was preserved. Contribution reverted to `Refunded`, 0.00 settled, `SettledPaymentId` cleared; cycle reopened to `CollectingContributions` (100.00 settled); eligibility returned `canPay: true` with no current payment. Second refresh created no further reversal. `PaymentRefunds` rows are only recorded from webhook refund entities, so none exist for this reconciliation-observed refund. |
+| Webhook route | `POST /api/v1/payments/webhooks/razorpay` mapped (anonymous). Live requests: missing signature → 409 `INVALID_WEBHOOK_SIGNATURE`; invalid signature → 409; zero `PaymentProviderEvents` stored. Signature is verified over the raw request bytes with `Payment_WebhookSecret`. |
+| Public webhook delivery | NOT TESTED. The backend ran only on localhost; Razorpay cannot reach it without a public HTTPS tunnel, which was intentionally not created or hardcoded. |
+| Audit | `audit.audit_logs` holds every payment action (`PAYMENT_ORDER_REQUESTED/CREATED`, `PAYMENT_SIGNATURE_VERIFIED`, `PAYMENT_CAPTURED`, `PAYMENT_RECONCILIATION_MATCHED`, `PAYMENT_REFUNDED`) and `LEDGER_JOURNAL_POSTED`; `groups.GroupAuditEvents` holds `CONTRIBUTION_FINANCIALLY_SETTLED`, `CYCLE_READY_FOR_SELECTION`, `CONTRIBUTION_SETTLEMENT_REVERSED`, `CYCLE_FINANCIAL_SHORTFALL_REOPENED`. |
+
+ID chain confirmed in PostgreSQL: Contribution → `Payments.ContributionId` → `ProviderOrderId` → `ProviderPaymentId` → `JournalId` → `ledger.JournalEntries.EventId = Payment.Id` → `JournalLines.PaymentId/ContributionId`.
+
+## Offline coverage (FakePaymentGateway)
+
+The automated suite still uses `FakePaymentGateway` and never contacts Razorpay. Existing tests cover invalid Checkout and webhook signatures, valid HMAC acceptance, duplicate event keys processed once, event-identity reuse with a different payload rejected, history/event immutability triggers, concurrent verify + duplicate webhooks + reconcile settling exactly once with one journal and one `PAYMENT_CAPTURED`, competing provider IDs not over-settling, authorized/failed events never settling or posting clearing, out-of-order failure/authorization not undoing capture, refund reversal with the selection boundary, partial-refund review, and Ledger-failure rollback. Two existing tests were extended in `PaymentEndpointTests.cs`: a webhook with no signature header is rejected with `INVALID_WEBHOOK_SIGNATURE`, and after a FAILED provider status the contribution remains payable (`canPay: true`, same payment, full remaining amount) while AUTHORIZED does not.
 
 ## Automated verification
 
 | Check | Result |
 |---|---|
-| Backend Release build | PASS ? zero warnings/errors, .NET 10.0.302 |
-| Unit tests | PASS ? 214 |
-| Architecture tests | PASS ? 14 |
-| PostgreSQL integration tests | PASS ? 180 |
-| Payment-specific cases included above | PASS ? 25 unit/configuration and 30 API integration cases |
+| Backend Release build | PASS — 0 warnings, 0 errors (.NET SDK 10.0.400, `global.json` roll-forward) |
+| Unit tests | PASS — 214 |
+| Architecture tests | PASS — 14 |
+| PostgreSQL integration tests (Testcontainers) | PASS — 180, including all payment cases |
 | Frontend lint | PASS |
 | Frontend typecheck | PASS |
-| Frontend production build | PASS ? existing multiple-lockfile workspace-root warning only |
-| EF pending-model check | PASS ? all seven contexts; no model changes |
+| Frontend production build | PASS — member/admin payment routes generated; only the existing multiple-lockfile warning |
+| EF pending-model-change check | PASS — Audit, Identity, Organizers, Groups, Ledger, Payments, Payouts: no changes |
 | `git diff --check` | PASS |
-
-All 408 backend tests passed, with zero failures or skips. The payment-specific cases are included in these totals. There is no separate payment-service test project. Tests use synthetic credentials, fake provider state and disposable PostgreSQL databases; they do not call Razorpay. The frontend build used network access only for its existing Google font download.
-
-Evidence is retained in ignored `.tools/razorpay-env-build.log`, `razorpay-env-tests.log`, `razorpay-env-lint.log`, `razorpay-env-typecheck.log`, `razorpay-env-frontend-build.log`, `razorpay-env-ef.log`, `razorpay-env-diff-check.log`, `razorpay-env-secret-scan.json` and each backend test project's `TestResults/razorpay-env.trx`.
 
 ## Secret scan
 
-No non-fixture Razorpay key patterns or frontend secret identifiers/fixture-secret strings were found in the repository/static-bundle scan. Exact comparison against the user's three credential values is UNAVAILABLE because those environment variables are missing. This is a limited structural scan, not proof against unavailable values. No actual credential was available to write into the repository, logs or bundle.
+Exact-value comparison for the key secret, webhook secret, and public key ID against: tracked files at HEAD, the working tree, every reachable Git blob, untracked non-ignored files, `frontend/src`, and the `frontend/.next` production output — 0 matches for all three after `.env.example` was restored. The production bundle also contains no `rzp_live_`, `RAZORPAY_KEY_SECRET`, `Payment_RazorpayKeySecret`, `Payment_WebhookSecret`, or `WebhookSecret` strings. Backend and frontend logs from the run contain 0 matches for either secret. Scan output reports only file names and counts.
 
-The actual credential values were unavailable, so an exact-value comparison against them cannot be claimed. Repository and bundle scans report only filenames/statuses, never matched contents. No screenshots, signatures, full sensitive payloads, or real credential values are included in this report.
+## Remaining limitations
 
-## Remaining limitation
-
-The intended end-to-end real Razorpay TEST incoming contribution payment remains unverified until the six exact variables are visible to the backend-launching process. After that environment issue is resolved, the existing eligible contribution ? Checkout ? backend verification ? captured settlement flow still needs to be exercised against Razorpay TEST, followed by inspection of the actual PostgreSQL rows. Public webhook delivery and actual refund/reconciliation remain untested. No production payment or Prompt 9 payout operation was performed.
+- Public webhook delivery from the Razorpay Dashboard was not exercised; a public HTTPS tunnel or deployment is required. Webhook behavior is covered offline and the live route rejected unsigned/invalid requests.
+- The smoke scenario used a 2-member Development group policy; production policy requires 20.
+- Refund initiation remains outside the application (issued through the Razorpay TEST API); the application only observes and reverses.
+- No Prompt 9 payout, RazorpayX, platform-fee, or production-mode operation was performed.

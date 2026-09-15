@@ -34,6 +34,8 @@ Open `.env` and replace the placeholder values. Do not commit `.env`.
 | `JWT_SIGNING_KEY` | Random secret of at least 32 characters; use a secret manager in production |
 | `DHANVI_SEED_ADMIN_ENABLED` | Set `true` only when intentionally creating the initial super admin |
 | `DHANVI_SEED_ADMIN_EMAIL`, `DHANVI_SEED_ADMIN_PASSWORD` | Initial super-admin credentials when seeding is enabled |
+| `FRONTEND_ORIGIN` | Browser origins allowed by the API (`;`-separated); defaults to both web apps |
+| `ADMIN_PORT`, `USER_APP_URL`, `ADMIN_APP_URL` | Admin portal host port and the cross-app link URLs baked into each web app |
 | `NEXT_PUBLIC_API_BASE_URL` | Browser-visible API base URL |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Optional OpenTelemetry collector endpoint |
 
@@ -47,7 +49,8 @@ docker compose up --build
 
 Open:
 
-- Frontend: `http://localhost:3000`
+- Member web app: `http://localhost:3000`
+- Admin portal: `http://localhost:3001`
 - API health: `http://localhost:5000/api/v1/health`
 - Swagger: `http://localhost:5000/swagger`
 
@@ -82,15 +85,27 @@ Organizer workflow:
 - `POST /api/v1/admin/organizer-applications/{applicationId}/reject`
 - `POST /api/v1/admin/organizers/{userId}/suspend`
 
-## Frontend routes
+## Frontend applications
 
-The implemented pages are `/` (landing), `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard`, `/profile`, `/become-organizer`, `/organizer/application-status`, `/organizer`, `/organizer/applications`, `/admin`, and `/admin/organizers`. The frontend uses a token-based design system (`src/app/globals.css`), shared UI components (`src/components/ui`), a role-aware application shell (`src/components/layout`), and shared formatters/status mappings (`src/lib`). Protected pages provide client-side UX guards; the API independently enforces every authorization policy.
+The frontend is an npm workspace with two independent Next.js applications and shared packages. See [Frontend applications](docs/frontend-apps.md) for the route map, auth strategy and package layout.
 
-The group routes are `/groups`, `/groups/[id]`, `/my-groups`, `/organizer/groups`, `/organizer/groups/create`, `/organizer/groups/[id]`, `/organizer/groups/[id]/applications`, `/admin/groups`, `/admin/groups/create`, and `/admin/groups/[id]`.
+| Application | Port | Contents |
+| --- | --- | --- |
+| `apps/user-web` — Dhanvi member app | 3000 | Landing, sign-in/registration, member dashboard, groups, contributions, Razorpay Checkout, payments, payouts, financial history, profile, organizer tools |
+| `apps/admin-web` — Dhanvi Admin Portal | 3001 | Admin sign-in, platform overview, organizer applications, platform groups, payments and reconciliation, payouts, ledger |
 
-Additional contribution pages are `/contributions`, `/organizer/groups/[id]/cycles/[cycleId]/contributions`, and `/admin/groups/[id]/cycles/[cycleId]/contributions`. Active group pages include cycle schedules and aggregate progress.
+Shared code lives once under `packages/` (`ui`, `api-client`, `auth`, `types`, `utils`, `config`, `features`). Both apps call the same backend API; the backend remains the authorization authority and both apps also guard every route client-side by role.
 
-Random selection verification is available at `/groups/[id]/cycles/[cycleId]/selection/verify`. Existing group cycle panels expose selection execution/result views according to backend authorization.
+```powershell
+npm install
+npm run dev          # member app on 3000 and admin portal on 3001
+npm run dev:user     # member app only
+npm run dev:admin    # admin portal only
+```
+
+Member app routes: `/` (landing), `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard`, `/profile`, `/become-organizer`, `/organizer/application-status`, `/groups`, `/groups/[id]`, `/my-groups`, `/contributions`, `/payments`, `/payouts`, `/ledger`, `/organizer`, `/organizer/groups`, `/organizer/groups/create`, `/organizer/groups/[id]`, `/organizer/groups/[id]/applications`, `/organizer/applications`, cycle contribution/auction/selection pages. Old `/admin/*` URLs on 3000 redirect to the admin portal.
+
+Admin portal routes: `/login`, `/dashboard`, `/organizers`, `/groups`, `/groups/create`, `/groups/[id]`, `/groups/[id]/cycles/[cycleId]/contributions`, `/groups/[id]/cycles/[cycleId]/auction`, `/payments`, `/payments/[id]`, `/payouts`, `/payouts/[id]`, `/ledger`, `/ledger/trial-balance`, `/ledger/accounts`, `/ledger/journals/[id]`, `/ledger/groups/[groupId]`, `/profile`.
 
 ## Database migrations
 
@@ -124,9 +139,12 @@ dotnet restore Dhanvi.sln
 dotnet build Dhanvi.sln -c Release
 dotnet test Dhanvi.sln -c Release
 
-Set-Location ../frontend
+Set-Location ..
+npm install
 npm run lint
-npm run build
+npm run typecheck
+npm test
+npm run build        # builds apps/user-web then apps/admin-web
 ```
 
 Docker must be running for the integration tests. Testcontainers applies the real migrations to disposable PostgreSQL and verifies registration, duplicate email handling, password safety, login, authorization, refresh rotation/reuse protection, password reset reuse protection, organizer application rules, admin approval/rejection, role assignment, and audit creation. Group tests additionally verify all four creator/mechanism combinations, terms, privacy, readiness, and real concurrent final-slot approval. Cycle/contribution tests also verify atomic activation and rollback, 20/50-member schedules, private histories, manual recording/reversal, idempotency, concurrent over-record prevention, readiness, and overdue dates.

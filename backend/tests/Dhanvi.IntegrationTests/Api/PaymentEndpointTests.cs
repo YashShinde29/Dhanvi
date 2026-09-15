@@ -90,6 +90,9 @@ public sealed partial class CycleEndpointTests
         using var anonymous = fixture.Factory.CreateClient(); using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/payments/webhooks/razorpay") { Content = new ByteArrayContent(FakePaymentGateway.Body(remote)) };
         request.Headers.Add("X-Razorpay-Signature", new string('0', 64)); using var rejected = await anonymous.SendAsync(request);
         Assert.Equal(HttpStatusCode.Conflict, rejected.StatusCode); Assert.Contains("INVALID_WEBHOOK_SIGNATURE", await rejected.Content.ReadAsStringAsync());
+        using var unsigned = new HttpRequestMessage(HttpMethod.Post, "/api/v1/payments/webhooks/razorpay") { Content = new ByteArrayContent(FakePaymentGateway.Body(remote)) };
+        using var missing = await anonymous.SendAsync(unsigned);
+        Assert.Equal(HttpStatusCode.Conflict, missing.StatusCode); Assert.Contains("INVALID_WEBHOOK_SIGNATURE", await missing.Content.ReadAsStringAsync());
         await AssertSettlement(order, false, 0);
     }
     [Theory] [InlineData("authorized")] [InlineData("failed")]
@@ -99,6 +102,9 @@ public sealed partial class CycleEndpointTests
         await Webhook(remote, type: "payment." + status); var result = await Reconcile(order);
         Assert.Equal(status == "failed" ? PaymentStatus.Failed : PaymentStatus.Authorized, result.Status);
         await AssertSettlement(order, false, 0);
+        using var member = Client(order.Payment.UserId);
+        var eligibility = (await member.GetFromJsonAsync<PaymentEligibility>($"/api/v1/contributions/{order.Payment.ContributionId}/payment-eligibility", Json))!;
+        Assert.Equal(status == "failed", eligibility.CanPay); Assert.Equal(order.Payment.Id, eligibility.PaymentId); Assert.Equal(order.Payment.Amount, eligibility.RemainingAmount);
     }
     [Theory] [InlineData(true)] [InlineData(false)]
     public async Task PaymentConcurrentVerificationAndDuplicateWebhooksSettleExactlyOnce(bool sameEvent)
