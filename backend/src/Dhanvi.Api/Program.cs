@@ -90,6 +90,7 @@ builder.Services.AddAuctionsModule();
 builder.Services.AddLedgerModule(builder.Configuration);
 Dhanvi.Modules.Payments.Infrastructure.PaymentsModule.AddPaymentsModule(builder.Services, builder.Configuration);
 Dhanvi.Modules.Payouts.Infrastructure.PayoutsModule.AddPayoutsModule(builder.Services, builder.Configuration);
+Dhanvi.Modules.Admin.Infrastructure.AdminModule.AddAdminModule(builder.Services);
 builder.Services.AddDhanviOpenTelemetry(builder.Configuration);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
@@ -179,6 +180,7 @@ api.MapOrganizerEndpoints();
 api.MapLedgerEndpoints();
 Dhanvi.Modules.Payments.Api.PaymentEndpoints.MapPaymentEndpoints(api);
 Dhanvi.Modules.Payouts.Api.PayoutEndpoints.MapPayoutEndpoints(api);
+Dhanvi.Modules.Admin.Api.AdminOperationsEndpoints.MapAdminOperationsEndpoints(api);
 
 if (builder.Configuration.GetValue("Database:ApplyMigrations", false))
 {

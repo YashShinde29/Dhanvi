@@ -13,18 +13,19 @@ const MINE_SECTIONS = [
 const TYPE_CHIPS = [{ value: "", label: "All types" }, { value: "RANDOM", label: "Random" }, { value: "AUCTION", label: "Auction" }];
 const CREATOR_CHIPS = [{ value: "", label: "All creators" }, { value: "PLATFORM", label: "Dhanvi platform" }, { value: "ORGANIZER", label: "Organizer" }];
 
-const copy: Record<GroupScope, { eyebrow: string; title: string; description: string }> = {
-  public: { eyebrow: "Browse", title: "Explore savings groups", description: "Compare group value, monthly contribution, duration and rules before you apply. No money is collected at this stage." },
-  mine: { eyebrow: "Member", title: "My groups", description: "Groups you have applied to, been approved for, or are actively saving in." },
-  organizer: { eyebrow: "Organizer", title: "My groups", description: "Groups you have created. Manage applications, members, cycles and selections from each group." },
-  admin: { eyebrow: "Administration", title: "Platform groups", description: "All groups on Dhanvi, including organizer-created groups. Create platform groups or review any group." },
+type ListScope = Exclude<GroupScope, "admin">;
+const copy: Record<ListScope, { eyebrow: string; title: string; description: string }> = {
+  public: { eyebrow: "Browse", title: "Browse groups", description: "Compare group value, monthly contribution and duration before you apply. No money is collected at this stage." },
+  mine: { eyebrow: "Member", title: "My groups", description: "Groups you have applied to, been approved for, or are saving in." },
+  organizer: { eyebrow: "Organizer", title: "My managed groups", description: "Groups you organize. Open a group to review applications, record contributions and run its cycles." },
 };
 
-export function GroupListPage({ scope = "public" }: { scope?: GroupScope }) {
+/** Member portal group lists. Platform-wide administration uses the admin portal's management table instead. */
+export function GroupListPage({ scope = "public" }: { scope?: ListScope }) {
   return <Guard scope={scope}><GroupList scope={scope} /></Guard>;
 }
 
-function GroupList({ scope }: { scope: GroupScope }) {
+function GroupList({ scope }: { scope: ListScope }) {
   const [type, setType] = useState("");
   const [creator, setCreator] = useState("");
   const [status, setStatus] = useState("");
@@ -55,7 +56,7 @@ function GroupList({ scope }: { scope: GroupScope }) {
   const { data, error, loading, reload } = useAsyncData(() => groupService.list(scope, query), [scope, query]);
   const reset = (setter: (v: string) => void) => (v: string) => { setter(v); setPage(1); };
   const activeFilterCount = [type, creator, status, minimum, maximum, sort].filter(Boolean).length;
-  const statusOptions = scope === "public" || scope === "mine" ? [...PUBLIC_GROUP_STATUSES] : ALL_GROUP_STATUSES;
+  const statusOptions = scope === "organizer" ? ALL_GROUP_STATUSES : [...PUBLIC_GROUP_STATUSES];
   const text = copy[scope];
 
   const filters = (
@@ -72,7 +73,7 @@ function GroupList({ scope }: { scope: GroupScope }) {
   return (
     <>
       <PageHeader eyebrow={text.eyebrow} title={text.title} description={text.description}
-        actions={(scope === "admin" || scope === "organizer") && <LinkButton href={`${managePrefix(scope)}/groups/create`} icon={<Icons.Plus size={18} />}>Create {scope === "admin" ? "platform group" : "group"}</LinkButton>} />
+        actions={scope === "organizer" && <LinkButton href={`${managePrefix(scope)}/groups/create`} icon={<Icons.Plus size={18} />}>Create group</LinkButton>} />
 
       {scope === "mine" && <ChipGroup label="Membership section" options={MINE_SECTIONS} value={section} onChange={reset(setSection)} />}
 
@@ -80,7 +81,7 @@ function GroupList({ scope }: { scope: GroupScope }) {
         <div className="row row--between">
           <div className="row">
             <ChipGroup label="Group type" options={TYPE_CHIPS} value={type} onChange={reset(setType)} />
-            {scope !== "organizer" && <ChipGroup label="Created by" options={CREATOR_CHIPS} value={creator} onChange={reset(setCreator)} />}
+            {scope === "public" && <ChipGroup label="Created by" options={CREATOR_CHIPS} value={creator} onChange={reset(setCreator)} />}
           </div>
           <div className="row" style={{ flex: "1 1 260px", justifyContent: "flex-end" }}>
             <div style={{ flex: "1 1 220px", maxWidth: 360 }}><SearchInput value={search} onChange={reset(setSearch)} placeholder="Search by group name" /></div>
@@ -98,11 +99,11 @@ function GroupList({ scope }: { scope: GroupScope }) {
         <EmptyState icon={<Icons.Layers size={24} />}
           title={scope === "mine" ? (section === "COMPLETED" ? "No completed groups yet" : section === "ALL" ? "You haven't joined a savings group yet" : "Nothing in this section") : scope === "organizer" ? "You haven't created a group yet" : activeFilterCount || search ? "No groups match these filters" : "No groups available right now"}
           description={scope === "mine" ? "Browse open groups, review their rules and apply for a position." : scope === "organizer" ? "Create your first group to start accepting applications." : "Try clearing filters or check back soon."}
-          action={scope === "mine" ? <LinkButton href="/groups" icon={<Icons.Search size={16} />}>Browse groups</LinkButton> : scope === "organizer" ? <LinkButton href="/organizer/groups/create" icon={<Icons.Plus size={16} />}>Create group</LinkButton> : (activeFilterCount || search) ? <Button variant="secondary" onClick={clearAll}>Clear filters</Button> : undefined} />
+          action={scope === "mine" ? <LinkButton href="/groups" icon={<Icons.Search size={16} />}>Browse groups</LinkButton> : (activeFilterCount || search) ? <Button variant="secondary" onClick={clearAll}>Clear filters</Button> : undefined} />
       ) : (
         <>
           <div className="group-grid" aria-busy={loading || undefined}>
-            {data?.items.map((group) => <GroupCard key={group.id} group={group} href={groupHref(scope, group.id)} manage={scope === "organizer" || scope === "admin"} />)}
+            {data?.items.map((group) => <GroupCard key={group.id} group={group} href={groupHref(scope, group.id)} manage={scope === "organizer"} />)}
           </div>
           {data && <Pagination page={data.page} pageSize={data.pageSize} totalCount={data.totalCount} onPageChange={setPage} itemLabel="groups" />}
         </>

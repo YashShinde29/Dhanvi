@@ -4,7 +4,7 @@ import { organizerService } from "@dhanvi/api-client";
 import type { OrganizerStatusResponse } from "@dhanvi/types";
 import { useAsyncData, formatDateTime } from "@dhanvi/utils";
 import { WorkflowStatusCard, organizerSummary } from "@dhanvi/features/workflow";
-import { PageHeader, LinkButton, ErrorState, Card, CardBody, CardHeader, DescriptionList, StatusBadge, PageSkeleton } from "@dhanvi/ui";
+import { PageHeader, ErrorState, Card, CardBody, CardHeader, DescriptionList, StatusBadge, PageSkeleton } from "@dhanvi/ui";
 
 export default function ApplicationStatusPage() {
   return <ProtectedPage><ApplicationStatus /></ProtectedPage>;
@@ -28,8 +28,7 @@ function ApplicationStatus() {
   if (loading || !data) return <PageSkeleton />;
   return (
     <div className="stack stack--lg">
-      <PageHeader eyebrow="Organizer program" title="Organizer application" description={statusMessage(data)} badges={<StatusBadge kind="organizer" value={data.status} size="lg" />}
-        actions={data.status === "APPROVED" ? <LinkButton href="/organizer">Organizer dashboard</LinkButton> : (data.status === "NOT_APPLIED" || data.status === "REJECTED") ? <LinkButton href="/become-organizer">{data.status === "REJECTED" ? "Apply again" : "Apply now"}</LinkButton> : undefined} />
+      <PageHeader eyebrow="Organizer program" title="Organizer application" description={statusMessage(data)} badges={<StatusBadge kind="organizer" value={data.status} size="lg" />} />
       <WorkflowStatusCard summary={organizerSummary(data)} viewer="member" title="Application progress" stepperLabel="Organizer application steps" />
       <div className="grid-sidebar">
         <Card>

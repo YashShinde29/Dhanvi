@@ -55,4 +55,11 @@ export interface Auction {
   operationalBids: AuctionBid[];
   auditHistory: { action: string; createdAt: string; subjectId: string | null }[];
   result: AuctionResult | null;
+  /** Group facts and live movement for the dedicated auction screen (no identities beyond member position). */
+  groupValue: number;
+  groupName: string;
+  durationMonths: number;
+  recentBids: AuctionActivity[];
+  currentLeaderSlot: number | null;
 }
+export interface AuctionActivity { discountAmount: number; submittedAt: string; memberSlot: number; isMine: boolean; isCurrentHighest: boolean }

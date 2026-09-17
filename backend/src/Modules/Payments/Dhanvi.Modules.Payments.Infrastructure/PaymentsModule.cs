@@ -25,6 +25,7 @@ public static class PaymentsModule
             n => n.MigrationsHistoryTable("__EFMigrationsHistory", "payments")));
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<ICapturedPaymentReader, CapturedPaymentReader>();
+        services.AddScoped<Dhanvi.Modules.Admin.Application.IPaymentOperationsReader, PaymentOperationsReader>();
         return services;
     }
 }

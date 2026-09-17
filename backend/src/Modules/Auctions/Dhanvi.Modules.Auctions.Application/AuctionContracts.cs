@@ -28,12 +28,15 @@ public sealed record AuctionResultDetails(Guid Id, Guid WinningBidId, SelectionW
     decimal WinnerPayout, decimal GrossMemberShare, decimal PlatformFee, decimal MemberBenefitPool, int NonWinnerCount,
     AuctionFeePolicy FeePolicy, string CalculationVersion, DateTimeOffset FinalizedAt, decimal? MyBenefitAllocation,
     IReadOnlyList<AuctionAllocationDetails> Allocations, string AllocationStatus = "CALCULATED_PENDING_SETTLEMENT");
+/// <summary>One accepted bid as members may see it: amount, time and the bidder's member position only (no identity).</summary>
+public sealed record AuctionActivityDetails(decimal DiscountAmount, DateTimeOffset SubmittedAt, int MemberSlot, bool IsMine, bool IsCurrentHighest);
 public sealed record AuctionDetails(Guid? Id, int CycleNumber, string Status, DateTimeOffset StartsAt, DateTimeOffset EndsAt,
     DateTimeOffset ServerTime, DateTimeOffset? OpenedAt, DateTimeOffset? ClosedAt, DateTimeOffset? WinnerSelectedAt,
     decimal MinimumDiscount, decimal MaximumDiscount, decimal BidIncrement, decimal CurrentHighestDiscount,
     decimal MinimumNextBid, decimal PotentialWinnerPayout, long BidCount, int EligibleBidderCount, bool CanManage, bool CanOpen,
     bool CanClose, bool CanBid, string? BidUnavailableReason, IReadOnlyList<AuctionBidDetails> MyBids,
-    IReadOnlyList<AuctionBidDetails> OperationalBids, IReadOnlyList<AuctionAuditDetails> AuditHistory, AuctionResultDetails? Result);
+    IReadOnlyList<AuctionBidDetails> OperationalBids, IReadOnlyList<AuctionAuditDetails> AuditHistory, AuctionResultDetails? Result,
+    decimal GroupValue = 0, string GroupName = "", int DurationMonths = 0, IReadOnlyList<AuctionActivityDetails>? RecentBids = null, int? CurrentLeaderSlot = null);
 public interface IAuctionService
 {
     Task<AuctionDetails> GetAsync(Guid groupId, Guid cycleId, SelectionActor actor, CancellationToken ct);

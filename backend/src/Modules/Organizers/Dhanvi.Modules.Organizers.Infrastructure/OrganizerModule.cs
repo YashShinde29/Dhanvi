@@ -17,6 +17,7 @@ public static class OrganizerModule
             npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "organizers")));
         services.AddScoped<IOrganizerService, OrganizerService>();
         services.AddScoped<IOrganizerStatusReader, OrganizerStatusReader>();
+        services.AddScoped<Dhanvi.Modules.Admin.Application.IOrganizerOperationsReader, Services.OrganizerOperationsReader>();
         return services;
     }
 }

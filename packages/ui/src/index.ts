@@ -20,3 +20,5 @@ export * from "./filter-bar";
 export * from "./activity";
 export * from "./brand";
 export * from "./use-confirm";
+export * from "./menu";
+export * from "./control-panel";

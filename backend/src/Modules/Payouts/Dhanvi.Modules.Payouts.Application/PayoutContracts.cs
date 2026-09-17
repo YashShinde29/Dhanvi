@@ -22,7 +22,9 @@ public sealed class AdminPayoutApprovalPolicy : IPayoutApprovalPolicy
 }
 public sealed record PayoutView(Guid Id, Guid GroupId, string GroupName, Guid CycleId, int CycleNumber, string MemberName, PayoutType PayoutType,
     decimal Amount, string Currency, PayoutStatus Status, string? MaskedAccountNumber, Guid SelectionResultId, Guid? AuctionResultId,
-    Guid AllocationJournalId, Guid? SettlementJournalId, DateTimeOffset CreatedAt, DateTimeOffset? ApprovedAt, DateTimeOffset? SettledAt);
+    Guid AllocationJournalId, Guid? SettlementJournalId, DateTimeOffset CreatedAt, DateTimeOffset? ApprovedAt, DateTimeOffset? SettledAt,
+    /// <summary>Whether the recipient's latest payout account is usable now (an approval would succeed). Internal fees are always true.</summary>
+    bool BeneficiaryAvailable = false);
 public sealed record AttemptView(Guid Id, int AttemptNumber, string Provider, string ProviderPayoutId, decimal Amount, string MaskedAccountNumber,
     DateTimeOffset RequestedAt, string Status, DateTimeOffset? CompletedAt, string? FailureCode);
 public sealed record PayoutHistoryView(Guid Id, string Action, string Message, DateTimeOffset CreatedAt);

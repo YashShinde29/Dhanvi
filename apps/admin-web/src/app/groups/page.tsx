@@ -1,4 +1,2 @@
-import { GroupListPage } from "@dhanvi/features/groups/group-pages";
-export default function Page() {
-  return <GroupListPage scope="admin" />;
-}
+import { AdminGroupsPage } from "@dhanvi/features/admin/admin-groups";
+export default function Page() { return <AdminGroupsPage />; }

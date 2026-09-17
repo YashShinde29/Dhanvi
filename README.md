@@ -103,9 +103,9 @@ npm run dev:user     # member app only
 npm run dev:admin    # admin portal only
 ```
 
-Member app routes: `/` (landing), `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard`, `/profile`, `/become-organizer`, `/organizer/application-status`, `/groups`, `/groups/[id]`, `/my-groups`, `/contributions`, `/payments`, `/payouts`, `/ledger`, `/organizer`, `/organizer/groups`, `/organizer/groups/create`, `/organizer/groups/[id]`, `/organizer/groups/[id]/applications`, `/organizer/applications`, cycle contribution/auction/selection pages. Old `/admin/*` URLs on 3000 redirect to the admin portal.
+Member portal routes: `/` (landing), `/login`, `/register`, `/forgot-password`, `/reset-password`, `/dashboard` (Home), `/profile`, `/become-organizer`, `/organizer/application-status`, `/groups`, `/groups/[id]`, `/my-groups`, `/contributions`, `/payments`, `/payouts`, `/ledger` (financial history, linked from Payments), `/organizer`, `/organizer/groups`, `/organizer/groups/create`, `/organizer/groups/[id]`, `/organizer/groups/[id]/applications`, `/organizer/applications`, cycle contribution/auction/selection pages. Old `/admin/*` URLs on 3000 redirect to the admin portal.
 
-Admin portal routes: `/login`, `/dashboard`, `/organizers`, `/groups`, `/groups/create`, `/groups/[id]`, `/groups/[id]/cycles/[cycleId]/contributions`, `/groups/[id]/cycles/[cycleId]/auction`, `/payments`, `/payments/[id]`, `/payouts`, `/payouts/[id]`, `/ledger`, `/ledger/trial-balance`, `/ledger/accounts`, `/ledger/journals/[id]`, `/ledger/groups/[groupId]`, `/profile`.
+Admin Control Center routes: `/login`, `/dashboard`, `/groups`, `/groups/create`, `/groups/[id]`, `/groups/[id]/cycles/[cycleId]/contributions`, `/groups/[id]/cycles/[cycleId]/auction`, `/organizers`, `/payments`, `/payments/[id]`, `/payouts`, `/payouts/[id]`, `/reconciliation`, `/ledger`, `/ledger/trial-balance`, `/ledger/accounts`, `/ledger/journals/[id]`, `/ledger/groups/[groupId]`, `/profile`. See [Member Portal vs Admin Control Center](docs/admin-control-center.md) for the information architecture, the next-action engine and the admin read models (`/api/v1/admin/operations/overview`, `/api/v1/admin/groups/operations`, `/api/v1/admin/groups/{id}/operations-summary`).
 
 ## Database migrations
 

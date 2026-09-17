@@ -18,6 +18,8 @@ export interface GroupInput {
   payoutDay: number;
   startDate: string;
   auctionRules?: AuctionRules | null;
+  /** Platform groups only: how contributions are collected. Organizer groups always use manual tracking. */
+  collectionMode?: "MANUAL_TRACKING" | "RAZORPAY";
 }
 export interface Member {
   id: string;
@@ -63,6 +65,7 @@ export interface Group extends GroupInput {
   groupTimeZone: string;
   activatedAt: string | null;
   currentCycleNumber: number | null;
+  collectionMode: "MANUAL_TRACKING" | "RAZORPAY";
 }
 export interface GroupPage {
   items: Group[];

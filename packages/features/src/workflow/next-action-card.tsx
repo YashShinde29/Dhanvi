@@ -14,7 +14,9 @@ function isExternal(href: string) { return /^https?:\/\//.test(href); }
 
 /** One actionable item: what, why, who, and the button that goes to the right place. */
 export function NextActionCard({ action, viewer = "member", compact }: { action: WorkflowAction; viewer?: Viewer; compact?: boolean }) {
-  const who = responsibleLabel(action.responsibleRole, viewer);
+  // "Next: You" adds nothing under a button the viewer is about to press; name the party only when it is someone else or the item is waiting.
+  const whoLabel = responsibleLabel(action.responsibleRole, viewer);
+  const who = whoLabel === "You" && action.status !== "waiting" ? "" : whoLabel;
   const age = ageSince(action.since);
   const label = action.actionLabel ?? "Open";
   const cta = action.onAction
@@ -47,12 +49,11 @@ export function WaitingState({ children, who }: { children: React.ReactNode; who
   return <p className="wf-waiting"><Icons.Clock size={14} /> <span><strong>Waiting{who ? ` for ${who}` : ""}.</strong> {children}</span></p>;
 }
 
-/** Explains why an action is unavailable instead of showing a bare disabled button. */
+/** Explains why an action is unavailable — a reason line, never a disabled button for something impossible right now. */
 export function UnavailableAction({ label, reason, id }: { label: string; reason: React.ReactNode; id: string }) {
   return (
-    <div className="wf-unavailable">
-      <button type="button" className="btn btn--secondary" disabled aria-describedby={`${id}-reason`}>{label} · Unavailable</button>
-      <p id={`${id}-reason`} className="wf-unavailable__reason"><Icons.Info size={14} /> <span><strong>Reason:</strong> {reason}</span></p>
+    <div className="wf-unavailable" role="status" id={id}>
+      <p className="wf-unavailable__reason" style={{ margin: 0 }}><Icons.Info size={14} /> <span><strong>{label} is not available yet.</strong> {reason}</span></p>
     </div>
   );
 }

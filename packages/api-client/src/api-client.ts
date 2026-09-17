@@ -38,3 +38,6 @@ async function request(path: string, init: RequestInit): Promise<Response> {
     headers: { Accept: "application/json", ...(init.body === undefined ? {} : { "Content-Type": "application/json" }), ...init.headers },
   });
 }
+
+/** Query-string enums bind case-sensitively as PascalCase on the API (RECONCILIATION_REQUIRED → ReconciliationRequired). */
+export const enumParam = (value: string) => value.toLowerCase().split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join("");

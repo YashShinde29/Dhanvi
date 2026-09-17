@@ -1,14 +1,14 @@
 "use client";
-import { PayoutAccountForm } from "../payouts/payout-account";
 import { useAuth, primaryRoleLabel } from "@dhanvi/auth";
 import { userService } from "@dhanvi/api-client";
 import { PageHeader, Avatar, Badge, StatusBadge, Button, Callout, Card, CardBody, CardHeader, DescriptionList, FormField, Input, PasswordInput, Icons, useToast } from "@dhanvi/ui";
 import { fieldErrors, friendlyError, formatDate, PASSWORD_HINT, passwordError } from "@dhanvi/utils";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
-export function ProfilePage() {
+/** Shared profile & security screen. `memberSections` (organizer program link, payout bank form) is supplied only by the member app. */
+export function ProfilePage({ memberSections = true, extras }: { memberSections?: boolean; extras?: ReactNode }) {
   const auth = useAuth();
   const router = useRouter();
   const toast = useToast();
@@ -118,13 +118,13 @@ export function ProfilePage() {
               <DescriptionList stack items={[
                 { key: "Member since", value: formatDate(user.createdAt) },
                 { key: "Roles", value: user.roles.map((r) => r === "USER" ? "Member" : primaryRoleLabel({ ...user, roles: [r] })).join(", ") },
-                { key: "Organizer status", value: <span className="row" style={{ gap: 8 }}><StatusBadge kind="organizer" value={user.organizerStatus} />{user.organizerStatus !== "APPROVED" && <Link className="link text-sm" href={organizerHref}>{user.organizerStatus === "NOT_APPLIED" ? "Apply to organize" : "View application"}</Link>}</span> },
+                ...(memberSections ? [{ key: "Organizer status", value: <span className="row" style={{ gap: 8 }}><StatusBadge kind="organizer" value={user.organizerStatus} />{user.organizerStatus !== "APPROVED" && <Link className="link text-sm" href={organizerHref}>{user.organizerStatus === "NOT_APPLIED" ? "Apply to organize" : "View application"}</Link>}</span> }] : []),
               ]} />
             </CardBody>
           </Card>
         </div>
       </div>
-      <PayoutAccountForm />
+      {extras}
     </div>
   );
 }

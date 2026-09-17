@@ -13,8 +13,9 @@ import { WorkflowStepper, type WorkflowStep } from "../workflow";
 export function GroupCreatePage({ scope }: { scope: "organizer" | "admin" }) {
   return (
     <Guard scope={scope}>
-      <PageHeader eyebrow={scope === "admin" ? "Administration" : "Organizer"} title={scope === "admin" ? "Create platform group" : "Create a savings group"}
-        description="Set up the group step by step. Members will see every rule you define here before they apply." breadcrumbs={[{ label: scope === "admin" ? "Platform groups" : "My groups", href: `${managePrefix(scope)}/groups` }, { label: "Create group" }]} />
+      <PageHeader eyebrow={scope === "admin" ? "Control center" : "Organizer"} title={scope === "admin" ? "Create platform group" : "Create organizer group"}
+        description={scope === "admin" ? "Creator: Dhanvi platform. Members see every rule defined here before they apply; publishing locks them as version 1." : "Set up your group step by step. Members see every rule you define here before they apply."}
+        breadcrumbs={[{ label: scope === "admin" ? "Groups" : "My groups", href: `${managePrefix(scope)}/groups` }, { label: scope === "admin" ? "Create platform group" : "Create group" }]} />
       <GroupWizard scope={scope} />
     </Guard>
   );
@@ -24,6 +25,7 @@ interface FormState {
   name: string; description: string; groupType: "RANDOM" | "AUCTION"; groupValue: string; memberLimit: string;
   organizerParticipates: boolean; organizerFirstPayout: boolean; contributionDueDay: string; selectionDay: string; payoutDay: string; startDate: string;
   minimumDiscount: string; maximumDiscount: string; bidIncrement: string; auctionStartTime: string; auctionEndTime: string;
+  collectionMode: "MANUAL_TRACKING" | "RAZORPAY";
 }
 type Errors = Partial<Record<keyof FormState, string>>;
 
@@ -39,13 +41,16 @@ function fromGroup(existing?: Group): FormState {
     startDate: existing?.startDate ?? "",
     minimumDiscount: String(auction.minimumDiscount), maximumDiscount: String(auction.maximumDiscount), bidIncrement: String(auction.bidIncrement),
     auctionStartTime: auction.auctionStartTime, auctionEndTime: auction.auctionEndTime,
+    collectionMode: existing?.collectionMode ?? "MANUAL_TRACKING",
   };
 }
 
 const normalizeTime = (value: string) => (value.length === 5 ? `${value}:00` : value);
 
-function toInput(form: FormState): GroupInput {
+function toInput(form: FormState, scope: GroupScope): GroupInput {
   return {
+    // Only platform groups may collect through Razorpay (backend rule); organizer groups always use manual tracking.
+    ...(scope === "admin" ? { collectionMode: form.collectionMode } : {}),
     name: form.name.trim(), description: form.description.trim(), groupType: form.groupType,
     groupValue: Number(form.groupValue), memberLimit: Number(form.memberLimit),
     organizerParticipates: form.organizerParticipates, organizerFirstPayout: form.organizerParticipates && form.organizerFirstPayout,
@@ -70,8 +75,8 @@ export function calculate(form: Pick<FormState, "groupValue" | "memberLimit" | "
   };
 }
 
-const STEPS_ORGANIZER = ["Basics", "Group value", "Participation", "Schedule", "Review"];
-const STEPS_ADMIN = ["Basics", "Group value", "Schedule", "Review"];
+const STEPS_ORGANIZER = ["Basics", "Group type", "Group value", "Participation", "Schedule", "Review & publish"];
+const STEPS_ADMIN = ["Basics", "Group type", "Financial structure", "Schedule", "Rules", "Review & publish"];
 
 /** In-progress (unsaved) wizard state survives navigation so nobody has to restart mentally. Drafts saved to the backend are not stored here. */
 const storageKey = (scope: GroupScope) => `dhanvi.group-wizard.${scope}`;
@@ -90,7 +95,8 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const locked = !!existing?.rulesLocked;
-  const stepNames = locked ? ["Basics", "Review"] : scope === "organizer" ? STEPS_ORGANIZER : STEPS_ADMIN;
+  const stepNames = locked ? ["Basics", "Review & publish"] : scope === "organizer" ? STEPS_ORGANIZER : STEPS_ADMIN;
+  const [publishAfterSave, setPublishAfterSave] = useState(false);
   const [step, setStep] = useState(0);
   const [resumeDismissed, setResumeDismissed] = useState(false);
   const stepName = stepNames[step]!;
@@ -118,7 +124,7 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
       else if (form.name.trim().length > 200) next.name = "Keep the name under 200 characters.";
       if (form.description.length > 4000) next.description = "Keep the description under 4,000 characters.";
     }
-    if (name === "Group value") {
+    if (name === "Group value" || name === "Financial structure") {
       if (!calc.valid) { if (!(Number(form.groupValue) > 0)) next.groupValue = "Enter the total group value."; }
       const members = Number(form.memberLimit);
       if (!Number.isInteger(members) || members < env.minimumGroupMembers || members > env.maximumGroupMembers) next.memberLimit = `Choose between ${env.minimumGroupMembers} and ${env.maximumGroupMembers} members.`;
@@ -153,13 +159,16 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy || stepName !== "Review") return;
+    if (busy || stepName !== "Review & publish") return;
     for (const name of stepNames) if (!validate(name)) { setStep(stepNames.indexOf(name)); return; }
     setBusy(true); setError("");
     try {
-      const saved = await groupService.save(scope, toInput(form), existing?.id);
+      const saved = await groupService.save(scope, toInput(form, scope), existing?.id);
       if (!existing) writeProgress(scope, null);
-      toast.success(existing ? "Group updated" : "Group created ✓", existing ? "Next: publish the draft when you're ready to accept applications." : "Next step: publish the group so members can apply. You can still edit the draft first.");
+      if (publishAfterSave && saved.status === "DRAFT") {
+        try { await groupService.action(`${scope}/groups/${saved.id}/publish`); toast.success("Group published ✓", "Next: members discover the group and apply. Review applications as they arrive."); }
+        catch (failure) { toast.error("Saved as draft — publishing failed", friendlyError(failure)); }
+      } else toast.success(existing ? "Draft updated" : "Draft saved ✓", "Next: publish it from Group Control when you are ready to accept applications.");
       if (onSaved) onSaved();
       else router.push(groupHref(scope, saved.id));
     } catch (failure) {
@@ -171,13 +180,15 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
   }
 
   function stepFor(field: keyof FormState): number {
-    const map: Record<string, string> = { name: "Basics", description: "Basics", groupType: "Basics", groupValue: "Group value", memberLimit: "Group value", organizerParticipates: "Participation", organizerFirstPayout: "Participation" };
+    const valueStep = scope === "admin" ? "Financial structure" : "Group value";
+    const map: Record<string, string> = { name: "Basics", description: "Basics", groupType: "Group type", groupValue: valueStep, memberLimit: valueStep, organizerParticipates: "Participation", organizerFirstPayout: "Participation", collectionMode: "Rules" };
     const name = map[field] ?? "Schedule";
     const index = stepNames.indexOf(name);
     return index === -1 ? 0 : index;
   }
 
   const summaryRows = [
+    { key: "Creator", value: scope === "admin" ? "Dhanvi platform" : "You (organizer)" },
     { key: "Group value", value: <span className="amount">{formatMoney(Number(form.groupValue) || 0)}</span> },
     { key: "Members", value: form.memberLimit || "—" },
     { key: "Monthly contribution", value: <span className="amount">{calc.monthly !== null ? formatMoney(calc.monthly) : "—"}</span> },
@@ -185,7 +196,7 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
     ...(scope === "organizer" ? [{ key: "External positions", value: calc.externalSlots ?? "—" }] : []),
   ];
 
-  const wizardSteps: WorkflowStep[] = [...stepNames, "Created"].map((name, i) => ({ id: name, label: name === "Review" ? "Review" : name === "Created" ? "Created · next: publish" : name, state: i < step ? "complete" : i === step ? "current" : "upcoming" }));
+  const wizardSteps: WorkflowStep[] = stepNames.map((name, i) => ({ id: name, label: name, state: i < step ? "complete" : i === step ? "current" : "upcoming" }));
   if (resume) {
     const done = stepNames.slice(0, resume.step);
     return (
@@ -213,8 +224,8 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
         {locked && <Callout variant="info" title="Core rules are locked">A member has been approved, so financial rules can no longer change. You can still update the name and description.</Callout>}
 
         <Card>
-          <CardHeader title={stepName === "Basics" ? "Group basics" : stepName === "Group value" ? "Group value and members" : stepName === "Participation" ? "Your participation" : stepName === "Schedule" ? "Monthly schedule" : "Review and confirm"}
-            subtitle={stepName === "Basics" ? "Name the group and choose how the payout turn is decided." : stepName === "Group value" ? "The monthly contribution and duration are calculated from these two values." : stepName === "Participation" ? "Decide whether you save alongside members and whether you take the first payout." : stepName === "Schedule" ? "Days apply to every month of the group. Use 1–28 so every month has the date." : "Check every rule. After publishing, members will accept exactly these rules."} />
+          <CardHeader title={stepName === "Basics" ? "Group basics" : stepName === "Group type" ? "Group type" : stepName === "Group value" || stepName === "Financial structure" ? "Group value and members" : stepName === "Participation" ? "Your participation" : stepName === "Schedule" ? "Monthly schedule" : stepName === "Rules" ? "Collection rules" : "Review and publish"}
+            subtitle={stepName === "Basics" ? "Name the group and describe who it is for." : stepName === "Group type" ? "How is each cycle's payout recipient decided?" : stepName === "Group value" || stepName === "Financial structure" ? "The monthly contribution and duration are calculated from these two values." : stepName === "Participation" ? "Decide whether you save alongside members and whether you take the first payout." : stepName === "Schedule" ? "Days apply to every month of the group. Use 1–28 so every month has the date." : stepName === "Rules" ? "How contributions are collected for this platform group." : "Check every rule. After publishing, members accept exactly these rules."} />
           <CardBody className="stack stack--lg">
             {stepName === "Basics" && (
               <>
@@ -224,6 +235,11 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
                 <FormField label="Description" htmlFor="group-description" optional error={errors.description} help="Who this group is for and anything members should know before applying.">
                   <Textarea id="group-description" value={form.description} onChange={(e) => set("description", e.target.value)} maxLength={4000} rows={4} invalid={!!errors.description} />
                 </FormField>
+              </>
+            )}
+
+            {stepName === "Group type" && (
+              <>
                 <FormSection title="Group type" description={locked ? "Group type cannot change after approval." : "How is each cycle's payout recipient decided?"}>
                   <div className="choice-grid" role="radiogroup" aria-label="Group type">
                     <ChoiceCard selected={form.groupType === "RANDOM"} onSelect={() => set("groupType", "RANDOM")} disabled={locked} icon={<Icons.Shuffle size={18} />} title="Random savings group"
@@ -235,7 +251,7 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
               </>
             )}
 
-            {stepName === "Group value" && (
+            {(stepName === "Group value" || stepName === "Financial structure") && (
               <>
                 <div className="grid-2">
                   <FormField label="Group value" htmlFor="group-groupValue" required error={errors.groupValue} help="Total pool each cycle, e.g. ₹5,00,000.">
@@ -305,8 +321,18 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
               </>
             )}
 
-            {stepName === "Review" && (
+            {stepName === "Rules" && (
+              <FormSection title="Contribution collection" description="Platform groups may collect through Razorpay Test Checkout; manual tracking records contributions operationally without moving money.">
+                <div className="choice-grid" role="radiogroup" aria-label="Collection mode">
+                  <ChoiceCard selected={form.collectionMode === "MANUAL_TRACKING"} onSelect={() => set("collectionMode", "MANUAL_TRACKING")} disabled={locked} title="Manual tracking" description="Dhanvi admin records each contribution as it is reported. No gateway payments." points={["Operational records only", "Selection unlocks once all are recorded"]} />
+                  <ChoiceCard selected={form.collectionMode === "RAZORPAY"} onSelect={() => set("collectionMode", "RAZORPAY")} disabled={locked} title="Razorpay (test)" description="Members pay through Razorpay Checkout; only verified captures settle a contribution." points={["Members pay in the app", "Admin intervenes only on reconciliation issues"]} />
+                </div>
+              </FormSection>
+            )}
+
+            {stepName === "Review & publish" && (
               <>
+                <RuleList items={[{ key: "Creator", value: scope === "admin" ? "Dhanvi platform" : "Organizer" }]} />
                 <RuleList items={[
                   { key: "Group name", value: form.name || "—" },
                   { key: "Group type", value: form.groupType === "AUCTION" ? "Auction" : "Random" },
@@ -322,6 +348,8 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
                   { key: "Contribution date", value: formatMonthlyDay(Number(form.contributionDueDay) || 1) },
                   { key: form.groupType === "AUCTION" ? "Auction date" : "Selection date", value: formatMonthlyDay(Number(form.selectionDay) || 1) },
                   { key: "Payout date", value: formatMonthlyDay(Number(form.payoutDay) || 1) },
+                  { key: "Start rule", value: "Starts when full, every member accepted the rules and the group is activated" },
+                  ...(scope === "admin" ? [{ key: "Collection", value: form.collectionMode === "RAZORPAY" ? "Razorpay Test Checkout" : "Manual tracking" }] : []),
                   ...(form.groupType === "AUCTION" ? [
                     { key: "Discount range", value: `${formatMoney(Number(form.minimumDiscount) || 0)} – ${formatMoney(Number(form.maximumDiscount) || 0)}` },
                     { key: "Bid increment", value: formatMoney(Number(form.bidIncrement) || 0) },
@@ -329,7 +357,7 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
                   ] : []),
                 ]} />
                 {form.description && <div><div className="text-sm text-muted" style={{ marginBottom: 4 }}>Description</div><p className="text-secondary" style={{ whiteSpace: "pre-wrap" }}>{form.description}</p></div>}
-                <Callout variant="info">{existing ? "Saving updates the draft. Rules become binding when the group is published." : "The group is saved as a draft. You can edit it until you publish. Once a member is approved, core rules are locked."}</Callout>
+                <Callout variant="info">{existing ? "Saving updates the draft. Rules become binding when the group is published." : "Publish now to open applications, or save a draft to edit later. Once a member is approved, core rules are locked."}</Callout>
               </>
             )}
 
@@ -340,8 +368,10 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
               {onCancel && <Button variant="ghost" onClick={onCancel} disabled={busy}>Cancel</Button>}
               {step > 0 && <Button variant="secondary" icon={<Icons.ChevronLeft size={16} />} onClick={() => setStep((s) => s - 1)} disabled={busy}>Back</Button>}
             </div>
-            {stepName === "Review"
-              ? <Button type="submit" loading={busy} icon={<Icons.Check size={16} />}>{existing ? "Save changes" : "Create group"}</Button>
+            {stepName === "Review & publish"
+              ? (existing
+                ? <Button type="submit" loading={busy} icon={<Icons.Check size={16} />}>Save changes</Button>
+                : <span className="row"><Button type="submit" variant="secondary" loading={busy && !publishAfterSave} disabled={busy} onClick={() => setPublishAfterSave(false)}>Save as draft</Button><Button type="submit" loading={busy && publishAfterSave} disabled={busy} onClick={() => setPublishAfterSave(true)} icon={<Icons.Send size={16} />}>Publish group</Button></span>)
               : <Button onClick={next}>Continue <Icons.ChevronRight size={16} /></Button>}
           </div>
         </Card>

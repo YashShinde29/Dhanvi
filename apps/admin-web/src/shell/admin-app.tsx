@@ -8,7 +8,7 @@ import { titleFromRules, type MenuItem, type NavItem, type NavSection, type Shel
 
 export const HOME = "/dashboard";
 
-/** Admin portal policy: only platform administrators. Everyone else sees the restriction screen, never admin content. */
+/** Admin Control Center policy: platform administrators only. Everyone else sees the restriction screen, never admin content. */
 export const adminAuthConfig: AppAuthConfig = {
   kind: "admin",
   allowedRoles: ADMIN_ROLES,
@@ -17,12 +17,14 @@ export const adminAuthConfig: AppAuthConfig = {
   forbidden: <Forbidden message="You do not have permission to access the Dhanvi Admin Portal." altHref={env.userAppUrl} altLabel="Go to Dhanvi" />,
 };
 
+// Only sections the backend supports today. Users/Audit/Settings modules have no read endpoints yet, so they are not listed.
 const items: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "Dashboard" },
-  { href: "/organizers", label: "Organizers", icon: "Inbox", prefix: true },
   { href: "/groups", label: "Groups", icon: "Layers", prefix: true },
+  { href: "/organizers", label: "Organizers", icon: "Inbox", prefix: true },
   { href: "/payments", label: "Payments", icon: "Wallet", prefix: true },
-  { href: "/payouts", label: "Payouts", icon: "Wallet", prefix: true },
+  { href: "/payouts", label: "Payouts", icon: "Send", prefix: true },
+  { href: "/reconciliation", label: "Reconciliation", icon: "Scale", prefix: true },
   { href: "/ledger", label: "Ledger", icon: "Activity", prefix: true },
 ];
 
@@ -31,7 +33,7 @@ const navigation = (): NavSection[] => [
   { heading: "Member app", items: [{ href: env.userAppUrl, label: "Go to Dhanvi", icon: "Users", external: true }] },
 ];
 
-const mobileNavigation = (): NavItem[] => [items[0], items[1], items[2], items[3]];
+const mobileNavigation = (): NavItem[] => [items[0]!, items[1]!, items[4]!, items[5]!];
 
 const menuItems = (): MenuItem[] => [
   { href: "/profile", label: "Profile & security", icon: "User" },
@@ -39,10 +41,11 @@ const menuItems = (): MenuItem[] => [
 ];
 
 const titles: [RegExp, string][] = [
-  [/^\/payouts/, "Payout operations"], [/^\/payments/, "Payments"], [/^\/ledger\/trial-balance/, "Trial balance"], [/^\/ledger\/accounts/, "Chart of accounts"], [/^\/ledger/, "Financial ledger"],
-  [/^\/organizers/, "Organizer applications"], [/^\/groups\/create/, "Create platform group"], [/^\/groups\/[^/]+\/cycles\/[^/]+\/auction/, "Auction"],
-  [/^\/groups\/[^/]+\/cycles\/[^/]+\/contributions/, "Cycle contributions"], [/^\/groups\/[^/]+/, "Group management"], [/^\/groups/, "Platform groups"],
-  [/^\/profile/, "Profile"], [/^\/dashboard/, "Admin overview"],
+  [/^\/payouts\/[^/]+/, "Payout"], [/^\/payouts/, "Payouts"], [/^\/payments\/[^/]+/, "Payment"], [/^\/payments/, "Payments"], [/^\/reconciliation/, "Reconciliation"],
+  [/^\/ledger\/trial-balance/, "Trial balance"], [/^\/ledger\/accounts/, "Chart of accounts"], [/^\/ledger/, "Ledger"],
+  [/^\/organizers/, "Organizer applications"], [/^\/groups\/create/, "Create platform group"], [/^\/groups\/[^/]+\/cycles\/[^/]+\/auction/, "Auction operations"],
+  [/^\/groups\/[^/]+\/cycles\/[^/]+\/contributions/, "Cycle contributions"], [/^\/groups\/[^/]+/, "Group"], [/^\/groups/, "Groups"],
+  [/^\/profile/, "Profile"], [/^\/dashboard/, "Requires attention"],
 ];
 
 /** The admin portal has no marketing site: anonymous visitors only ever see the sign-in page. */
@@ -56,7 +59,7 @@ function AdminPublicShell({ children }: { children: ReactNode }) {
 }
 
 export const adminShell: ShellConfig = {
-  brand: { label: "Dhanvi", subtitle: "Admin Portal" },
+  brand: { label: "Dhanvi", subtitle: "Control Center" },
   publicRoutes: ["/login"],
   publicShell: (children) => <AdminPublicShell>{children}</AdminPublicShell>,
   homeHref: () => HOME,

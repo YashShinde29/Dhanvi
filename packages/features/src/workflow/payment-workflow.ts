@@ -49,7 +49,7 @@ export function contributionAction(c: Contribution): WorkflowAction {
   const overdue = c.status === "OVERDUE";
   return financial
     ? { id: `due-${c.id}`, title: `Pay cycle ${c.cycleNumber} contribution · ${c.groupName}`, description: `${overdue ? "Overdue since" : "Due"} ${formatDate(c.dueDate)}.`, amount: due, status: overdue ? "blocked" : "attention", responsibleRole: "USER", actionLabel: "Pay now", actionHref: `/contributions?groupId=${c.groupId}`, priority: overdue ? 0 : 5 }
-    : { id: `due-${c.id}`, title: `Cycle ${c.cycleNumber} contribution due · ${c.groupName}`, description: `${overdue ? "Overdue since" : "Due"} ${formatDate(c.dueDate)} · pay your organizer, who records it.`, amount: due, status: overdue ? "blocked" : "current", responsibleRole: "USER", actionLabel: "View contribution", actionHref: `/contributions?groupId=${c.groupId}`, priority: overdue ? 1 : 20 };
+    : { id: `due-${c.id}`, title: `Cycle ${c.cycleNumber} contribution due · ${c.groupName}`, description: `${overdue ? "Overdue since" : "Due"} ${formatDate(c.dueDate)} · paid outside Dhanvi and recorded by the group's operator once received.`, amount: due, status: overdue ? "blocked" : "current", responsibleRole: "USER", actionLabel: "View group", actionHref: `/groups/${c.groupId}`, priority: overdue ? 1 : 20 };
 }
 
 /** Admin payments triage buckets from the list summary. */

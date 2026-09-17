@@ -9,10 +9,20 @@ namespace Dhanvi.Modules.Payouts.Infrastructure;
 internal sealed partial class PayoutService
 {
     private static BeneficiaryView View(PayoutBeneficiary b) => new(b.Id, b.MaskedAccountNumber, b.AccountHolderName, b.BankName, b.Ifsc, b.Status, b.CreatedAt, b.AvailableAt);
-    private static PayoutView View(PayoutObligation p, string? masked) => new(p.Id, p.GroupId, p.GroupName, p.CycleId, p.CycleNumber, p.MemberName, p.PayoutType, p.Amount,
-        p.Currency, p.Status, masked, p.SelectionResultId, p.AuctionResultId, p.AllocationJournalId, p.SettlementJournalId, p.CreatedAt, p.ApprovedAt, p.SettledAt);
-    private async Task<PayoutView> View(PayoutObligation p, CancellationToken ct) => View(p, p.BeneficiaryId is null ? null :
-        await db.Beneficiaries.Where(b => b.Id == p.BeneficiaryId).Select(b => b.MaskedAccountNumber).SingleAsync(ct));
+    private static PayoutView View(PayoutObligation p, string? masked, bool beneficiaryAvailable) => new(p.Id, p.GroupId, p.GroupName, p.CycleId, p.CycleNumber, p.MemberName, p.PayoutType, p.Amount,
+        p.Currency, p.Status, masked, p.SelectionResultId, p.AuctionResultId, p.AllocationJournalId, p.SettlementJournalId, p.CreatedAt, p.ApprovedAt, p.SettledAt, beneficiaryAvailable);
+    private async Task<PayoutView> View(PayoutObligation p, CancellationToken ct)
+    {
+        var masked = p.BeneficiaryId is null ? null : await db.Beneficiaries.Where(b => b.Id == p.BeneficiaryId).Select(b => b.MaskedAccountNumber).SingleAsync(ct);
+        var available = p.BeneficiaryId.HasValue || !p.UserId.HasValue || await BeneficiaryAvailableAsync(p.UserId.Value, ct);
+        return View(p, masked, available);
+    }
+    // Same lookup the approval uses (latest account, past its hold); presented so operators know whether Approve can succeed.
+    private async Task<bool> BeneficiaryAvailableAsync(Guid user, CancellationToken ct)
+    {
+        var now = clock.UtcNow;
+        return await db.Beneficiaries.AsNoTracking().Where(b => b.UserId == user).OrderByDescending(b => b.CreatedAt).ThenByDescending(b => b.Id).Select(b => b.AvailableAt <= now).FirstOrDefaultAsync(ct);
+    }
     private async Task<IReadOnlyList<PayoutView>> Views(IEnumerable<PayoutObligation> rows, CancellationToken ct)
     { var result = new List<PayoutView>(); foreach (var p in rows) result.Add(await View(p, ct)); return result; }
     public async Task<PayoutPage> ListAsync(Guid actor, bool admin, Guid? group, int page, PayoutStatus? status, PayoutType? type, CancellationToken ct, PayoutFilter? filter = null)

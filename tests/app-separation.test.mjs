@@ -37,7 +37,7 @@ test("member, organizer and public routes live only in the user app", () => {
 
 test("admin operational routes live only in the admin app, with clean URLs", () => {
   const user = routes("user-web"), admin = routes("admin-web");
-  for (const route of ["/dashboard", "/organizers", "/groups", "/groups/create", "/payments", "/payments/[id]", "/payouts", "/payouts/[id]", "/ledger", "/ledger/trial-balance", "/ledger/journals/[id]"]) assert.ok(admin.includes(route), `admin-web ${route}`);
+  for (const route of ["/dashboard", "/organizers", "/groups", "/groups/create", "/groups/[id]", "/payments", "/payments/[id]", "/payouts", "/payouts/[id]", "/reconciliation", "/ledger", "/ledger/trial-balance", "/ledger/journals/[id]"]) assert.ok(admin.includes(route), `admin-web ${route}`);
   assert.ok(!admin.some((r) => r.startsWith("/admin")), "admin app must not use /admin/admin URLs");
   assert.ok(!user.some((r) => r.startsWith("/admin")), "user app must not render admin screens");
   assert.match(read("apps/user-web/next.config.ts"), /source: "\/admin\/:path\*"/, "old /admin/* member URLs redirect to the admin portal");
@@ -65,7 +65,7 @@ test("route guards: each app declares its allowed roles and every page is protec
   assert.match(roles, /ADMIN_ROLES: PlatformRole\[\] = \["ADMIN", "SUPER_ADMIN"\]/);
   assert.match(roles, /USER_APP_ROLES: PlatformRole\[\] = \["USER", "ORGANIZER"\]/);
   const unguarded = walk("apps/admin-web/src/app").filter((p) => p.endsWith("page.tsx") && !/\/(login|page)\.tsx$/.test(p) && !/src\/app\/page\.tsx$/.test(p))
-    .filter((p) => { const s = read(p); return !/ProtectedPage|AdminLedgerPage|JournalDetailsPage|TrialBalancePage|LedgerAccountsPage|PaymentsPage|PaymentDetailsPage|PayoutsPage|PayoutDetailsPage|GroupListPage|GroupCreatePage|GroupDetailPage|ManageContributionsPage|AuctionPage|OrganizerApplicationsQueue/.test(s); });
+    .filter((p) => { const s = read(p); return !/ProtectedPage|AdminLedgerPage|JournalDetailsPage|TrialBalancePage|LedgerAccountsPage|PaymentsPage|PaymentDetailsPage|PayoutsPage|PayoutDetailsPage|AdminGroupsPage|AdminGroupDetailPage|AdminReconciliationPage|GroupCreatePage|ManageContributionsPage|AuctionPage|OrganizerApplicationsQueue/.test(s); });
   assert.deepEqual(unguarded, []);
   assert.match(read("packages/features/src/auth/forbidden.tsx"), /Access restricted/);
   assert.match(read("apps/admin-web/src/shell/admin-app.tsx"), /You do not have permission to access the Dhanvi Admin Portal\./);

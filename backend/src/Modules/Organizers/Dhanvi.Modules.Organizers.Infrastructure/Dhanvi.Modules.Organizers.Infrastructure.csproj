@@ -9,6 +9,7 @@
     <ProjectReference Include="..\Dhanvi.Modules.Organizers.Domain\Dhanvi.Modules.Organizers.Domain.csproj" />
     <ProjectReference Include="..\..\Identity\Dhanvi.Modules.Identity.Infrastructure\Dhanvi.Modules.Identity.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Audit\Dhanvi.Modules.Audit.Infrastructure\Dhanvi.Modules.Audit.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Admin\Dhanvi.Modules.Admin.Application\Dhanvi.Modules.Admin.Application.csproj" />
   </ItemGroup>
 </Project>
 

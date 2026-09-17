@@ -9,3 +9,4 @@ export * from "./payment.service";
 export * from "./payout.service";
 export * from "./selection.service";
 export * from "./user.service";
+export * from "./admin.service";

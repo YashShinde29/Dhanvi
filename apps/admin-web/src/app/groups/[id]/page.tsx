@@ -1,4 +1,3 @@
-import { GroupDetailPage } from "@dhanvi/features/groups/group-pages";
-export default function Page() {
-  return <GroupDetailPage scope="admin" />;
-}
+import { Suspense } from "react";
+import { AdminGroupDetailPage } from "@dhanvi/features/admin/admin-group-detail";
+export default function Page() { return <Suspense><AdminGroupDetailPage /></Suspense>; }

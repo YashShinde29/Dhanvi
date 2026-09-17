@@ -58,6 +58,8 @@ export const Icons = {
   Hash: (p: IconProps) => <svg {...base(p)}><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" /></svg>,
   Globe: (p: IconProps) => <svg {...base(p)}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>,
   Circle: (p: IconProps) => <svg {...base(p)}><circle cx="12" cy="12" r="9" /></svg>,
+  More: (p: IconProps) => <svg {...base(p)}><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none" /></svg>,
+  Scale: (p: IconProps) => <svg {...base(p)}><path d="M12 3v18M5 21h14M3 8l4-4h10l4 4M7 4l-4 8a4 4 0 0 0 8 0L7 4zM17 4l-4 8a4 4 0 0 0 8 0l-4-8z" /></svg>,
   HelpCircle: (p: IconProps) => <svg {...base(p)}><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01" /></svg>,
 };
 

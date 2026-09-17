@@ -51,6 +51,15 @@ public sealed partial class AuctionService
             auction.LastBidSequence, eligible.Count, manage, manage && active && ready && state.Auction is null && window, manage && active && ready && auction.Status == AuctionStatus.Open,
             canBid, reason, OwnBids(state, actor), inspect ? state.Bids.OrderBy(b => b.SequenceNumber).Select(b => BidMap(state, b, true)).ToArray() : [],
             inspect ? state.Audit.Where(a => a.CycleId == auction.CycleId && a.AlgorithmVersion == AuctionCalculator.Version).OrderBy(a => a.CreatedAt).Select(a => new AuctionAuditDetails(a.Action, a.CreatedAt, a.SubjectId)).ToArray() : [],
-            state.Result is null ? null : ResultMap(state, actor));
+            state.Result is null ? null : ResultMap(state, actor),
+            state.Selection.Group.GroupValue, state.Selection.Group.Name, state.Selection.Group.DurationMonths, RecentBids(state, own?.Membership.Id, 12),
+            state.Auction?.CurrentWinningMembershipId is { } leader ? state.Selection.Participants.SingleOrDefault(p => p.Membership.Id == leader)?.Membership.SlotNumber : null);
+    }
+    // Live bid movement for every viewer: amounts, times and member positions (the existing "Member #slot" convention), never identities.
+    private static AuctionActivityDetails[] RecentBids(AuctionContext state, Guid? ownMembership, int limit)
+    {
+        var slots = state.Selection.Participants.ToDictionary(p => p.Membership.Id, p => p.Membership.SlotNumber ?? 0);
+        return state.Bids.OrderByDescending(b => b.SequenceNumber).Take(limit)
+            .Select(b => new AuctionActivityDetails(b.DiscountAmount, b.SubmittedAt, slots.GetValueOrDefault(b.MembershipId), b.MembershipId == ownMembership, state.Auction?.CurrentWinningBidId == b.Id)).ToArray();
     }
 }

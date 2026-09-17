@@ -20,7 +20,7 @@ export function OrganizerApplicationsQueue() {
     const result = await confirm({ title: `Approve ${item.applicant} as an organizer?`, description: "They will be able to create and manage savings groups immediately. You can suspend organizer access later if needed.", confirmLabel: "Approve organizer" });
     if (!result.confirmed) return;
     setBusyId(item.id);
-    try { await organizerService.approve(item.id); toast.success("Organizer approved ✓", `Next: ${item.applicant} creates and publishes their first group.`); setSelected(null); await reload(); }
+    try { await organizerService.approve(item.id); toast.success("Organizer approved ✓", `Next: ${item.applicant} creates and publishes their first group. Waiting on: ${item.applicant}.`); setSelected(null); await reload(); }
     catch (failure) { toast.error("Approval failed", friendlyError(failure)); }
     finally { setBusyId(""); }
   }
@@ -38,17 +38,12 @@ export function OrganizerApplicationsQueue() {
     { key: "applicant", header: "Applicant", primary: true, render: (a) => <span className="row" style={{ gap: 10, flexWrap: "nowrap" }}><Avatar name={a.applicant} size="sm" /><span style={{ minWidth: 0 }}><span className="text-strong" style={{ display: "block" }}>{a.applicant}</span><span className="cell__sub">{a.email}</span></span></span> },
     { key: "submitted", header: "Submitted", render: (a) => formatDate(a.submittedAt) },
     { key: "status", header: "Status", render: (a) => <StatusBadge kind="organizer" value={a.status} /> },
-    { key: "actions", header: "Actions", actions: true, render: (a) => (
-      <span className="row" style={{ gap: 6 }}>
-        <Button variant="ghost" size="sm" onClick={() => setSelected(a)}>View</Button>
-        {reviewable(a) && <><Button size="sm" loading={busyId === a.id} disabled={!!busyId} onClick={() => approve(a)}>Approve</Button><Button size="sm" variant="danger-outline" disabled={!!busyId} onClick={() => reject(a)}>Reject</Button></>}
-      </span>
-    ) },
+    { key: "actions", header: "", actions: true, render: (a) => <Button variant={reviewable(a) ? "secondary" : "ghost"} size="sm" onClick={() => setSelected(a)}>{reviewable(a) ? "Review" : "View"}</Button> },
   ];
 
   return (
     <div className="stack stack--lg">
-      <PageHeader eyebrow="Administration" title="Organizer applications" description="Review applications and record approval decisions. Approved organizers can create groups immediately." />
+      <PageHeader eyebrow="Control center" title="Organizer applications" description="Review who may create groups. Approved organizers can create and publish groups immediately; applicants see your decision and reason." />
       <div className="row row--between">
         <ChipGroup label="Application status" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={[{ value: "", label: "All" }, ...ORGANIZER_APPLICATION_STATUSES.map((s) => ({ value: s, label: presentStatus("organizer", s).label }))]} />
         <div style={{ flex: "1 1 220px", maxWidth: 360 }}><SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search name or email" /></div>
@@ -61,7 +56,7 @@ export function OrganizerApplicationsQueue() {
         </>
       )}
       <Drawer open={!!selected} onClose={() => setSelected(null)} title={selected?.applicant ?? "Application"}
-        footer={selected && reviewable(selected) ? <><Button variant="danger-outline" disabled={!!busyId} onClick={() => reject(selected)}>Reject</Button><Button loading={busyId === selected.id} onClick={() => approve(selected)}>Approve</Button></> : undefined}>
+        footer={selected && reviewable(selected) ? <><Button variant="danger-outline" disabled={!!busyId} onClick={() => reject(selected)}>Reject</Button><Button loading={busyId === selected.id} disabled={!!busyId} onClick={() => approve(selected)}>Approve organizer</Button></> : undefined}>
         {selected && (
           <>
             <div className="row" style={{ gap: 12 }}><Avatar name={selected.applicant} size="lg" /><div><div className="text-strong">{selected.applicant}</div><StatusBadge kind="organizer" value={selected.status} /></div></div>

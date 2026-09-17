@@ -15,6 +15,7 @@ public static class PayoutsModule
         services.AddDbContext<PayoutsDbContext>(o => o.UseNpgsql(configuration.GetConnectionString("DefaultConnection"), n => n.MigrationsHistoryTable("__EFMigrationsHistory", "payouts")));
         services.AddScoped<IPayoutService, PayoutService>(); services.AddSingleton<IPayoutApprovalPolicy, AdminPayoutApprovalPolicy>();
         services.AddSingleton<IPayoutGateway, FakePayoutGateway>(); services.AddScoped<IPayoutLedgerReader, PayoutLedgerReader>();
+        services.AddScoped<Dhanvi.Modules.Admin.Application.IPayoutOperationsReader, PayoutOperationsReader>();
         return services;
     }
 }

@@ -1,3 +1,3 @@
 import { Suspense } from "react";
-import { PayoutsPage } from "@dhanvi/features/payouts/payout-pages";
-export default function Page() { return <Suspense><PayoutsPage /></Suspense>; }
+import { MemberPayoutsPage } from "@dhanvi/features/payouts/member-payouts";
+export default function Page() { return <Suspense><MemberPayoutsPage /></Suspense>; }

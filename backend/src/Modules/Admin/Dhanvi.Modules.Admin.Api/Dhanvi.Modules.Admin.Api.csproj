@@ -1,0 +1,1 @@
+<Project Sdk="Microsoft.NET.Sdk"><ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" /><ProjectReference Include="../Dhanvi.Modules.Admin.Application/Dhanvi.Modules.Admin.Application.csproj" /></ItemGroup></Project>

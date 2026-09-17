@@ -19,22 +19,22 @@ export const userAuthConfig: AppAuthConfig = {
   forbidden: <Forbidden message="This account cannot use the Dhanvi member app." altHref={env.adminAppUrl} altLabel="Open Admin Portal" />,
 };
 
+// Member portal: personal, action-focused. Financial history (posted ledger lines) is reachable from Payments, not the nav.
 const memberItems = (user: CurrentUser): NavItem[] => [
-  { href: "/dashboard", label: "Dashboard", icon: "Dashboard" },
-  { href: "/groups", label: "Browse groups", icon: "Search", prefix: true },
+  { href: "/dashboard", label: "Home", icon: "Home" },
   { href: "/my-groups", label: "My groups", icon: "Users" },
+  { href: "/groups", label: "Browse groups", icon: "Search", prefix: true },
   { href: "/contributions", label: "Contributions", icon: "Wallet" },
-  { href: "/payments", label: "Payments", icon: "Wallet", prefix: true },
-  { href: "/payouts", label: "Payouts", icon: "Wallet", prefix: true },
-  { href: "/ledger", label: "Financial history", icon: "Activity" },
+  { href: "/payments", label: "Payments", icon: "Activity", prefix: true },
+  { href: "/payouts", label: "Payouts", icon: "Send", prefix: true },
   { href: "/profile", label: "Profile", icon: "User" },
   ...(user.organizerStatus === "APPROVED" ? [] : [{ href: user.organizerStatus === "NOT_APPLIED" ? "/become-organizer" : "/organizer/application-status", label: "Become an organizer", icon: "Briefcase" as IconName, prefix: true }]),
 ];
 
+// Organizer: own-group operations only. "Create group" lives once, on the managed groups page.
 const organizerItems: NavItem[] = [
-  { href: "/organizer", label: "Organizer dashboard", icon: "Dashboard" },
-  { href: "/organizer/groups", label: "Manage groups", icon: "Layers", prefix: true, exclude: ["/organizer/groups/create"] },
-  { href: "/organizer/groups/create", label: "Create group", icon: "Plus" },
+  { href: "/organizer", label: "Organizer", icon: "Dashboard" },
+  { href: "/organizer/groups", label: "My managed groups", icon: "Layers", prefix: true },
   { href: "/organizer/applications", label: "Applications", icon: "Inbox" },
 ];
 
@@ -52,8 +52,8 @@ function navigation(user: CurrentUser): NavSection[] {
 /** Bottom navigation for phones: the four most useful destinations per role. */
 function mobileNavigation(user: CurrentUser): NavItem[] {
   if (isOrganizerRole(user.roles)) return [
-    { href: "/organizer", label: "Dashboard", icon: "Dashboard" },
-    { href: "/organizer/groups", label: "My groups", icon: "Layers", prefix: true },
+    { href: "/organizer", label: "Organizer", icon: "Dashboard" },
+    { href: "/organizer/groups", label: "Managed", icon: "Layers", prefix: true },
     { href: "/organizer/applications", label: "Applications", icon: "Inbox" },
     { href: "/profile", label: "Profile", icon: "User" },
   ];
@@ -75,10 +75,10 @@ function menuItems(user: CurrentUser): MenuItem[] {
 const titles: [RegExp, string][] = [
   [/^\/payouts/, "My payouts"], [/^\/payments/, "My payments"], [/^\/ledger/, "Financial history"],
   [/^\/organizer\/groups\/create/, "Create group"], [/^\/organizer\/groups\/[^/]+\/applications/, "Applications"], [/^\/organizer\/groups\/[^/]+\/cycles\/[^/]+\/auction/, "Auction"],
-  [/^\/organizer\/groups\/[^/]+\/cycles\/[^/]+\/contributions/, "Cycle contributions"], [/^\/organizer\/groups\/[^/]+\/payouts/, "Group payouts"], [/^\/organizer\/groups\/[^/]+/, "Group management"], [/^\/organizer\/groups/, "My groups"],
-  [/^\/organizer\/applications/, "Applications"], [/^\/organizer\/application-status/, "Organizer application"], [/^\/organizer/, "Organizer dashboard"],
-  [/^\/groups\/[^/]+\/cycles\/[^/]+\/auction/, "Auction"], [/^\/groups\/[^/]+\/cycles\/[^/]+\/selection\/verify/, "Verify draw"], [/^\/groups\/[^/]+/, "Group details"], [/^\/groups/, "Browse groups"],
-  [/^\/my-groups/, "My groups"], [/^\/contributions/, "Contributions"], [/^\/profile/, "Profile"], [/^\/become-organizer/, "Become an organizer"], [/^\/dashboard/, "Dashboard"],
+  [/^\/organizer\/groups\/[^/]+\/cycles\/[^/]+\/contributions/, "Cycle contributions"], [/^\/organizer\/groups\/[^/]+\/payouts/, "Group payouts"], [/^\/organizer\/groups\/[^/]+/, "My group"], [/^\/organizer\/groups/, "My managed groups"],
+  [/^\/organizer\/applications/, "Applications"], [/^\/organizer\/application-status/, "Organizer application"], [/^\/organizer/, "Organizer"],
+  [/^\/groups\/[^/]+\/cycles\/[^/]+\/auction/, "Auction"], [/^\/groups\/[^/]+\/cycles\/[^/]+\/selection\/verify/, "Verify draw"], [/^\/groups\/[^/]+/, "Group"], [/^\/groups/, "Browse groups"],
+  [/^\/my-groups/, "My groups"], [/^\/contributions/, "Contributions"], [/^\/profile/, "Profile"], [/^\/become-organizer/, "Become an organizer"], [/^\/dashboard/, "Home"],
 ];
 
 export const userShell: ShellConfig = {

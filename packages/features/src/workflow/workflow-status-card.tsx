@@ -13,7 +13,7 @@ const BADGE: Record<WorkflowState, { tone: "success" | "info" | "warning" | "dan
  * The "where am I / what's next" card for a workflow-heavy page.
  * Answers: current stage, what is done, what is happening, who acts next, what is blocking, what to do.
  */
-export function WorkflowStatusCard({ summary, viewer = "member", title = "Progress", stepperLabel, bare }: { summary: WorkflowSummary; viewer?: "member" | "organizer" | "admin"; title?: string; stepperLabel?: string; /** Render without the outer card (when already inside one). */ bare?: boolean }) {
+export function WorkflowStatusCard({ summary, viewer = "member", title = "Progress", stepperLabel, bare, hideNoAction }: { summary: WorkflowSummary; viewer?: "member" | "organizer" | "admin"; title?: string; stepperLabel?: string; /** Render without the outer card (when already inside one). */ bare?: boolean; /** Omit the "No action is required" line (operators have a control panel). */ hideNoAction?: boolean }) {
   const badge = BADGE[summary.status];
   const steps = summary.steps;
   const position = summary.position ?? (steps ? { current: Math.max(1, steps.findIndex((s) => s.state === "current" || s.state === "blocked" || s.state === "waiting") + 1 || steps.filter((s) => s.state === "complete").length), total: steps.length } : undefined);
@@ -37,7 +37,7 @@ export function WorkflowStatusCard({ summary, viewer = "member", title = "Progre
           {who && <div className="wf-fact"><dt>Who acts next</dt><dd>{who}</dd></div>}
           {(summary.next || nextStep) && <div className="wf-fact"><dt>Next step</dt><dd>{summary.next ?? nextStep?.label}</dd></div>}
         </dl>
-        {summary.action ? <NextActionCard action={summary.action} viewer={viewer} compact /> : <p className="wf-noaction" role="status">No action is required from you right now.</p>}
+        {summary.action ? <NextActionCard action={summary.action} viewer={viewer} compact /> : hideNoAction ? null : <p className="wf-noaction" role="status">No action is required from you right now.</p>}
     </>
   );
   if (bare) return <div className="stack wf-card wf-card--bare">{body}</div>;

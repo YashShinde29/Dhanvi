@@ -28,7 +28,7 @@ export function GroupCard({ group, href, manage }: { group: Group; href: string;
       {manage && group.pendingApplications > 0 && <div className="row" style={{ gap: 6 }}><span className="badge badge--warning">{group.pendingApplications} pending application{group.pendingApplications === 1 ? "" : "s"}</span></div>}
       <div className="group-card__footer">
         <span className="row" style={{ gap: 6 }}><Icons.Calendar size={14} /> Starts {formatDate(group.startDate)}</span>
-        <span className="row" style={{ gap: 4 }}>{manage ? <CreatorTypeBadge creatorType={group.creatorType} /> : null}<Link href={href} className="link">View group <Icons.ArrowRight size={14} style={{ display: "inline", verticalAlign: "-2px" }} /></Link></span>
+        {manage && <CreatorTypeBadge creatorType={group.creatorType} />}
       </div>
     </Card>
   );
