@@ -26,13 +26,14 @@ function History() {
   const { data, error, loading, reload } = useAsyncData(() => contributionService.mine(query), [query]);
 
   const columns: Column<Contribution>[] = [
+    // Phone card: group + cycle, status, then the amount large, due date, and the Pay action last. Bookkeeping columns stay desktop-only.
     { key: "group", header: "Group", primary: true, render: (c) => <><Link className="link" href={`/groups/${c.groupId}`}>{c.groupName}</Link><span className="cell__sub">Cycle {c.cycleNumber}</span></> },
+    { key: "status", header: "Status", mobile: "status", render: (c) => <StatusBadge kind="contribution" value={c.status} /> },
+    { key: "expected", header: "Expected", align: "right", mobile: "emphasis", render: (c) => <span className="amount">{formatMoney(c.expectedAmount)}</span> },
     { key: "due", header: "Due date", render: (c) => formatDate(c.dueDate) },
-    { key: "expected", header: "Expected", align: "right", render: (c) => <span className="amount">{formatMoney(c.expectedAmount)}</span> },
     { key: "recorded", header: "Recorded", align: "right", render: (c) => <span className="amount" style={{ fontWeight: 500 }}>{formatMoney(c.recordedAmount)}</span> },
-    { key: "recordedAt", header: "Recorded on", render: (c) => c.recordedAt ? formatDate(c.recordedAt, c.groupTimeZone) : <span className="text-muted">—</span> },
-    { key: "status", header: "Status", render: (c) => <StatusBadge kind="contribution" value={c.status} /> },
-    { key: "payment", header: "Payment", render: (c) => c.collectionMode === "RAZORPAY" ? <PaymentCheckout contributionId={c.id} groupName={c.groupName} cycleNumber={c.cycleNumber} dueDate={c.dueDate} /> : "Manual tracking" },
+    { key: "recordedAt", header: "Recorded on", mobile: "hidden", render: (c) => c.recordedAt ? formatDate(c.recordedAt, c.groupTimeZone) : <span className="text-muted">—</span> },
+    { key: "payment", header: "Payment", actions: true, className: "cell--payment", render: (c) => c.collectionMode === "RAZORPAY" ? <PaymentCheckout contributionId={c.id} groupName={c.groupName} cycleNumber={c.cycleNumber} dueDate={c.dueDate} /> : <span className="text-muted text-sm">Manual tracking</span> },
   ];
 
   return (
@@ -40,7 +41,7 @@ function History() {
       <PageHeader eyebrow="Member" title="My contributions" description="Pay and track your monthly contribution for each group. Each row shows what is due, what is settled, and your next action."
         actions={groupId && <LinkButton href="/contributions" variant="secondary" size="sm">Show all groups</LinkButton>} />
       <Callout variant="neutral">Manual records track reported contributions. Eligible platform groups collect through Razorpay Test Checkout; only verified captures count as gateway settlement.</Callout>
-      <ChipGroup label="Filter by status" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={[{ value: "", label: "All" }, ...CONTRIBUTION_STATUSES.map((s) => ({ value: s, label: presentStatus("contribution", s).label }))]} />
+      <ChipGroup scroll label="Filter by status" value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={[{ value: "", label: "All" }, ...CONTRIBUTION_STATUSES.map((s) => ({ value: s, label: presentStatus("contribution", s).label }))]} />
       {error ? <ErrorState message={error} onRetry={reload} /> : (
         <>
           <DataTable columns={columns} rows={loading && !data ? undefined : data?.items} loading={loading} rowKey={(c) => c.id} caption="Contribution history"

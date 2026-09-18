@@ -22,7 +22,6 @@ export function GroupCreatePage({ scope }: { scope: "organizer" | "admin" }) {
 }
 
 interface FormState {
-  collectionMode: "MANUAL_TRACKING" | "RAZORPAY";
   name: string; description: string; groupType: "RANDOM" | "AUCTION"; groupValue: string; memberLimit: string;
   organizerParticipates: boolean; organizerFirstPayout: boolean; contributionDueDay: string; selectionDay: string; payoutDay: string; startDate: string;
   minimumDiscount: string; maximumDiscount: string; bidIncrement: string; auctionStartTime: string; auctionEndTime: string;
@@ -35,7 +34,6 @@ const defaultAuction: AuctionRules = { minimumDiscount: 0, maximumDiscount: 1000
 function fromGroup(existing?: Group): FormState {
   const auction = existing?.auctionRules ?? defaultAuction;
   return {
-    collectionMode: existing?.collectionMode ?? "MANUAL_TRACKING",
     name: existing?.name ?? "", description: existing?.description ?? "", groupType: existing?.groupType ?? "RANDOM",
     groupValue: existing ? String(existing.groupValue) : "500000", memberLimit: existing ? String(existing.memberLimit) : String(env.minimumGroupMembers),
     organizerParticipates: existing?.organizerParticipates ?? false, organizerFirstPayout: existing?.organizerFirstPayout ?? false,
@@ -198,6 +196,7 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
     ...(scope === "organizer" ? [{ key: "External positions", value: calc.externalSlots ?? "—" }] : []),
   ];
 
+  const canChooseRazorpay = scope === "admin";
   const wizardSteps: WorkflowStep[] = stepNames.map((name, i) => ({ id: name, label: name, state: i < step ? "complete" : i === step ? "current" : "upcoming" }));
   if (resume) {
     const done = stepNames.slice(0, resume.step);
@@ -219,8 +218,8 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
       <div className="stack stack--lg">
         <Card>
           <CardBody className="stack">
-            <div className="wf-card__eyebrow">Current step · {step + 1} of {stepNames.length} — {stepName}{step + 1 < stepNames.length && <span className="wf-card__position"> · Next: {stepNames[step + 1]}</span>}</div>
-            <WorkflowStepper steps={wizardSteps} label="Group setup steps" />
+            <div className="wf-card__eyebrow hide-mobile">Current step · {step + 1} of {stepNames.length} — {stepName}{step + 1 < stepNames.length && <span className="wf-card__position"> · Next: {stepNames[step + 1]}</span>}</div>
+            <WorkflowStepper steps={wizardSteps} label="Group setup steps" wizard />
           </CardBody>
         </Card>
         {locked && <Callout variant="info" title="Core rules are locked">A member has been approved, so financial rules can no longer change. You can still update the name and description.</Callout>}

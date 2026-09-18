@@ -1,29 +1,40 @@
 "use client";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useMemo, useState } from "react";
 import { ProtectedPage, useAuth } from "@dhanvi/auth";
-import { useAsyncData, formatDate, formatDateTime, humanize } from "@dhanvi/utils";
+import { useAsyncData, useDebounced, formatDate, formatDateTime, humanize } from "@dhanvi/utils";
 import { ledgerService } from "@dhanvi/api-client";
 import type { JournalSummary, AccountBalance } from "@dhanvi/types";
-import { PageHeader, Breadcrumbs, Card, CardBody, CardHeader, DataTable, Pagination, type Column, StatCard, Badge, FilterBar, Input, Select, Button, LinkButton, Callout, ErrorState, PageSkeleton } from "@dhanvi/ui";
+import { PageHeader, Breadcrumbs, Card, CardBody, CardHeader, DataTable, Pagination, type Column, StatCard, Badge, FormField, Input, Select, LinkButton, Callout, ErrorState, PageSkeleton, ResponsiveFilters } from "@dhanvi/ui";
 
 const money = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 const short = (id: string | null) => id ? id.slice(0, 8) : "—";
 const BalanceBadge = ({ balanced }: { balanced: boolean }) => <Badge tone={balanced ? "success" : "danger"}>{balanced ? "Balanced" : "Out of balance"}</Badge>;
 function LedgerLinks() { return <nav className="row" aria-label="Ledger sections"><LinkButton variant="secondary" size="sm" href="/ledger">Journal entries</LinkButton><LinkButton variant="secondary" size="sm" href="/ledger/trial-balance">Trial balance</LinkButton><LinkButton variant="secondary" size="sm" href="/ledger/accounts">Accounts</LinkButton></nav>; }
 
-function LedgerFilters({ onChange, groupId }: { onChange: (query: string) => void; groupId?: string }) {
-  function submit(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const values = new FormData(e.currentTarget); const query = new URLSearchParams(); values.forEach((v, k) => { if (String(v).trim()) query.set(k, String(v).trim()); }); onChange(query.toString()); }
-  return <form onSubmit={submit}><FilterBar>
-    <Input type="date" name="from" aria-label="Business date from" /><Input type="date" name="to" aria-label="Business date to" />
-    <Input name="journalNumber" placeholder="Journal number" aria-label="Journal number" />
-    <Input name="account" placeholder="Account code" aria-label="Account code" />
-    {!groupId && <Input name="groupId" placeholder="Group ID" aria-label="Group ID" />}
-    <Input name="cycleId" placeholder="Cycle ID" aria-label="Cycle ID" />
-    <Select name="eventType" aria-label="Accounting event"><option value="">All events</option><option value="RANDOM_SELECTION_COMPLETED">Random selection</option><option value="ORGANIZER_RESERVED_SELECTION_COMPLETED">Organizer reservation</option><option value="AUCTION_SELECTION_COMPLETED">Auction selection</option><option value="ACCOUNTING_REVERSAL">Reversal</option></Select>
-    <Button type="submit" variant="secondary">Apply filters</Button><Button type="reset" variant="ghost" onClick={() => onChange("")}>Clear</Button>
-  </FilterBar></form>;
+const EMPTY_FILTERS = { from: "", to: "", journalNumber: "", account: "", groupId: "", cycleId: "", eventType: "" };
+type LedgerFilterState = typeof EMPTY_FILTERS;
+/** Controlled filter fields; the page debounces them into one query string. Phones get them in a sheet. */
+function LedgerFilters({ value, onChange, groupId }: { value: LedgerFilterState; onChange: (next: LedgerFilterState) => void; groupId?: string }) {
+  const set = (key: keyof LedgerFilterState) => (v: string) => onChange({ ...value, [key]: v });
+  const active = Object.entries(value).filter(([k, v]) => v && !(k === "groupId" && groupId)).length;
+  return <ResponsiveFilters label="Ledger filters" title="Filter journals" activeCount={active} onClear={() => onChange(EMPTY_FILTERS)}>
+    <FormField label="From" htmlFor="ledger-from"><Input id="ledger-from" type="date" value={value.from} onChange={(e) => set("from")(e.target.value)} /></FormField>
+    <FormField label="To" htmlFor="ledger-to"><Input id="ledger-to" type="date" value={value.to} onChange={(e) => set("to")(e.target.value)} /></FormField>
+    <FormField label="Journal number" htmlFor="ledger-journal"><Input id="ledger-journal" value={value.journalNumber} onChange={(e) => set("journalNumber")(e.target.value)} /></FormField>
+    <FormField label="Account code" htmlFor="ledger-account"><Input id="ledger-account" value={value.account} onChange={(e) => set("account")(e.target.value)} /></FormField>
+    {!groupId && <FormField label="Group ID" htmlFor="ledger-group"><Input id="ledger-group" value={value.groupId} onChange={(e) => set("groupId")(e.target.value)} /></FormField>}
+    <FormField label="Cycle ID" htmlFor="ledger-cycle"><Input id="ledger-cycle" value={value.cycleId} onChange={(e) => set("cycleId")(e.target.value)} /></FormField>
+    <FormField label="Event" htmlFor="ledger-event"><Select id="ledger-event" value={value.eventType} onChange={(e) => set("eventType")(e.target.value)}><option value="">All events</option><option value="RANDOM_SELECTION_COMPLETED">Random selection</option><option value="ORGANIZER_RESERVED_SELECTION_COMPLETED">Organizer reservation</option><option value="AUCTION_SELECTION_COMPLETED">Auction selection</option><option value="ACCOUNTING_REVERSAL">Reversal</option></Select></FormField>
+  </ResponsiveFilters>;
+}
+/** Filter fields debounced into the query string the ledger endpoints accept. */
+function useLedgerQuery() {
+  const [fields, setFields] = useState<LedgerFilterState>(EMPTY_FILTERS);
+  const debounced = useDebounced(fields, 400);
+  const query = useMemo(() => { const q = new URLSearchParams(); for (const [k, v] of Object.entries(debounced)) if (v.trim()) q.set(k, v.trim()); return q.toString(); }, [debounced]);
+  return { fields, setFields, query };
 }
 const journalColumns: Column<JournalSummary>[] = [
   { key: "number", header: "Journal number", primary: true, render: j => <Link className="link" href={`/ledger/journals/${j.id}`}>{j.journalNumber}</Link> },
@@ -42,11 +53,11 @@ function Totals({ debit, credit, balanced, journals }: { debit: number; credit: 
 export function AdminLedgerPage({ group = false }: { group?: boolean }) { return <ProtectedPage roles={["ADMIN", "SUPER_ADMIN"]}><JournalList group={group} /></ProtectedPage>; }
 function JournalList({ group }: { group: boolean }) {
   const params = useParams<{ groupId: string }>(); const groupId = group ? params.groupId : undefined;
-  const [filters, setFilters] = useState(""); const [page, setPage] = useState(1);
+  const { fields, setFields, query: filters } = useLedgerQuery(); const [page, setPage] = useState(1);
   const data = useAsyncData(async () => { const [journals, totals] = await Promise.all([ledgerService.journals(`${filters}&page=${page}&pageSize=20`, groupId), ledgerService.trialBalance(filters, groupId)]); return { journals, totals }; }, [filters, page, groupId]);
   return <div className="stack stack--lg"><PageHeader eyebrow="Accounting" title={group ? "Group ledger" : "Financial ledger"} description="Posted accounting entries. Calculated payout rights and operational contributions are not proof of payment." />
     <LedgerLinks />{groupId && <Link className="link" href={`/groups/${groupId}`}>Back to group {short(groupId)}</Link>}
-    <LedgerFilters groupId={groupId} onChange={q => { setFilters(q); setPage(1); }} />
+    <LedgerFilters groupId={groupId} value={fields} onChange={(next) => { setFields(next); setPage(1); }} />
     {data.error ? <ErrorState message={data.error} onRetry={data.reload} /> : <>
       {data.data && <Totals debit={data.data.totals.totalDebits} credit={data.data.totals.totalCredits} balanced={data.data.totals.balanced} journals={data.data.totals.totalJournals} />}
       <Card><CardHeader title="Journal entries" subtitle="Immutable history · INR" /><DataTable columns={journalColumns} rows={data.data?.journals.items} rowKey={j => j.id} loading={data.loading} empty={{ title: "No posted journals", description: "Actual payment settlement is not enabled. Manual contributions and unfunded selections do not create financial ledger entries." }} /><CardBody><Pagination page={page} pageSize={20} totalCount={data.data?.journals.totalCount ?? 0} onPageChange={setPage} itemLabel="journals" /></CardBody></Card>
@@ -87,8 +98,8 @@ const balanceColumns: Column<AccountBalance>[] = [
 ];
 export function TrialBalancePage() { return <ProtectedPage roles={["ADMIN", "SUPER_ADMIN"]}><TrialBalanceContent /></ProtectedPage>; }
 function TrialBalanceContent() {
-  const [filters, setFilters] = useState(""); const data = useAsyncData(() => ledgerService.trialBalance(filters), [filters]);
-  return <div className="stack stack--lg"><PageHeader title="Trial balance" description="Totals from posted journal lines. Positive balances follow each account’s normal debit or credit side." /><LedgerLinks /><LedgerFilters onChange={setFilters} />
+  const { fields, setFields, query: filters } = useLedgerQuery(); const data = useAsyncData(() => ledgerService.trialBalance(filters), [filters]);
+  return <div className="stack stack--lg"><PageHeader title="Trial balance" description="Totals from posted journal lines. Positive balances follow each account’s normal debit or credit side." /><LedgerLinks /><LedgerFilters value={fields} onChange={setFields} />
     {data.error ? <ErrorState message={data.error} onRetry={data.reload} /> : <Card><DataTable columns={balanceColumns} rows={data.data?.accounts} rowKey={a => a.code} loading={data.loading} />{data.data && <CardBody><Totals debit={data.data.totalDebits} credit={data.data.totalCredits} balanced={data.data.balanced} /></CardBody>}</Card>}
   </div>;
 }

@@ -70,8 +70,11 @@ export function AuctionExperience({ group, cycle, groupHref, payoutsHref }: Auct
                   <div>
                     <div className="auc__label">{phase === "COMPLETED" ? "Winning discount" : "Current highest discount"}</div>
                     <div className={`auc__big amount${changed ? " auc__big--changed" : ""}`} aria-live="polite" aria-atomic="true">{a.bidCount ? formatMoney(a.currentHighestDiscount) : "—"}</div>
-                    {changed && <span className="auc__delta" role="status"><Icons.Trending size={14} /> New highest bid</span>}
-                    {!a.bidCount && phase === "LIVE" && <span className="text-sm text-secondary">No bids yet · first valid bid {formatMoney(a.minimumNextBid)}</span>}
+                    {/* Fixed-height slot: the "New highest bid" tag appears without pushing the payout figure down. */}
+                    <div className="auc__delta-slot">
+                      {changed && <span className="auc__delta" role="status"><Icons.Trending size={14} /> New highest bid</span>}
+                      {!a.bidCount && phase === "LIVE" && <span className="text-sm text-secondary">No bids yet · first valid bid {formatMoney(a.minimumNextBid)}</span>}
+                    </div>
                   </div>
                   <div>
                     <div className="auc__label">{phase === "COMPLETED" ? "Winner payout" : "Projected winner payout"}</div>

@@ -75,18 +75,17 @@ function GroupList({ scope }: { scope: ListScope }) {
       <PageHeader eyebrow={text.eyebrow} title={text.title} description={text.description}
         actions={scope === "organizer" && <LinkButton href={`${managePrefix(scope)}/groups/create`} icon={<Icons.Plus size={18} />}>Create group</LinkButton>} />
 
-      {scope === "mine" && <ChipGroup label="Membership section" options={MINE_SECTIONS} value={section} onChange={reset(setSection)} />}
+      {scope === "mine" && <ChipGroup scroll label="Membership section" options={MINE_SECTIONS} value={section} onChange={reset(setSection)} />}
 
+      {/* Search + Filters share one row at every width; the chip rows scroll sideways on phones. */}
       <div className="stack">
-        <div className="row row--between">
-          <div className="row">
-            <ChipGroup label="Group type" options={TYPE_CHIPS} value={type} onChange={reset(setType)} />
-            {scope === "public" && <ChipGroup label="Created by" options={CREATOR_CHIPS} value={creator} onChange={reset(setCreator)} />}
-          </div>
-          <div className="row" style={{ flex: "1 1 260px", justifyContent: "flex-end" }}>
-            <div style={{ flex: "1 1 220px", maxWidth: 360 }}><SearchInput value={search} onChange={reset(setSearch)} placeholder="Search by group name" /></div>
-            <Button variant="secondary" icon={<Icons.Filter size={16} />} onClick={() => setFiltersOpen(true)} aria-expanded={filtersOpen}>Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}</Button>
-          </div>
+        <div className="list-toolbar">
+          <div className="list-toolbar__search"><SearchInput value={search} onChange={reset(setSearch)} placeholder="Search by group name" /></div>
+          <Button variant={activeFilterCount > 0 ? "primary" : "secondary"} icon={<Icons.Filter size={16} />} onClick={() => setFiltersOpen(true)} aria-expanded={filtersOpen} aria-haspopup="dialog">Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}</Button>
+        </div>
+        <div className="list-toolbar__chips">
+          <ChipGroup scroll label="Group type" options={TYPE_CHIPS} value={type} onChange={reset(setType)} />
+          {scope === "public" && <ChipGroup scroll label="Created by" options={CREATOR_CHIPS} value={creator} onChange={reset(setCreator)} />}
         </div>
       </div>
 

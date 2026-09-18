@@ -22,3 +22,5 @@ export * from "./brand";
 export * from "./use-confirm";
 export * from "./menu";
 export * from "./control-panel";
+export * from "./responsive-filters";
+export * from "./use-media-query";

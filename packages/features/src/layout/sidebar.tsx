@@ -20,10 +20,13 @@ export function Sidebar({ config, user, open, onClose }: { config: ShellConfig; 
     <>
       {open && <div className="sidebar-backdrop" onClick={onClose} aria-hidden />}
       <aside className={`sidebar${open ? " sidebar--open" : ""}`} aria-label="Primary navigation" id="app-sidebar">
-        <Link href={config.homeHref(user)} className="sidebar__brand" onClick={onClose}>
-          <BrandMark size={30} />
-          <span className="sidebar__label">{config.brand.label}{config.brand.subtitle && <span className="sidebar__brand-subtitle">{config.brand.subtitle}</span>}</span>
-        </Link>
+        <div className="sidebar__brand">
+          <Link href={config.homeHref(user)} className="sidebar__brand-link" onClick={onClose}>
+            <BrandMark size={30} />
+            <span className="sidebar__label">{config.brand.label}{config.brand.subtitle && <span className="sidebar__brand-subtitle">{config.brand.subtitle}</span>}</span>
+          </Link>
+          <button type="button" className="btn btn--ghost btn--icon sidebar__close" onClick={onClose} aria-label="Close navigation"><Icons.X size={20} /></button>
+        </div>
         <nav className="sidebar__nav">
           {sections.map((section) => (
             <div key={section.heading} className="sidebar__section">

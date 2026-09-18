@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import type { Group, MonthlyCycle } from "@dhanvi/types";
 import { Card, CardBody, LinkButton } from "@dhanvi/ui";
 import { formatDate, formatDateTime, formatMoney } from "@dhanvi/utils";
@@ -9,7 +10,7 @@ import { useLiveAuction, useTicker } from "./use-live-auction";
  * Compact monthly cycle card for group pages and dashboards: live state, current highest discount, time left and
  * exactly one link into the dedicated auction screen. No bidding controls live here.
  */
-export function AuctionSummaryCard({ group, cycle, href, viewer }: { group: Group; cycle: MonthlyCycle; href: string; viewer: "member" | "organizer" | "admin" }) {
+export function AuctionSummaryCard({ group, cycle, href, viewer, action = true }: { group: Group; cycle: MonthlyCycle; href: string; viewer: "member" | "organizer" | "admin"; /** false when the page's status card already carries the one primary action; the card then links quietly. */ action?: boolean }) {
   const { auction, serverNow } = useLiveAuction(group.id, cycle.id);
   const phase = auction ? screenPhase(auction) : undefined;
   useTicker(phase === "LIVE");
@@ -36,7 +37,7 @@ export function AuctionSummaryCard({ group, cycle, href, viewer }: { group: Grou
         )}
         {a && viewer === "member" && phase === "LIVE" && <p className="text-sm text-secondary" style={{ margin: 0 }}>{personal === "LEADING" ? `You're leading with ${formatMoney(own!.discountAmount)}.` : personal === "OUTBID" ? `You've been outbid · minimum next bid ${formatMoney(a.minimumNextBid)}.` : personal === "NOT_BID" ? `You haven't bid yet · minimum ${formatMoney(a.minimumNextBid)}.` : "You cannot bid in this cycle."}</p>}
         {a && phase === "SCHEDULED" && <p className="text-sm text-secondary" style={{ margin: 0 }}>Auction date {formatDate(cycle.selectionDate)} · minimum discount {formatMoney(a.minimumDiscount)} · increment {formatMoney(a.bidIncrement)}.</p>}
-        <div><LinkButton href={href} variant={viewer === "member" && phase === "LIVE" ? "primary" : "secondary"}>{label}</LinkButton></div>
+        {action ? <div><LinkButton href={href} variant={viewer === "member" && phase === "LIVE" ? "primary" : "secondary"}>{label}</LinkButton></div> : <div><Link className="link text-sm" href={href}>{label} →</Link></div>}
       </CardBody>
     </Card>
   );

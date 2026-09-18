@@ -104,10 +104,10 @@ export function CycleContributionsTable({ group, cycle, contributions, scope, on
     { key: "member", header: "Member", primary: true, render: (c) => <span className="row" style={{ gap: 10, flexWrap: "nowrap" }}><Avatar name={c.memberName} size="sm" /><span><span className="text-strong" style={{ display: "block" }}>{c.memberName ?? "Member"}</span><span className="cell__sub">Slot #{c.slotNumber ?? "—"}</span></span></span> },
     { key: "expected", header: "Expected", align: "right", render: (c) => <span className="amount">{formatMoney(c.expectedAmount)}</span> },
     { key: "recorded", header: "Manual recorded", align: "right", render: (c) => <span className={`amount${financial ? " text-muted" : ""}`}>{formatMoney(c.recordedAmount)}</span> },
-    { key: "settled", header: "Gateway settled", align: "right", render: (c) => <span className={`amount${financial ? "" : " text-muted"}`}>{financial ? formatMoney(c.financiallySettledAmount) : "—"}</span> },
-    { key: "payment", header: "Payment status", render: paymentStatus },
+    { key: "settled", header: "Gateway settled", align: "right", mobile: financial ? undefined : "hidden", render: (c) => <span className={`amount${financial ? "" : " text-muted"}`}>{financial ? formatMoney(c.financiallySettledAmount) : "—"}</span> },
+    { key: "payment", header: "Payment status", mobile: financial ? undefined : "hidden", render: paymentStatus },
     { key: "due", header: "Due", render: (c) => <>{formatDate(c.dueDate)}{c.recordedAt && <span className="cell__sub">Recorded {formatDateTime(c.recordedAt, c.groupTimeZone)}</span>}</> },
-    { key: "status", header: "Status", render: (c) => <StatusBadge kind="contribution" value={c.status} /> },
+    { key: "status", header: "Status", mobile: "status", render: (c) => <StatusBadge kind="contribution" value={c.status} /> },
     { key: "actions", header: "", actions: true, render: (c) => (
       <span className="row" style={{ gap: 6 }}>
         {canRecord && c.recordedAmount < c.expectedAmount ? <Button size="sm" variant="secondary" disabled={busy} onClick={() => open(c)}>Record</Button> : null}

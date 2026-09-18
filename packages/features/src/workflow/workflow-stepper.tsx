@@ -11,9 +11,17 @@ const SR: Record<WorkflowState, string> = { complete: "Completed", current: "Cur
  * Compact lifecycle stepper. State is conveyed by icon + visually-hidden text, not colour alone.
  * Horizontal on wide screens, vertical on phones (see .wf-stepper CSS).
  */
-export function WorkflowStepper({ steps, label = "Progress" }: { steps: WorkflowStep[]; label?: string }) {
+export function WorkflowStepper({ steps, label = "Progress", wizard }: { steps: WorkflowStep[]; label?: string; /** Multi-step forms: phones show "Step n of m" + a progress bar instead of the full rail. */ wizard?: boolean }) {
+  const current = Math.max(0, steps.findIndex((s) => s.state === "current"));
   return (
-    <ol className="wf-stepper" aria-label={label}>
+    <>
+    {wizard && (
+      <div className="wf-stepper--wizard-compact" aria-hidden>
+        <div className="row row--between text-sm"><span className="text-strong">Step {current + 1} of {steps.length}</span><span className="text-muted">{steps[current]?.label}</span></div>
+        <div className="progress progress--sm"><div className="progress__track"><div className="progress__bar" style={{ width: `${Math.round(((current + 1) / steps.length) * 100)}%` }} /></div></div>
+      </div>
+    )}
+    <ol className={`wf-stepper${wizard ? " wf-stepper--wizard" : ""}`} aria-label={label}>
       {steps.map((step, index) => (
         <li key={step.id} className={`wf-step wf-step--${step.state}`} aria-current={step.state === "current" ? "step" : undefined}>
           <span className="wf-step__marker">{ICON[step.state]}<span className="sr-only">{SR[step.state]}: </span></span>
@@ -24,5 +32,6 @@ export function WorkflowStepper({ steps, label = "Progress" }: { steps: Workflow
         </li>
       ))}
     </ol>
+    </>
   );
 }

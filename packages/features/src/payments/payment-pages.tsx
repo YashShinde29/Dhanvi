@@ -22,12 +22,12 @@ function PaymentList({ admin }: { admin: boolean }) {
   const data = useAsyncData(() => paymentService.list(admin, page, status || undefined), [admin, page, status]);
   const columns: Column<Payment>[] = [
     { key: "id", header: "Payment", primary: true, render: (p) => <Link className="link" href={`/payments/${p.id}`}>PAY-{p.id.slice(0, 8).toUpperCase()}</Link> },
+    { key: "status", header: "Status", mobile: "status", render: (p) => <PaymentStatus payment={p} /> },
+    { key: "amount", header: "Amount", align: "right", mobile: "emphasis", render: (p) => <span className="amount">{formatMoney(p.amount)}</span> },
     ...(admin ? [{ key: "member", header: "Member", render: (p: Payment) => p.memberName }] : []),
     { key: "group", header: "Group / cycle", render: (p) => <>{p.groupName}<span className="cell__sub">Cycle {p.cycleNumber}</span></> },
-    { key: "amount", header: "Amount", align: "right", render: (p) => <span className="amount">{formatMoney(p.amount)}</span> },
-    { key: "status", header: "Status", render: (p) => <PaymentStatus payment={p} /> },
     ...(admin ? [{ key: "reconcile", header: "Reconciliation", render: (p: Payment) => <>{humanize(p.reconciliationStatus)}{p.reconciliationMessage && <span className="cell__sub">{p.reconciliationMessage}</span>}</> }] : []),
-    { key: "date", header: "Created", render: (p) => formatDateTime(p.createdAt) },
+    { key: "date", header: "Created", mobile: "hidden" as const, render: (p) => formatDateTime(p.createdAt) },
     ...(admin ? [{ key: "actions", header: "", actions: true, render: (p: Payment) => p.status === "RECONCILIATION_REQUIRED" ? <LinkButton href={`/payments/${p.id}`} size="sm">Review reconciliation</LinkButton> : null }] : []),
   ];
   return (

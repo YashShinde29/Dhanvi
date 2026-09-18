@@ -87,17 +87,18 @@ function AdminGroupDetail() {
             <div className="group-hero__meta"><span className="mono text-xs">GRP-{row.id.slice(0, 8).toUpperCase()}</span><span>{row.creatorType === "PLATFORM" ? "Dhanvi platform" : `Organizer: ${row.organizerName ?? "—"}${row.organizerStatus && row.organizerStatus !== "APPROVED" ? ` (${statusLabel("organizer", row.organizerStatus)})` : ""}`}</span><span>{row.collectionMode === "RAZORPAY" ? "Razorpay collection" : "Manual tracking"}</span></div>
           </div>
         </div>
-        <FactStrip label="Group facts" items={[
-          { label: "Group value", value: <span className="amount">{formatMoney(row.groupValue)}</span> }, { label: "Monthly", value: <span className="amount">{formatMoney(row.monthlyContribution)}</span> },
-          { label: "Members", value: `${row.currentMemberCount} / ${row.memberLimit}` }, { label: "Current cycle", value: row.currentCycleNumber ? `${row.currentCycleNumber} of ${row.durationMonths}` : `Starts ${formatDate(row.startDate)}` },
-          { label: "Collection", value: current ? `${current.settledMemberCount} / ${current.expectedMemberCount}` : "—" }, { label: "Last activity", value: formatDateTime(row.lastActivityAt) },
-        ]} />
       </div>
       {!canManage && <Callout variant="neutral">Organizer-created group: the organizer operates it. Dhanvi monitors and can suspend or cancel from the group menu.</Callout>}
       {editing ? <GroupWizard scope="admin" existing={g} onSaved={() => { setEditing(false); void refresh(); }} onCancel={() => setEditing(false)} /> : (
         <>
+          {/* Order answers the admin's questions in sequence: health (hero badges) → stage, blocker and the one action (control panel) → issues → facts → detail tabs. */}
           <GroupControlPanel group={g} scope="admin" control={control} cycleId={current?.id} eligibleMembers={row.activeMemberCount} onChanged={refresh} onEdit={() => setEditing(true)} />
           <IssuesPanel issues={s.issues} />
+          <FactStrip label="Group facts" items={[
+            { label: "Group value", value: <span className="amount">{formatMoney(row.groupValue)}</span> }, { label: "Monthly", value: <span className="amount">{formatMoney(row.monthlyContribution)}</span> },
+            { label: "Members", value: `${row.currentMemberCount} / ${row.memberLimit}` }, { label: "Current cycle", value: row.currentCycleNumber ? `${row.currentCycleNumber} of ${row.durationMonths}` : `Starts ${formatDate(row.startDate)}` },
+            { label: "Collection", value: current ? `${current.settledMemberCount} / ${current.expectedMemberCount}` : "—" }, { label: "Last activity", value: formatDateTime(row.lastActivityAt) },
+          ]} />
           <Tabs items={tabs} value={activeTab} onChange={setTab} label="Group sections" />
           <TabPanel id="overview" active={activeTab === "overview"}>
             <div className="grid-sidebar">
@@ -185,7 +186,7 @@ function CyclesTable({ group, cycles }: { group: { id: string; durationMonths: n
     { key: "collection", header: "Collection", render: (c) => c.status === "UPCOMING" ? <span className="text-muted">—</span> : <span className="num">{c.settledMemberCount} / {c.expectedMemberCount}<span className="cell__sub">{formatMoney(c.settledAmount)} of {formatMoney(c.expectedPoolAmount)}</span></span> },
     { key: "selection", header: "Selection", render: (c) => c.selectionResultId ? <>#{c.winnerSlotNumber} {c.winnerName}<span className="cell__sub">{statusLabel("selection", c.selectionMethod)} · {formatDate(c.selectionCompletedAt)}</span></> : c.auctionStatus ? <>{statusLabel("auction", c.auctionStatus)}<span className="cell__sub">{c.auctionBidCount} bid{c.auctionBidCount === 1 ? "" : "s"}</span></> : <span className="text-muted">{statusLabel("selection", c.selectionMethod)}</span> },
     { key: "completed", header: "Completed", render: (c) => c.completedAt ? formatDate(c.completedAt) : <span className="text-muted">—</span> },
-    { key: "actions", header: "", actions: true, render: (c) => c.status === "UPCOMING" ? null : <span className="row" style={{ gap: 8 }}><Link className="link text-sm" href={`/groups/${group.id}/cycles/${c.id}/contributions`}>Contributions</Link>{c.selectionMethod === "AUCTION" && <Link className="link text-sm" href={`/groups/${group.id}/cycles/${c.id}/auction`}>Auction</Link>}</span> },
+    { key: "actions", header: "", actions: true, render: (c) => c.status === "UPCOMING" ? null : <span className="row" style={{ gap: 8 }}><LinkButton variant="secondary" size="sm" href={`/groups/${group.id}/cycles/${c.id}/contributions`}>Contributions</LinkButton>{c.selectionMethod === "AUCTION" && <LinkButton variant="secondary" size="sm" href={`/groups/${group.id}/cycles/${c.id}/auction`}>Auction</LinkButton>}</span> },
   ];
   return <DataTable columns={columns} rows={cycles} rowKey={(c) => c.id} caption="Cycles" compact empty={{ title: "No cycles" }} />;
 }

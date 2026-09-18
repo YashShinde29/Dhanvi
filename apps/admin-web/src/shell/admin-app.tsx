@@ -33,7 +33,8 @@ const navigation = (): NavSection[] => [
   { heading: "Member app", items: [{ href: env.userAppUrl, label: "Go to Dhanvi", icon: "Users", external: true }] },
 ];
 
-const mobileNavigation = (): NavItem[] => [items[0]!, items[1]!, items[4]!, items[5]!];
+// Phone bottom nav: attention, groups, payouts, reconciliation; Payments, Ledger and Organizers sit behind "More".
+const mobileNavigation = (): NavItem[] => [items[0]!, items[1]!, items[4]!, { ...items[5]!, shortLabel: "Reconcile" }];
 
 const menuItems = (): MenuItem[] => [
   { href: "/profile", label: "Profile & security", icon: "User" },

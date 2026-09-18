@@ -39,7 +39,7 @@ export function SkeletonTable({ rows = 5 }: { rows?: number }) {
 export function PageSkeleton() {
   return (
     <div className="stack stack--lg" aria-busy aria-label="Loading page">
-      <div className="stack stack--sm"><div className="skeleton skeleton--title" style={{ width: 240 }} /><div className="skeleton skeleton--text" style={{ width: 360 }} /></div>
+      <div className="stack stack--sm"><div className="skeleton skeleton--title" style={{ width: "min(240px, 70%)" }} /><div className="skeleton skeleton--text" style={{ width: "min(360px, 100%)" }} /></div>
       <SkeletonStats />
       <div className="skeleton skeleton--card" style={{ height: 240 }} />
     </div>

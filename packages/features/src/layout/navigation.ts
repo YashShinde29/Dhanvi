@@ -2,7 +2,7 @@ import type { IconName } from "@dhanvi/ui";
 import type { CurrentUser } from "@dhanvi/types";
 import type { ReactNode } from "react";
 
-export interface NavItem { href: string; label: string; icon: IconName; /** Match nested routes too. */ prefix?: boolean; exclude?: string[]; /** Absolute link to the other Dhanvi app. */ external?: boolean }
+export interface NavItem { href: string; label: string; /** Bottom-nav label when the full one cannot fit a 64px column (≤ 10 characters). */ shortLabel?: string; icon: IconName; /** Match nested routes too. */ prefix?: boolean; exclude?: string[]; /** Absolute link to the other Dhanvi app. */ external?: boolean }
 export interface NavSection { heading: string; items: NavItem[] }
 export interface MenuItem { href: string; label: string; icon: IconName; external?: boolean }
 

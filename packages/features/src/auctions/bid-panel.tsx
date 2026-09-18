@@ -95,7 +95,7 @@ export function BidPanel({ groupId, cycleId, auction: a, onPlaced, onStale }: Bi
           </div>
         </div>
         <FormField label="Custom discount" htmlFor="auction-custom-bid" error={custom ? error ?? undefined : undefined} help={!custom ? `Between ${formatMoney(a.minimumNextBid)} and ${formatMoney(a.maximumDiscount)}.` : undefined}>
-          <MoneyInput id="auction-custom-bid" value={custom} onChange={(v) => { setCustom(v); setChip(null); }} onKeyDown={onKey} invalid={!!custom && !!error} placeholder={String(a.minimumNextBid)} disabled={busy} autoComplete="off" />
+          <MoneyInput id="auction-custom-bid" value={custom} onChange={(v) => { setCustom(v); setChip(null); }} onKeyDown={onKey} invalid={!!custom && !!error} placeholder={String(a.minimumNextBid)} disabled={busy} autoComplete="off" inputMode="numeric" enterKeyHint="done" />
         </FormField>
         <div className="auc__preview" aria-live="polite">
           <span><span className="text-xs text-muted" style={{ display: "block" }}>Your discount bid</span><strong className="amount">{amount !== null ? formatMoney(amount) : "—"}</strong></span>
@@ -107,7 +107,7 @@ export function BidPanel({ groupId, cycleId, auction: a, onPlaced, onStale }: Bi
       {amount !== null && (
         <Dialog open={reviewing} onClose={() => !busy && setReviewing(false)} title="Confirm your bid" description={`${a.groupName} · Cycle ${a.cycleNumber}`}
           footer={<><Button variant="secondary" onClick={() => setReviewing(false)} disabled={busy}>Cancel</Button><Button onClick={place} loading={busy} disabled={busy}>{busy ? "Placing bid…" : "Confirm & place bid"}</Button></>}>
-          <KeyValueRows items={[{ key: "Group value", value: <span className="amount">{formatMoney(a.groupValue)}</span> }, { key: "Current highest discount", value: <span className="amount">{a.bidCount ? formatMoney(a.currentHighestDiscount) : "No bids yet"}</span> }, { key: "Your discount bid", value: <span className="amount">{formatSignedMoney(amount, "-")}</span> }]} total={{ key: "If your bid wins · projected winner payout", value: <span className="amount">{formatMoney(projectedPayout(a, amount))}</span> }} />
+          <KeyValueRows items={[{ key: "Group value", value: <span className="amount">{formatMoney(a.groupValue)}</span> }, { key: "Current highest discount", value: <span className="amount">{a.bidCount ? formatMoney(a.currentHighestDiscount) : "No bids yet"}</span> }, { key: "Your discount bid", value: <span className="amount">{formatSignedMoney(amount, "-")}</span> }]} total={{ key: "Projected payout if you win", value: <span className="amount">{formatMoney(projectedPayout(a, amount))}</span> }} />
           <p className="text-xs text-muted" style={{ marginTop: 8 }}>Bid increment {formatMoney(a.bidIncrement)} · a discount bid reduces the payout you would receive; it is not an amount you pay.</p>
           <p className="text-sm text-secondary" style={{ marginBottom: 0 }}><strong>Important:</strong> this bid cannot be cancelled after it is accepted. It is checked against the live auction state again when you confirm.</p>
         </Dialog>
@@ -119,5 +119,5 @@ export function BidPanel({ groupId, cycleId, auction: a, onPlaced, onStale }: Bi
 /** Mobile sticky action shown only while a bid has been chosen. */
 export function BidSticky({ amount, onReview }: { amount: number | null; onReview: () => void }) {
   if (amount === null) return null;
-  return <div className="auc__sticky" role="region" aria-label="Review your bid"><div className="auc__sticky-text"><span>Your discount bid</span><strong>{formatMoney(amount)}</strong></div><Button onClick={onReview}>Review bid</Button></div>;
+  return <div className="auc__sticky" role="region" aria-label="Review your bid"><div className="auc__sticky-text"><span>Selected discount</span><strong>{formatMoney(amount)}</strong></div><Button onClick={onReview}>Review bid</Button></div>;
 }

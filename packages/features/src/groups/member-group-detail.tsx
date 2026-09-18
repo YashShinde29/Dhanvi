@@ -62,21 +62,22 @@ export function MemberGroupDetail({ scope }: { scope: "public" | "mine" }) {
         <div className="group-hero__title">
           <div className="row"><GroupTypeBadge type={g.groupType} /><StatusBadge kind="group" value={g.status} />{g.myMembership && <StatusBadge kind="membership" value={g.myMembership.status} />}</div>
           <h1 className="h-page">{g.name}</h1>
-          {g.description && <p className="text-secondary" style={{ maxWidth: 720, margin: 0 }}>{g.description}</p>}
+          {g.description && <p className="text-secondary group-hero__desc" style={{ maxWidth: 720, margin: 0 }}>{g.description}</p>}
         </div>
-        <FactStrip label="Group summary" items={[
+      </div>
+
+      <MemberStatusCard group={g} currentCycle={currentCycle} own={own} onChanged={refresh} />
+      {currentCycle?.selectionMethod === "AUCTION" && ["READY_FOR_SELECTION", "CONTRIBUTIONS_COMPLETE", "SELECTION_COMPLETED", "PAYOUT_PENDING"].includes(currentCycle.status) && activeTab === "overview" && <AuctionSummaryCard group={g} cycle={currentCycle} href={`/groups/${g.id}/cycles/${currentCycle.id}/auction`} viewer="member" action={false} />}
+      {payDue !== null && own && <StickyActionBar title={`Cycle ${currentCycle?.cycleNumber} contribution due`} amount={payDue} href={`/contributions?groupId=${g.id}`} label="Pay now" />}
+
+      <FactStrip label="Group summary" items={[
           { label: "Group value", value: <span className="amount">{formatMoney(g.groupValue)}</span> },
           { label: "Monthly contribution", value: <span className="amount">{formatMoney(g.monthlyContribution)}</span> },
           { label: "Current cycle", value: g.currentCycleNumber ? `${g.currentCycleNumber} of ${g.durationMonths}` : `Starts ${formatDate(g.startDate)}` },
           { label: "Members", value: `${g.currentMemberCount} of ${g.memberLimit}` },
           { label: "Type", value: g.groupType === "AUCTION" ? "Auction" : "Random draw" },
           { label: "Organizer", value: g.creatorType === "PLATFORM" ? "Dhanvi" : g.organizer?.name ?? "Organizer" },
-        ]} />
-      </div>
-
-      <MemberStatusCard group={g} currentCycle={currentCycle} own={own} onChanged={refresh} />
-      {currentCycle?.selectionMethod === "AUCTION" && ["READY_FOR_SELECTION", "CONTRIBUTIONS_COMPLETE", "SELECTION_COMPLETED", "PAYOUT_PENDING"].includes(currentCycle.status) && activeTab === "overview" && <AuctionSummaryCard group={g} cycle={currentCycle} href={`/groups/${g.id}/cycles/${currentCycle.id}/auction`} viewer="member" />}
-      {payDue !== null && own && <StickyActionBar title={`Cycle ${currentCycle?.cycleNumber} contribution due`} amount={payDue} href={`/contributions?groupId=${g.id}`} label="Pay now" />}
+      ]} />
 
       <Tabs items={tabs} value={activeTab} onChange={setTab} label="Group sections" />
       <TabPanel id="overview" active={activeTab === "overview"}>
@@ -203,11 +204,11 @@ function MemberStatusCard({ group: g, currentCycle, own, onChanged }: { group: G
 
 function MyGroupContributions({ group, contributions, loading }: { group: Group; contributions: Contribution[]; loading: boolean }) {
   const columns: Column<Contribution>[] = [
-    { key: "cycle", header: "Cycle", primary: true, render: (c) => <span className="text-strong">Cycle {c.cycleNumber}{c.cycleNumber === group.currentCycleNumber ? <span className="badge badge--success badge--plain" style={{ marginLeft: 8 }}>Current</span> : null}</span> },
+    { key: "cycle", header: "Cycle", primary: true, render: (c) => <span className="text-strong" style={{ whiteSpace: "nowrap" }}>Cycle {c.cycleNumber}{c.cycleNumber === group.currentCycleNumber ? <span className="badge badge--success badge--plain" style={{ marginLeft: 8 }}>Current</span> : null}</span> },
+    { key: "status", header: "Status", mobile: "status", render: (c) => c.collectionMode === "RAZORPAY" ? <StatusBadge kind="contribution" value={c.financialStatus.toUpperCase() === "SETTLED" ? "RECORDED" : c.status} /> : <StatusBadge kind="contribution" value={c.status} /> },
+    { key: "amount", header: "Amount", align: "right", mobile: "emphasis", render: (c) => <span className="amount">{formatMoney(c.expectedAmount)}</span> },
     { key: "due", header: "Due", render: (c) => formatDate(c.dueDate) },
-    { key: "amount", header: "Amount", align: "right", render: (c) => <span className="amount">{formatMoney(c.expectedAmount)}</span> },
     { key: "paid", header: "Paid", align: "right", render: (c) => <span className="amount">{formatMoney(c.collectionMode === "RAZORPAY" ? c.financiallySettledAmount : c.recordedAmount)}</span> },
-    { key: "status", header: "Status", render: (c) => c.collectionMode === "RAZORPAY" ? <StatusBadge kind="contribution" value={c.financialStatus.toUpperCase() === "SETTLED" ? "RECORDED" : c.status} /> : <StatusBadge kind="contribution" value={c.status} /> },
   ];
   return (
     <div className="stack">

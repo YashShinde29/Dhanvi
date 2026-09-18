@@ -49,19 +49,23 @@ function navigation(user: CurrentUser): NavSection[] {
   return sections;
 }
 
-/** Bottom navigation for phones: the four most useful destinations per role. */
+/**
+ * Bottom navigation for phones: four destinations plus "More" (the shell adds it). Members get the money-first set; an
+ * organizer swaps Payments for the Organizer hub so organizer tools stay one tap away without a second nav system —
+ * every organizer section is still listed under its own heading in the drawer.
+ */
 function mobileNavigation(user: CurrentUser): NavItem[] {
   if (isOrganizerRole(user.roles)) return [
-    { href: "/organizer", label: "Organizer", icon: "Dashboard" },
-    { href: "/organizer/groups", label: "Managed", icon: "Layers", prefix: true },
-    { href: "/organizer/applications", label: "Applications", icon: "Inbox" },
-    { href: "/profile", label: "Profile", icon: "User" },
+    { href: "/dashboard", label: "Home", icon: "Home" },
+    { href: "/organizer", label: "Organizer", icon: "Briefcase", prefix: true },
+    { href: "/my-groups", label: "My groups", icon: "Users" },
+    { href: "/contributions", label: "Contributions", shortLabel: "Contribute", icon: "Wallet" },
   ];
   return [
-    { href: "/dashboard", label: "Home", icon: "Dashboard" },
-    { href: "/groups", label: "Browse", icon: "Search", prefix: true },
+    { href: "/dashboard", label: "Home", icon: "Home" },
     { href: "/my-groups", label: "My groups", icon: "Users" },
-    { href: "/contributions", label: "Contributions", icon: "Wallet" },
+    { href: "/contributions", label: "Contributions", shortLabel: "Contribute", icon: "Wallet" },
+    { href: "/payments", label: "Payments", icon: "Activity", prefix: true },
   ];
 }
 

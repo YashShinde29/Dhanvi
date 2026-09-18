@@ -9,7 +9,6 @@ export interface GroupInput {
   name: string;
   description: string;
   groupType: "RANDOM" | "AUCTION";
-  collectionMode?: "MANUAL_TRACKING" | "RAZORPAY";
   groupValue: number;
   memberLimit: number;
   organizerParticipates: boolean;

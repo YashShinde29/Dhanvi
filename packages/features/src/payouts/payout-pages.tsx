@@ -8,7 +8,7 @@ import { payoutService, enumParam } from "@dhanvi/api-client";
 import type { Payout } from "@dhanvi/types";
 import { WorkflowStatusCard, NextActionCard, PriorityStrip, approvable, effectiveStatus, payoutChecklist, payoutPriority, payoutSummary } from "../workflow";
 import { adminService } from "@dhanvi/api-client";
-import { PageHeader, Breadcrumbs, Badge, Button, Card, CardBody, CardHeader, ControlPanel, DataTable, Pagination, type Column, FormField, Input, Select, Callout, ErrorState, PageSkeleton, LinkButton, OverflowMenu, useConfirm } from "@dhanvi/ui";
+import { PageHeader, Breadcrumbs, Badge, Button, Card, CardBody, CardHeader, ControlPanel, DataTable, Pagination, type Column, FormField, Input, Select, Callout, ErrorState, PageSkeleton, LinkButton, OverflowMenu, ResponsiveFilters, useConfirm } from "@dhanvi/ui";
 
 const STATUSES = ["PENDING_BENEFICIARY", "APPROVAL_REQUIRED", "APPROVED", "PROCESSING", "PROVIDER_PENDING", "SUCCEEDED", "FAILED", "RECONCILIATION_REQUIRED", "CANCELLED"];
 const tone = (s: string) => s === "SUCCEEDED" ? "success" : ["FAILED", "RECONCILIATION_REQUIRED"].includes(s) ? "danger" : ["APPROVAL_REQUIRED", "APPROVED"].includes(s) ? "warning" : "neutral";
@@ -26,7 +26,6 @@ function List({ admin, organizer, accountForm }: { admin: boolean; organizer: bo
   const search = useSearchParams(), params = useParams<{ id: string }>();
   const [page, setPage] = useState(1), [status, setStatus] = useState(search.get("status") ?? ""), [type, setType] = useState("");
   const [group, setGroup] = useState(search.get("groupId") ?? ""), [cycle, setCycle] = useState(search.get("cycleId") ?? "");
-  const [showFilters, setShowFilters] = useState(!!(search.get("groupId") || search.get("cycleId")));
   const query = new URLSearchParams({ page: String(page) });
   if (status) query.set("status", enumParam(status)); if (type) query.set("type", enumParam(type));
   if (group) query.set("groupId", group); if (cycle) query.set("cycleId", cycle);
@@ -38,31 +37,30 @@ function List({ admin, organizer, accountForm }: { admin: boolean; organizer: bo
   const mine = member ? (data.data?.items ?? []).filter((p) => !["SUCCEEDED", "CANCELLED"].includes(p.status)) : [];
   const columns: Column<Payout>[] = [
     { key: "id", header: "Payout", primary: true, render: (p) => organizer ? <span>{humanize(p.payoutType)}</span> : <Link className="link" href={`/payouts/${p.id}`}>{humanize(p.payoutType)}</Link> },
+    { key: "status", header: admin ? "Stage" : "Status", mobile: "status", render: (p) => <Status p={p} member={!admin} /> },
+    { key: "amount", header: "Amount", align: "right", mobile: "emphasis", render: (p) => <span className="amount">{formatMoney(p.amount)}</span> },
     ...(member ? [] : [{ key: "recipient", header: "Recipient", render: (p: Payout) => p.memberName }]),
     { key: "group", header: "Group / cycle", render: (p) => <>{p.groupName}<span className="cell__sub">Cycle {p.cycleNumber}</span></> },
-    { key: "amount", header: "Amount", align: "right", render: (p) => <span className="amount">{formatMoney(p.amount)}</span> },
-    { key: "status", header: admin ? "Stage" : "Status", render: (p) => <Status p={p} member={!admin} /> },
-    { key: "created", header: "Created", render: (p) => formatDateTime(p.createdAt) },
+    { key: "created", header: "Created", mobile: "hidden", render: (p) => formatDateTime(p.createdAt) },
     ...(admin ? [{ key: "actions", header: "", actions: true, render: (p: Payout) => { const s = effectiveStatus(p); return ["APPROVAL_REQUIRED", "APPROVED", "FAILED", "RECONCILIATION_REQUIRED"].includes(s) ? <LinkButton href={`/payouts/${p.id}`} size="sm">{s === "APPROVAL_REQUIRED" ? "Review" : s === "APPROVED" ? "Execute" : s === "FAILED" ? "Retry" : "Reconcile"}</LinkButton> : s === "PENDING_BENEFICIARY" ? <span className="text-xs text-muted">Waiting on member</span> : null; } }] : []),
   ];
   return (
     <div className="stack stack--lg">
       <PageHeader eyebrow={admin ? "Control center" : organizer ? "Organizer" : "Member"} title={admin ? "Payouts" : organizer ? "Group payouts" : "My payouts"}
         description={admin ? "Approve destinations, execute transfers and resolve failures. Items waiting on members or the provider need nothing from you." : organizer ? "Dhanvi processes payouts; you can follow their status here." : "Your payout rights and auction benefits, and where each transfer stands."} badges={<Badge tone="info" plain>Fake test provider</Badge>}
-        actions={admin ? <Button variant="ghost" size="sm" onClick={() => setShowFilters((v) => !v)} aria-expanded={showFilters}>{showFilters ? "Hide filters" : "Filters"}</Button> : undefined} />
+      />
       {member && data.data && mine.length > 0 && (
         <div className="stack"><h2 className="h-section" style={{ margin: 0 }}>Where your payouts stand</h2>{mine.map((p) => { const s = payoutSummary(p, "member", account.data); return <NextActionCard key={p.id} viewer="member" action={s.action ?? { title: `${s.stage} · ${p.groupName} · cycle ${p.cycleNumber}`, description: <>{s.headline}{s.waitingFor && <> Waiting for {s.waitingFor}.</>}{s.next && <> <strong>Next:</strong> {s.next}</>}</>, status: s.status === "blocked" ? "waiting" : s.status, responsibleRole: s.responsibleRole, actionLabel: "View payout", actionHref: `/payouts/${p.id}`, since: p.createdAt }} />; })}</div>
       )}
       {admin && <PriorityStrip buckets={payoutPriority(overview.data?.payouts.counts)} value={status} onChange={(s) => { setStatus(s === "APPROVAL_REQUIRED" ? "PENDING_BENEFICIARY" : s); setPage(1); }} />}
-      {admin && showFilters ? (
-        <Card><CardBody className="filters">
+      {admin && (
+        <ResponsiveFilters label="Payout filters" title="Filter payouts" activeCount={[status, type, group, cycle].filter(Boolean).length} onClear={() => { setStatus(""); setType(""); setGroup(""); setCycle(""); setPage(1); }}>
           <FormField label="Status" htmlFor="payout-status"><Select id="payout-status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}><option value="">All statuses</option>{STATUSES.map((s) => <option key={s} value={s}>{humanize(s)}</option>)}</Select></FormField>
           <FormField label="Type" htmlFor="payout-type"><Select id="payout-type" value={type} onChange={(e) => { setType(e.target.value); setPage(1); }}><option value="">All types</option>{["WINNER_PAYOUT", "MEMBER_AUCTION_BENEFIT", "PLATFORM_FEE_SETTLEMENT"].map((t) => <option key={t} value={t}>{humanize(t)}</option>)}</Select></FormField>
           <FormField label="Group ID" htmlFor="payout-group"><Input id="payout-group" value={group} onChange={(e) => { setGroup(e.target.value); setPage(1); }} /></FormField>
           <FormField label="Cycle ID" htmlFor="payout-cycle"><Input id="payout-cycle" value={cycle} onChange={(e) => { setCycle(e.target.value); setPage(1); }} /></FormField>
-          {(status || type || group || cycle) && <Button variant="ghost" size="sm" onClick={() => { setStatus(""); setType(""); setGroup(""); setCycle(""); setPage(1); }}>Clear</Button>}
-        </CardBody></Card>
-      ) : null}
+        </ResponsiveFilters>
+      )}
       {data.error && <ErrorState message={data.error} onRetry={data.reload} />}
       <Card>
         {member && <CardHeader title="Payout history" />}

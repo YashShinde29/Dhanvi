@@ -6,7 +6,7 @@ import { ProtectedPage } from "@dhanvi/auth";
 import { adminService } from "@dhanvi/api-client";
 import type { AdminGroupRow } from "@dhanvi/types";
 import { useAsyncData, useDebounced, ALL_GROUP_STATUSES, formatDateTime, formatMoney, presentStatus, statusLabel } from "@dhanvi/utils";
-import { PageHeader, LinkButton, Button, DataTable, Pagination, type Column, FormField, Select, SearchInput, ErrorState, Icons, CreatorTypeBadge, StatusBadge, PageSkeleton, Badge } from "@dhanvi/ui";
+import { PageHeader, LinkButton, Button, DataTable, Pagination, type Column, FormField, Select, SearchInput, ErrorState, Icons, CreatorTypeBadge, StatusBadge, PageSkeleton, Badge, ResponsiveFilters } from "@dhanvi/ui";
 import { groupHealth, HEALTH_OPTIONS, type HealthLevel } from "../workflow";
 
 const CYCLE_STATES = ["COLLECTING_CONTRIBUTIONS", "READY_FOR_SELECTION", "SELECTION_COMPLETED", "PAYOUT_PENDING", "COMPLETED", "SUSPENDED"];
@@ -67,18 +67,17 @@ function AdminGroups() {
     <div className="stack stack--lg">
       <PageHeader eyebrow="Control center" title="Groups" description="Every group on Dhanvi with its lifecycle, current cycle, collection, selection, payout and health at a glance."
         actions={<LinkButton href="/groups/create" icon={<Icons.Plus size={16} />}>Create platform group</LinkButton>} />
-      <div className="filters" role="search" aria-label="Group filters">
-        <div className="search" style={{ flex: "1 1 220px" }}><SearchInput value={search} onChange={set(setSearch)} placeholder="Search by group name" /></div>
+      <ResponsiveFilters label="Group filters" title="Filter groups" activeCount={activeFilters - (search ? 1 : 0)} onClear={clear}
+        search={<SearchInput value={search} onChange={set(setSearch)} placeholder="Search by group name" />}>
         <FormField label="Lifecycle" htmlFor="f-status"><Select id="f-status" value={status} onChange={(e) => set(setStatus)(e.target.value)}><option value="">Any lifecycle</option>{ALL_GROUP_STATUSES.map((s) => <option key={s} value={s}>{presentStatus("group", s).label}</option>)}</Select></FormField>
         <FormField label="Creator" htmlFor="f-creator"><Select id="f-creator" value={creator} onChange={(e) => set(setCreator)(e.target.value)}><option value="">Any creator</option><option value="PLATFORM">Dhanvi platform</option><option value="ORGANIZER">Organizer</option></Select></FormField>
         <FormField label="Type" htmlFor="f-type"><Select id="f-type" value={type} onChange={(e) => set(setType)(e.target.value)}><option value="">Any type</option><option value="RANDOM">Random</option><option value="AUCTION">Auction</option></Select></FormField>
         <FormField label="Cycle state" htmlFor="f-cycle"><Select id="f-cycle" value={cycleStatus} onChange={(e) => set(setCycleStatus)(e.target.value)}><option value="">Any cycle state</option>{CYCLE_STATES.map((s) => <option key={s} value={s}>{presentStatus("cycle", s).label}</option>)}</Select></FormField>
         <FormField label="Health" htmlFor="f-health"><Select id="f-health" value={health} onChange={(e) => { setHealth(e.target.value as HealthLevel | ""); }}>{HEALTH_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</Select></FormField>
-        {activeFilters > 0 && <Button variant="ghost" size="sm" onClick={clear}>Clear ({activeFilters})</Button>}
-      </div>
+      </ResponsiveFilters>
       {error ? <ErrorState message={error} onRetry={reload} /> : (
         <>
-          <DataTable columns={columns} rows={loading && !data ? undefined : rows} loading={loading} rowKey={(r) => r.g.id} caption="Groups" compact responsive={false}
+          <DataTable columns={columns} rows={loading && !data ? undefined : rows} loading={loading} rowKey={(r) => r.g.id} caption="Groups" compact responsive={false} minWidth={1180}
             empty={{ title: activeFilters ? "No groups match these filters" : "No groups yet", description: activeFilters ? (health ? "Health is evaluated on the loaded page; widen the other filters or clear them." : "Try clearing filters.") : "Create the first platform group to get started.", action: activeFilters ? <Button variant="secondary" onClick={clear}>Clear filters</Button> : undefined }} />
           {data && <div className="row row--between"><Pagination page={data.page} pageSize={data.pageSize} totalCount={data.totalCount} onPageChange={setPage} itemLabel="groups" />{health && data.totalCount > data.pageSize && <Badge tone="neutral" plain>Health filter applies to this page</Badge>}</div>}
         </>
