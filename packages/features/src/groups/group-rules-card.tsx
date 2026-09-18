@@ -7,6 +7,7 @@ export function ImportantRulesCard({ group }: { group: Group }) {
   const auction = group.groupType === "AUCTION";
   const items = [
     { key: "Group type", value: auction ? "Auction" : "Random draw" },
+    { key: "Contribution payments", value: group.collectionMode === "RAZORPAY" ? "Manual Razorpay checkout (Test)" : "Payments tracked outside Dhanvi" },
     { key: "Group value", value: formatMoney(group.groupValue) },
     { key: "Monthly contribution", value: formatMoney(group.monthlyContribution) },
     { key: "Duration", value: `${group.durationMonths} months` },
@@ -35,7 +36,7 @@ export function ImportantRulesCard({ group }: { group: Group }) {
           </Callout>
         )}
         <Callout variant="neutral">
-          Each member receives the main payout once and continues contributing for all remaining cycles. {auction ? "The auction payout equals the group value minus the winning discount." : "The selected member receives the full group value."} Dhanvi does not process payments at this stage.
+          Each member receives the main payout once and continues contributing for all remaining cycles. {auction ? "The auction payout equals the group value minus the winning discount." : "The selected member receives the full group value."} {group.collectionMode === "RAZORPAY" ? "Pay each contribution from the Contributions page using Razorpay Test Checkout. There are no automatic deductions or real-money payments in test mode." : "Contributions are paid outside Dhanvi and recorded manually."}
         </Callout>
       </CardBody>
     </Card>

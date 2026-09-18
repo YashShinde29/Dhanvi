@@ -49,6 +49,8 @@ services:
       context: .
       dockerfile: apps/user-web/Dockerfile
       args:
+        NEXT_PUBLIC_APP_ENV: development
+        NEXT_PUBLIC_MIN_GROUP_MEMBERS: "2"
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:5000/api/v1}
         NEXT_PUBLIC_USER_APP_URL: ${USER_APP_URL:-http://localhost:3000}
         NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3001}
@@ -66,6 +68,8 @@ services:
       context: .
       dockerfile: apps/admin-web/Dockerfile
       args:
+        NEXT_PUBLIC_APP_ENV: development
+        NEXT_PUBLIC_MIN_GROUP_MEMBERS: "2"
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:5000/api/v1}
         NEXT_PUBLIC_USER_APP_URL: ${USER_APP_URL:-http://localhost:3000}
         NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3001}

@@ -23,13 +23,23 @@ for (const app of ["user-web", "admin-web"]) {
     });
   }
 }
-test("production always retains 20–50, even with a development override", () => {
+test("production defaults retain 20–50, even with a minimum override", () => {
   for (const minimum of [undefined, "2", "20"]) {
     const limits = policy("production", minimum);
     assert.equal(limits.minimumGroupMembers, 20);
     assert.equal(limits.maximumGroupMembers, 50);
   }
 });
+test("optimized local Docker builds allow 2 members with an explicit development policy", () => {
+  const limits = policy("production", "2", { NEXT_PUBLIC_APP_ENV: "development" });
+  assert.equal(limits.minimumGroupMembers, 2);
+  assert.equal(limits.maximumGroupMembers, 50);
+});
+
+test("an explicit production policy retains 20 members", () => {
+  assert.equal(policy("development", "2", { NEXT_PUBLIC_APP_ENV: "production" }).minimumGroupMembers, 20);
+});
+
 test("cross-app URLs default to the two development ports", () => {
   const config = policy("development", "2");
   assert.equal(config.userAppUrl, "http://localhost:3000");

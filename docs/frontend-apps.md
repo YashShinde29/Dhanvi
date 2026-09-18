@@ -85,9 +85,17 @@ Razorpay Checkout needs no frontend env: the public `rzp_test_` key arrives from
 
 ## Razorpay and webhooks
 
+Payments are initiated manually by members; autopay, recurring subscriptions, and mandates are not implemented. The integration accepts Razorpay Test credentials only.
+
+To use manual checkout, configure the backend Razorpay Test credentials and set `PAYMENTS_RAZORPAY_ENABLED=true` in the root `.env` for Docker. In the admin portal, create or edit an unlocked platform group and choose **Pay manually with Razorpay (Test)** under **Contribution payments**. The choice is retained on edits and displayed in the group rules. Organizer-created groups use payments tracked outside Dhanvi.
+
+Once the group is active and its current cycle is collecting contributions, an active member can open **Contributions**, click **Pay**, and select **Continue to Razorpay**. Existing groups default to external payment tracking; collection rules cannot change after member approval. No real money is collected in test mode.
+
 Checkout (`packages/features/src/payments/payment-checkout.tsx`) is mounted only by the member app (`/contributions` and the member's group contribution card). The backend-configured return base URL `http://localhost:3000/checkout/return` is unchanged (the flow uses Razorpay's JavaScript handler, not a redirect). `POST /api/v1/payments/webhooks/razorpay` remains backend-only.
 
 ## Docker
+
+Local Compose builds set `NEXT_PUBLIC_APP_ENV=development` and `NEXT_PUBLIC_MIN_GROUP_MEMBERS=2` for both websites, matching the backend's Development policy. The form accepts 2–50 members for testing. Standalone Docker builds default to the production policy of 20–50 members. Rebuild both websites after changing these public build settings.
 
 `docker-compose.yml` replaces `frontend` with `user-web` (3000) and `admin-web` (3001), each built from the repository root with `apps/<app>/Dockerfile` (workspace-aware, standalone output traced from the workspace root). The Compose backend receives both origins through `FRONTEND_ORIGIN`.
 

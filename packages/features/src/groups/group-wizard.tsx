@@ -22,6 +22,7 @@ export function GroupCreatePage({ scope }: { scope: "organizer" | "admin" }) {
 }
 
 interface FormState {
+  collectionMode: "MANUAL_TRACKING" | "RAZORPAY";
   name: string; description: string; groupType: "RANDOM" | "AUCTION"; groupValue: string; memberLimit: string;
   organizerParticipates: boolean; organizerFirstPayout: boolean; contributionDueDay: string; selectionDay: string; payoutDay: string; startDate: string;
   minimumDiscount: string; maximumDiscount: string; bidIncrement: string; auctionStartTime: string; auctionEndTime: string;
@@ -34,6 +35,7 @@ const defaultAuction: AuctionRules = { minimumDiscount: 0, maximumDiscount: 1000
 function fromGroup(existing?: Group): FormState {
   const auction = existing?.auctionRules ?? defaultAuction;
   return {
+    collectionMode: existing?.collectionMode ?? "MANUAL_TRACKING",
     name: existing?.name ?? "", description: existing?.description ?? "", groupType: existing?.groupType ?? "RANDOM",
     groupValue: existing ? String(existing.groupValue) : "500000", memberLimit: existing ? String(existing.memberLimit) : String(env.minimumGroupMembers),
     organizerParticipates: existing?.organizerParticipates ?? false, organizerFirstPayout: existing?.organizerFirstPayout ?? false,
@@ -205,7 +207,7 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
         <CardBody className="stack">
           <p className="text-sm text-secondary"><strong>You completed:</strong> {done.length ? done.join(", ") : "nothing yet"}. <strong>Next:</strong> {stepNames[resume.step]}.</p>
           <div className="row">
-            <Button onClick={() => { setForm(resume.form); setStep(resume.step); setResumeDismissed(true); }} icon={<Icons.ChevronRight size={16} />}>Continue</Button>
+            <Button onClick={() => { setForm({ ...fromGroup(), ...resume.form, collectionMode: canChooseRazorpay && resume.form.collectionMode === "RAZORPAY" ? "RAZORPAY" : "MANUAL_TRACKING" }); setStep(resume.step); setResumeDismissed(true); }} icon={<Icons.ChevronRight size={16} />}>Continue</Button>
             <Button variant="ghost" onClick={() => { writeProgress(scope, null); setResumeDismissed(true); }}>Start over</Button>
           </div>
         </CardBody>
@@ -336,6 +338,7 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
                 <RuleList items={[
                   { key: "Group name", value: form.name || "—" },
                   { key: "Group type", value: form.groupType === "AUCTION" ? "Auction" : "Random" },
+                  { key: "Contribution payments", value: form.collectionMode === "RAZORPAY" ? "Manual Razorpay checkout (Test)" : "Payments tracked outside Dhanvi" },
                   { key: "Group value", value: formatMoney(Number(form.groupValue) || 0) },
                   { key: "Members", value: form.memberLimit },
                   { key: "Monthly contribution", value: calc.monthly !== null ? formatMoney(calc.monthly) : "—" },
@@ -388,7 +391,7 @@ export function GroupWizard({ scope, existing, onSaved, onCancel }: { scope: Gro
         <Card muted>
           <CardBody className="stack stack--sm">
             <div className="row" style={{ gap: 8 }}><Icons.Info size={16} style={{ color: "var(--color-text-muted)" }} /><span className="text-sm text-strong">Good to know</span></div>
-            <p className="text-sm text-secondary">Each member receives the main payout once and keeps contributing for every remaining cycle. No money is collected through Dhanvi at this stage.</p>
+            <p className="text-sm text-secondary">Each member receives the main payout once and keeps contributing for every remaining cycle. {form.collectionMode === "RAZORPAY" ? "Members pay each contribution from the Contributions page using Razorpay Test Checkout. Autopay is not enabled; no real money is collected in test mode." : "Contributions are paid outside Dhanvi and recorded manually."}</p>
           </CardBody>
         </Card>
       </aside>

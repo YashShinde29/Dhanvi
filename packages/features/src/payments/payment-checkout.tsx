@@ -93,6 +93,7 @@ export function PaymentCheckout({ contributionId, groupName, cycleNumber, dueDat
   return <div className="stack pay-status" style={{ gap: 8 }} data-status={guide.status}>
     <div className="row" style={{ gap: 8 }}><Badge tone={tone}>{guide.title}</Badge><Badge tone="info" plain>Razorpay Test Mode</Badge></div>
     <span className="text-sm text-secondary">{guide.description}{guide.next && <> <strong>Next:</strong> {guide.next}</>}</span>
+    {s.canPay && <span className="text-sm text-muted">Pay manually through Razorpay. No automatic deductions.</span>}
     {s.canPay ? <Button size="sm" disabled={busy} onClick={() => setConfirm(true)}>{guide.retry ? "Retry payment" : "Pay"} {formatMoney(s.remainingAmount)}</Button> : guide.status !== "complete" && s.reason ? <span className="text-sm text-muted">Reason: {s.reason}</span> : null}
     {s.paymentId && <div className="row"><Button size="sm" variant="secondary" loading={busy} onClick={refresh}>Check payment status</Button><Link className="link" href={`/payments/${s.paymentId}`}>Payment details</Link></div>}
     {message && <p role="status" className="text-sm">{message}</p>}
