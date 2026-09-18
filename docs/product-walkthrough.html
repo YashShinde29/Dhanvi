@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dhanvi Product Story</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+  :root {
+    --paper: #fbfaf6; --ink: #14201c; --ink-2: #4b5a55; --ink-3: #7c8a85; --line: #e3e5de; --card: #ffffff;
+    --green: #15803d; --green-deep: #14532d; --green-soft: #e8f5ec; --navy: #0f172a;
+    --draw: #4f46e5; --draw-soft: #eef0ff; --auction: #b45309; --auction-soft: #fdf1e2; --money: #0f766e;
+    --panel-bg: #0f172a; --panel-fg: #f8fafc; --panel-accent: #86efac;
+    --display: "Fraunces", Georgia, "Times New Roman", serif; --body: "Source Sans 3", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --paper: #0e1512; --ink: #edf2ee; --ink-2: #b7c2bc; --ink-3: #849089; --line: #253029; --card: #151e1a; --green: #4ade80; --green-deep: #bbf7d0; --green-soft: #12281c; --navy: #e2e8f0; --draw: #a5b4fc; --draw-soft: #1e1f3a; --auction: #fbbf24; --auction-soft: #33240c; --money: #5eead4; --panel-bg: #dcfce7; --panel-fg: #0f172a; --panel-accent: #166534; } }
+  :root[data-theme="dark"] { --paper: #0e1512; --ink: #edf2ee; --ink-2: #b7c2bc; --ink-3: #849089; --line: #253029; --card: #151e1a; --green: #4ade80; --green-deep: #bbf7d0; --green-soft: #12281c; --navy: #e2e8f0; --draw: #a5b4fc; --draw-soft: #1e1f3a; --auction: #fbbf24; --auction-soft: #33240c; --money: #5eead4; --panel-bg: #dcfce7; --panel-fg: #0f172a; --panel-accent: #166534; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.55; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-block: 32px 80px; padding-inline: 20px; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; margin: 0; line-height: 1.12; }
+  h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); }
+  h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); }
+  h3 { font-size: 1.2rem; font-weight: 500; }
+  p { margin: 0; max-width: 62ch; }
+  .eyebrow { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--green); }
+  .lead { font-size: 1.2rem; color: var(--ink-2); max-width: 56ch; }
+  .money { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--money); white-space: nowrap; }
+
+  /* Hero */
+  .hero { display: grid; gap: 28px; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); align-items: center; padding-bottom: 40px; border-bottom: 1px solid var(--line); }
+  .hero .stack { display: grid; gap: 18px; }
+  .pill-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill { font-size: 0.85rem; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink-2); }
+  .example { background: var(--panel-bg); color: var(--panel-fg); border-radius: 18px; padding: 24px; display: grid; gap: 14px; box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18); }
+  .example .eyebrow { color: var(--panel-accent); }
+  .example dl { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin: 0; }
+  .example dt { font-size: 0.8rem; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.06em; }
+  .example dd { margin: 0; font-family: var(--display); font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .example .note { font-size: 0.9rem; opacity: 0.8; }
+
+  /* Step rail + sections */
+  .flow { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; padding-top: 40px; }
+  .rail { position: sticky; top: 16px; align-self: start; display: grid; gap: 4px; }
+  .rail a { display: grid; grid-template-columns: 30px 1fr; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; color: var(--ink-2); text-decoration: none; font-weight: 600; font-size: 0.95rem; }
+  .rail a:hover, .rail a:focus-visible { background: var(--green-soft); color: var(--ink); outline: none; }
+  .rail .num { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--card); border: 1.5px solid var(--line); font-family: var(--display); font-size: 0.95rem; color: var(--green); }
+  .steps { display: grid; gap: 56px; }
+  .step { display: grid; gap: 22px; scroll-margin-top: 16px; }
+  .step-head { display: grid; grid-template-columns: 52px 1fr; gap: 16px; align-items: start; }
+  .step-head .num { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: var(--green); color: #fff; font-family: var(--display); font-size: 1.5rem; font-weight: 700; }
+  .step-head .who { font-size: 0.9rem; color: var(--ink-3); margin-top: 4px; }
+  .step-body { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .step-body > .text { display: grid; gap: 12px; }
+  .figure { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 12px; }
+  .figure .cap { font-size: 0.85rem; color: var(--ink-3); }
+  .callout { border-left: 3px solid var(--green); padding: 4px 0 4px 14px; color: var(--ink-2); font-size: 0.98rem; }
+  ul.plain { margin: 0; padding-left: 18px; color: var(--ink-2); display: grid; gap: 6px; }
+
+  /* Small diagrams */
+  .avatars { display: flex; flex-wrap: wrap; gap: 6px; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--green-soft); border: 1.5px solid var(--green); display: grid; place-items: center; font-size: 0.7rem; font-weight: 700; color: var(--green-deep); }
+  .avatar.open { background: transparent; border-style: dashed; color: var(--ink-3); border-color: var(--line); }
+  .pot { display: grid; gap: 8px; }
+  .bar { height: 14px; border-radius: 7px; background: var(--line); overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--green); }
+  .kv { display: flex; justify-content: space-between; gap: 12px; font-size: 0.95rem; color: var(--ink-2); }
+  .two { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+  .type { border-radius: 14px; padding: 16px; display: grid; gap: 8px; border: 1px solid var(--line); }
+  .type.draw { background: var(--draw-soft); } .type.draw h3, .type.draw .tag { color: var(--draw); }
+  .type.auction { background: var(--auction-soft); } .type.auction h3, .type.auction .tag { color: var(--auction); }
+  .tag { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  .type p { font-size: 0.95rem; color: var(--ink-2); }
+  .timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tl { background: var(--green-soft); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; }
+  .tl b { font-family: var(--display); font-size: 1.1rem; }
+  .tl span { font-size: 0.85rem; color: var(--ink-2); }
+  .math { display: grid; gap: 6px; font-variant-numeric: tabular-nums; }
+  .math div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+  .math div:last-child { border-bottom: 0; border-top: 2px solid var(--ink); font-weight: 700; }
+
+  /* Calculators */
+  .calc { display: grid; gap: 12px; }
+  .calc label { display: grid; gap: 4px; font-size: 0.85rem; font-weight: 600; color: var(--ink-2); }
+  .calc input[type="number"] { font: inherit; font-size: 1rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); width: 100%; }
+  .calc input[type="range"] { width: 100%; accent-color: var(--auction); }
+  .calc output { font-family: var(--display); font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .calc .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .calc .result { display: grid; gap: 2px; }
+  .calc .result span { font-size: 0.8rem; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+  .calc .err { color: #b91c1c; font-size: 0.9rem; min-height: 1.2em; }
+
+  /* Roles + closing */
+  .roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 60px; }
+  .role { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 10px; }
+  .role h3 { font-weight: 700; }
+  .role ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 0.95rem; display: grid; gap: 4px; }
+  .promise { margin-top: 56px; border-radius: 18px; background: var(--green-soft); padding: 28px; display: grid; gap: 14px; }
+  .promise ul { columns: 2; column-gap: 24px; margin: 0; padding-left: 18px; color: var(--ink-2); }
+  .promise li { break-inside: avoid; margin-bottom: 6px; }
+  footer { margin-top: 40px; color: var(--ink-3); font-size: 0.9rem; }
+  @media (max-width: 860px) { .hero, .step-body, .two, .roles, .flow { grid-template-columns: 1fr; } .rail { position: static; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } .promise ul { columns: 1; } .timeline { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: no-preference) { .rail a { transition: background 160ms; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <section class="hero">
+    <div class="stack">
+      <span class="eyebrow">Dhanvi · community savings groups</span>
+      <h1>A savings circle your whole group can trust.</h1>
+      <p class="lead">Dhanvi runs the classic monthly savings group — everyone pays in, one member takes the pool each month — with written rules, verified organizers and records that anyone in the group can check.</p>
+      <div class="pill-row"><span class="pill">Fixed monthly amount</span><span class="pill">Everyone gets the pool once</span><span class="pill">Random draw or auction</span><span class="pill">No investment returns promised</span></div>
+    </div>
+    <aside class="example" aria-label="Worked example">
+      <span class="eyebrow">The example used on this page</span>
+      <dl>
+        <div><dt>Group value</dt><dd>₹5,00,000</dd></div>
+        <div><dt>Members</dt><dd>20</dd></div>
+        <div><dt>Each pays monthly</dt><dd>₹25,000</dd></div>
+        <div><dt>Runs for</dt><dd>20 months</dd></div>
+      </dl>
+      <p class="note">Group value ÷ members = the monthly contribution. The group lasts one month per member, so every member receives the pool exactly once.</p>
+    </aside>
+  </section>
+
+  <div class="flow">
+    <nav class="rail" aria-label="Steps">
+      <a href="#s1"><span class="num">1</span>Create the group</a>
+      <a href="#s2"><span class="num">2</span>Members join</a>
+      <a href="#s3"><span class="num">3</span>Accept rules, start</a>
+      <a href="#s4"><span class="num">4</span>Monthly contribution</a>
+      <a href="#s5"><span class="num">5</span>Pick this month's winner</a>
+      <a href="#s6"><span class="num">6</span>Payout</a>
+      <a href="#s7"><span class="num">7</span>Repeat until done</a>
+    </nav>
+
+    <div class="steps">
+      <section class="step" id="s1">
+        <div class="step-head"><span class="num">1</span><div><h2>An organizer creates the group</h2><p class="who">Who: a Dhanvi-approved organizer, or the Dhanvi team itself</p></div></div>
+        <div class="step-body">
+          <div class="text">
+            <p>The organizer sets the few numbers that define the whole group: the <strong>group value</strong> (the pool paid out each month), the <strong>number of members</strong>, the <strong>type</strong> (random draw or auction) and the three dates that repeat every month — contribution day, selection day, payout day.</p>
+            <p>Dhanvi calculates the rest and writes it into a rule sheet that never changes once members are approved.</p>
+            <div class="callout">Organizers apply first and are approved by Dhanvi before they can publish a group. A member browsing groups always sees who runs it.</div>
+          </div>
+          <div class="figure">
+            <span class="cap">Try it — the calculator follows the same rule as the app</span>
+            <div class="calc">
+              <div class="grid">
+                <label for="cv">Group value (₹)<input id="cv" type="number" min="1000" step="1000" value="500000"></label>
+                <label for="cm">Members<input id="cm" type="number" min="2" max="50" step="1" value="20"></label>
+              </div>
+              <div class="grid">
+                <div class="result"><span>Each member pays monthly</span><output id="om" for="cv cm">₹25,000</output></div>
+                <div class="result"><span>Group runs for</span><output id="od" for="cm">20 months</output></div>
+              </div>
+              <div class="err" id="oe" role="status"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="step" id="s2">
+        <div class="step-head"><span class="num">2</span><div><h2>Members find the group and apply</h2><p class="who">Who: anyone with a Dhanvi account</p></div></div>
+        <div class="step-body">
+          <div class="text">
+            <p>Published groups appear in <strong>Browse groups</strong> with the value, monthly amount, duration and organizer shown up front. Applying costs nothing — no money moves at this stage.</p>
+            <p>The organizer reviews each application and approves or declines it with a reason. Approved members hold a numbered position in the group.</p>
+          </div>
+          <div class="figure">
+            <span class="cap">Positions filling up — 16 of 20 approved</span>
+            <div class="avatars">
+              <span class="avatar">PS</span><span class="avatar">RV</span><span class="avatar">AK</span><span class="avatar">MI</span><span class="avatar">SN</span><span class="avatar">DG</span><span class="avatar">KP</span><span class="avatar">LR</span><span class="avatar">TB</span><span class="avatar">JM</span><span class="avatar">VS</span><span class="avatar">NR</span><span class="avatar">HP</span><span class="avatar">AB</span><span class="avatar">FK</span><span class="avatar">GC</span>
+              <span class="avatar open">17</span><span class="avatar open">18</span><span class="avatar open">19</span><span class="avatar open">20</span>
+            </div>
+            <div class="pot"><div class="bar"><i style="width:80%"></i></div><div class="kv"><span>4 positions open</span><span>Recruiting</span></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="step" id="s3">
+        <div class="step-head"><span class="num">3</span><div><h2>Everyone accepts the same rules, then the group starts</h2><p class="who">Who: every approved member, then the organizer</p></div></div>
+        <div class="step-body">
+          <div class="text">
+            <p>Once all 20 positions are approved, each member reads and accepts the rule sheet: the amount, the dates, how the winner is chosen and when the group starts. Dhanvi keeps a fingerprint of the exact version each person accepted.</p>
+            <p>When everyone has accepted, the organizer confirms the group is ready and starts it on the start date. From that moment the rules are locked — nobody, including the organizer, can change them.</p>
+          </div>
+          <div class="figure">
+            <span class="cap">One rule sheet, accepted by all 20</span>
+            <div class="math">
+              <div><span>Monthly contribution</span><span class="money">₹25,000</span></div>
+              <div><span>Contribution due</span><span>5th of every month</span></div>
+              <div><span>Winner chosen</span><span>10th of every month</span></div>
+              <div><span>Payout</span><span>12th of every month</span></div>
+              <div><span>Rule sheet</span><span>Version 1 · locked</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="step" id="s4">
+        <div class="step-head"><span class="num">4</span><div><h2>Every month, every member contributes</h2><p class="who">Who: all 20 members · tracked by the organizer or paid in-app</p></div></div>
+        <div class="step-body">
+          <div class="text">
+            <p>Each month is a <strong>cycle</strong>. Every member owes the same ₹25,000 by the due date. Their Dhanvi home screen shows exactly one thing to do: <em>Cycle 3 contribution · ₹25,000 due · Pay now</em>.</p>
+            <p>Groups run by Dhanvi collect the money online through Razorpay, so the payment confirms itself. Organizer-run groups collect outside the app and the organizer records each payment against the member — with a reference, visible to that member.</p>
+            <div class="callout">The month cannot move on until every contribution is in. Members who have paid see "waiting for 3 other members", not a mystery.</div>
+          </div>
+          <div class="figure">
+            <span class="cap">Cycle 3 · collection progress</span>
+            <div class="pot"><div class="bar"><i style="width:85%"></i></div><div class="kv"><span><span class="money">₹4,25,000</span> of ₹5,00,000 collected</span><span>17 / 20 paid</span></div></div>
+            <div class="timeline">
+              <div class="tl"><b>5 Nov</b><span>Contributions due</span></div>
+              <div class="tl"><b>10 Nov</b><span>Winner chosen</span></div>
+              <div class="tl"><b>12 Nov</b><span>Payout</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="step" id="s5">
+        <div class="step-head"><span class="num">5</span><div><h2>The pool goes to one member — chosen fairly</h2><p class="who">Who: decided by the group type set in step 1</p></div></div>
+        <div class="step-body">
+          <div class="text">
+            <p>A member who has already received the pool keeps contributing but is not eligible again, so over the full run <strong>everyone gets it exactly once</strong>. There are two ways to decide whose turn it is:</p>
+            <div class="two">
+              <div class="type draw"><span class="tag">Random draw</span><h3>Luck, provably fair</h3><p>Dhanvi draws one eligible member and publishes the proof. Anyone in the group can re-run the verification and get the same result.</p><p><strong>Winner receives the full ₹5,00,000.</strong></p></div>
+              <div class="type auction"><span class="tag">Auction</span><h3>Whoever needs it most, bids</h3><p>Eligible members offer a <em>discount</em> — how much less than the full pool they will accept. The highest discount wins. The discount is shared back with the other members as a benefit.</p><p><strong>Winner receives ₹5,00,000 minus their discount.</strong></p></div>
+            </div>
+          </div>
+          <div class="figure">
+            <span class="cap">Auction example — drag the discount</span>
+            <div class="calc">
+              <label for="disc">Winning discount: <output id="odisc" for="disc">₹20,000</output><input id="disc" type="range" min="1000" max="100000" step="1000" value="20000"></label>
+              <div class="math">
+                <div><span>Group value</span><span class="money">₹5,00,000</span></div>
+                <div><span>Winning discount</span><span id="m1" class="money">− ₹20,000</span></div>
+                <div><span>Winner receives</span><span id="m2" class="money">₹4,80,000</span></div>
+              </div>
+              <p class="cap" id="m3">The ₹20,000 discount is shared among the other 19 members as an auction benefit (after Dhanvi's fee) — about ₹1,052 each.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="step" id="s6">
+        <div class="step-head"><span class="num">6</span><div><h2>The winner is paid, and everyone can see it</h2><p class="who">Who: Dhanvi processes the transfer to the winner's verified bank account</p></div></div>
+        <div class="step-body">
+          <div class="text">
+            <p>The winner adds a bank account once (name, account number, IFSC), and Dhanvi approves the destination before any transfer. The payout then moves through clear stages the member can follow on their phone: <em>Approved → Processing → Paid</em>, with the bank account shown as "ending 1234".</p>
+            <p>Every payout, contribution and auction benefit is posted to a double-entry ledger, so the group's money always adds up and every rupee has a trail.</p>
+          </div>
+          <div class="figure">
+            <span class="cap">Winner's payout · cycle 3</span>
+            <div class="math">
+              <div><span>Amount</span><span class="money">₹4,80,000</span></div>
+              <div><span>To</span><span>HDFC Bank · ending 9012</span></div>
+              <div><span>Status</span><span>Processing → Paid</span></div>
+            </div>
+            <div class="timeline"><div class="tl"><b>✓</b><span>Bank account approved</span></div><div class="tl"><b>✓</b><span>Transfer sent</span></div><div class="tl"><b>→</b><span>Paid · 12 Nov</span></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="step" id="s7">
+        <div class="step-head"><span class="num">7</span><div><h2>Next month, the cycle repeats — until everyone has had a turn</h2><p class="who">Who: everyone, for 20 months</p></div></div>
+        <div class="step-body">
+          <div class="text">
+            <p>Cycle 4 opens the moment cycle 3's payout settles. The same ₹25,000 falls due, a new winner is chosen from the 17 members still waiting, and so on. After 20 cycles, every member has paid ₹5,00,000 in total and received the pool once. The group is marked complete.</p>
+            <div class="callout">Someone who wins early gets money sooner; someone who wins late has, in an auction group, collected benefits along the way. The rules the group agreed to in step 3 decide which — never a person after the fact.</div>
+          </div>
+          <div class="figure">
+            <span class="cap">Group progress · 20 cycles</span>
+            <div class="pot"><div class="bar"><i style="width:15%"></i></div><div class="kv"><span>Cycle 3 of 20</span><span>17 members still to receive</span></div></div>
+            <div class="math">
+              <div><span>Paid in per member so far</span><span class="money">₹75,000</span></div>
+              <div><span>Paid in per member at the end</span><span class="money">₹5,00,000</span></div>
+              <div><span>Received by each member, once</span><span class="money">₹5,00,000</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <section class="roles" aria-label="Who does what">
+    <div class="role"><span class="eyebrow">Member</span><h3>Saves and follows</h3><ul><li>Browses and applies to groups</li><li>Accepts the rule sheet</li><li>Pays the same amount every month</li><li>Bids in auctions if they want the pool early</li><li>Adds a bank account and tracks the payout</li></ul></div>
+    <div class="role"><span class="eyebrow">Organizer</span><h3>Runs the group</h3><ul><li>Applies and is verified by Dhanvi</li><li>Sets the rules and publishes</li><li>Approves applications</li><li>Records contributions, opens the auction or draw</li><li>Cannot change locked rules or move money</li></ul></div>
+    <div class="role"><span class="eyebrow">Dhanvi</span><h3>Keeps it honest</h3><ul><li>Verifies organizers</li><li>Runs platform groups with online payments</li><li>Publishes draw proofs, closes auctions</li><li>Approves bank accounts and executes payouts</li><li>Keeps the ledger and audit trail</li></ul></div>
+  </section>
+
+  <section class="promise">
+    <h2>What you can say with confidence</h2>
+    <ul>
+      <li>The monthly amount and the dates are fixed before the first rupee is paid.</li>
+      <li>Every member receives the pool exactly once.</li>
+      <li>Random draws come with a proof anyone can re-check.</li>
+      <li>Auction discounts flow back to the other members, not to the organizer.</li>
+      <li>Payouts go only to a bank account Dhanvi has approved.</li>
+      <li>Every payment and payout has a record the member can see.</li>
+      <li>Dhanvi does not promise returns — it organizes savings, transparently.</li>
+      <li>Organizers are verified people, not anonymous accounts.</li>
+    </ul>
+  </section>
+  <footer>Numbers on this page are the illustrative ₹5,00,000 / 20-member example. Business dates follow Asia/Kolkata (IST).</footer>
+</div>
+
+<script>
+  const inr = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
+  const cv = document.getElementById("cv"), cm = document.getElementById("cm"), om = document.getElementById("om"), od = document.getElementById("od"), oe = document.getElementById("oe");
+  function calc() {
+    const value = Number(cv.value), members = Number(cm.value);
+    if (!(value > 0) || !Number.isInteger(members) || members < 2 || members > 50) { oe.textContent = "Groups have 2–50 members and a positive group value."; om.textContent = "—"; od.textContent = "—"; return; }
+    if (Math.round(value * 100) % members !== 0) { oe.textContent = "The value must divide evenly among members (to the paisa) — the app asks the organizer to adjust it."; om.textContent = "—"; od.textContent = members + " months"; return; }
+    oe.textContent = ""; om.textContent = inr(value / members); od.textContent = members + " months";
+  }
+  cv.addEventListener("input", calc); cm.addEventListener("input", calc); calc();
+  const disc = document.getElementById("disc"), odisc = document.getElementById("odisc"), m1 = document.getElementById("m1"), m2 = document.getElementById("m2"), m3 = document.getElementById("m3");
+  function auction() {
+    const d = Number(disc.value); odisc.textContent = inr(d); m1.textContent = "− " + inr(d); m2.textContent = inr(500000 - d);
+    m3.textContent = `The ${inr(d)} discount is shared among the other 19 members as an auction benefit (after Dhanvi's fee) — about ${inr(d / 19)} each.`;
+  }
+  disc.addEventListener("input", auction); auction();
+</script>
+
+</body>
+</html>
