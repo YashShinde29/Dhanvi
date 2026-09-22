@@ -11,15 +11,69 @@ using Dhanvi.SharedKernel.Exceptions;
 using Dhanvi.SharedKernel.Time;
 namespace Dhanvi.Modules.Auctions.Application;
 
-public sealed partial class AuctionService(IAuctionStore store, IDateTimeProvider clock, GroupMemberPolicy? memberPolicy = null) : IAuctionService
+public sealed partial class AuctionService(IAuctionStore store, IDateTimeProvider clock, GroupMemberPolicy? memberPolicy = null, IAuctionEventHook? events = null, IAuctionScheduleHistoryReader? history = null) : IAuctionService
 {
     public Task<AuctionDetails> OpenAsync(Guid groupId, Guid cycleId, SelectionActor actor, CancellationToken ct) => store.ExecuteLockedAsync(groupId, cycleId, actor.UserId, state =>
     {
         Manage(state, actor); Ready(state);
-        BusinessRuleException.Require(state.Auction is null, "AUCTION_ALREADY_EXISTS", "An auction already exists for this cycle.");
-        var now = clock.UtcNow; var auction = Scheduled(state, now); auction.Open(now); state.Auction = auction;
-        Audit(state, actor, "AUCTION_CREATED", now); Audit(state, actor, "AUCTION_OPENED", now); return Map(state, actor, now);
+        // A row already exists only when the auction was rescheduled while SCHEDULED; it then opens on its rescheduled window.
+        BusinessRuleException.Require(state.Auction is null || state.Auction.Status == AuctionStatus.Scheduled, "AUCTION_ALREADY_EXISTS", "An auction already exists for this cycle.");
+        var now = clock.UtcNow; var created = state.Auction is null; var auction = state.Auction ?? Scheduled(state, now); auction.Open(now); state.Auction = auction;
+        if (created) Audit(state, actor, "AUCTION_CREATED", now);
+        Audit(state, actor, "AUCTION_OPENED", now); return Map(state, actor, now);
     }, ct);
+    /// <summary>
+    /// The one reschedule use case for organizers and admins. Runs inside the group/cycle/auction row lock: authorization,
+    /// authoritative status, validation, update, history, audit and receipt commit together or not at all.
+    /// </summary>
+    public async Task<AuctionDetails> RescheduleAsync(Guid groupId, Guid cycleId, SelectionActor actor, RescheduleAuctionRequest request, string key, CancellationToken ct)
+    {
+        AuctionRescheduledEvent? raised = null;
+        var details = await store.ExecuteLockedAsync(groupId, cycleId, actor.UserId, state =>
+        {
+            GroupRules.Require(CanReschedule(state, actor), "AUCTION_PERMISSION_DENIED", "Only the group's approved organizer or a Dhanvi administrator can reschedule this auction.");
+            Active(state); Method(state);
+            BusinessRuleException.Require(!string.IsNullOrWhiteSpace(key) && key.Length <= 128, "IDEMPOTENCY_KEY_REQUIRED", "Provide an Idempotency-Key of at most 128 characters.");
+            BusinessRuleException.Require(request.ReasonCode is not null, "AUCTION_RESCHEDULE_REASON_REQUIRED", "Choose a reason for the schedule change.");
+            var reasonCode = request.ReasonCode!.Value;
+            var (reasonText, memberMessage) = AuctionScheduleChange.ValidateReason(reasonCode, request.ReasonText, request.MemberMessage);
+            var newStart = request.NewStartsAt.ToUniversalTime(); var newEnd = request.NewEndsAt.ToUniversalTime();
+            var scope = AuctionBidIdempotency.RescheduleScope(groupId, cycleId, actor.UserId);
+            var fingerprint = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes($"{scope}\n{newStart:O}\n{newEnd:O}\n{reasonCode}\n{reasonText}\n{memberMessage}")));
+            var receipt = state.Receipts.SingleOrDefault(r => r.Scope == scope && r.Key == key);
+            // A retried request returns the outcome it already produced: no second history row, no second audit event.
+            if (receipt is not null) { receipt.ValidateReplay(fingerprint); return Map(state, actor, clock.UtcNow); }
+            BusinessRuleException.Require(state.Selection.ExistingResult is null && state.Result is null, "AUCTION_ALREADY_COMPLETED", "This cycle's auction has a result; its timing is immutable.");
+            var now = clock.UtcNow; var created = state.Auction is null; var auction = state.Auction ?? Scheduled(state, now);
+            // Optimistic check on top of the row lock: the operator must have seen the schedule they are replacing.
+            var currentVersion = created ? 0 : auction.Version;
+            BusinessRuleException.Require(request.ExpectedScheduleVersion is null || request.ExpectedScheduleVersion == currentVersion, "AUCTION_SCHEDULE_CONFLICT", "The auction schedule was changed by another user. Review the updated schedule before making another change.");
+            var (previousStart, previousEnd) = auction.Reschedule(newStart, newEnd, reasonCode, memberMessage, now);
+            state.Auction = auction;
+            var role = actor.IsAdmin ? "ADMIN" : "ORGANIZER";
+            var change = new AuctionScheduleChange(auction.Id, groupId, cycleId, auction.RescheduleCount, previousStart, previousEnd, newStart, newEnd, reasonCode, reasonText, memberMessage, actor.UserId, role, now);
+            state.ScheduleChanges.Add(change);
+            state.Receipts.Add(new IdempotencyRecord(scope, key, fingerprint, change.Id, now));
+            if (created) Audit(state, actor, "AUCTION_CREATED", now);
+            Audit(state, actor, "AUCTION_RESCHEDULED", now, change.Id);
+            raised = new(auction.Id, groupId, cycleId, auction.CycleNumber, previousStart, previousEnd, newStart, newEnd, reasonCode, memberMessage, now);
+            return Map(state, actor, now);
+        }, ct);
+        if (raised is not null && events is not null) await events.AuctionRescheduledAsync(raised, ct);
+        return details;
+    }
+    public async Task<AuctionScheduleHistoryPage> ScheduleHistoryAsync(Guid groupId, Guid cycleId, SelectionActor actor, int page, int pageSize, CancellationToken ct)
+    {
+        // Authorization and the internal/member distinction come from the same context the auction itself uses.
+        var inspect = await store.ReadAsync(groupId, cycleId, actor.UserId, state => { SelectionPolicy.AuthorizeReader(state.Selection, actor); Method(state); return CanInspect(state, actor); }, ct);
+        return await Reader().ReadAsync(groupId, cycleId, page, pageSize, inspect, ct);
+    }
+    public async Task<AuctionScheduleHistoryPage> GroupScheduleHistoryAsync(Guid groupId, Guid? cycleId, SelectionActor actor, int page, int pageSize, CancellationToken ct)
+    {
+        GroupRules.Require(actor.IsAdmin || await Reader().OwnsGroupAsync(groupId, actor.UserId, ct), "AUCTION_PERMISSION_DENIED", "Only the group's organizer or a Dhanvi administrator can view the full schedule history.");
+        return await Reader().ReadAsync(groupId, cycleId, page, pageSize, true, ct);
+    }
+    private IAuctionScheduleHistoryReader Reader() => history ?? throw new InvalidOperationException("Schedule history reader is not configured.");
     public Task<AuctionBidDetails> BidAsync(Guid groupId, Guid cycleId, SelectionActor actor, PlaceAuctionBidRequest request, string key, CancellationToken ct) => store.ExecuteLockedAsync(groupId, cycleId, actor.UserId, state =>
     {
         SelectionPolicy.AuthorizeReader(state.Selection, actor); Method(state);
@@ -68,6 +122,9 @@ public sealed partial class AuctionService(IAuctionStore store, IDateTimeProvide
     private static bool CanManage(AuctionContext state, SelectionActor actor) => state.Selection.ActorActive &&
         (state.Selection.Group.CreatorType == GroupCreatorType.Platform ? actor.IsAdmin : state.Selection.Group.CreatedByUserId == actor.UserId && state.Selection.OrganizerApproved);
     private static bool CanInspect(AuctionContext state, SelectionActor actor) => actor.IsAdmin || state.Selection.Group.CreatorType == GroupCreatorType.Organizer && state.Selection.Group.CreatedByUserId == actor.UserId;
+    // Rescheduling authority: an admin for any group; the owning approved organizer for their own group. Membership grants nothing.
+    private static bool CanReschedule(AuctionContext state, SelectionActor actor) => state.Selection.ActorActive &&
+        (actor.IsAdmin || state.Selection.Group.CreatorType == GroupCreatorType.Organizer && state.Selection.Group.CreatedByUserId == actor.UserId && state.Selection.OrganizerApproved);
     private static void Manage(AuctionContext state, SelectionActor actor)
     {
         GroupRules.Require(CanManage(state, actor), "NOT_AUTHORIZED_TO_MANAGE_AUCTION", "Only the owning approved organizer or a platform-group administrator can manage this auction."); Active(state);

@@ -9,7 +9,7 @@ public sealed record AdminCycleSnapshot(Guid Id, int CycleNumber, string Status,
     int ExpectedMemberCount, int SettledMemberCount, int OutstandingMemberCount, decimal ExpectedPoolAmount, decimal SettledAmount,
     int ManualRecordedMemberCount, decimal ManualRecordedAmount,
     DateTimeOffset? StartedAt, DateTimeOffset? ReadyForSelectionAt, DateTimeOffset? SelectionCompletedAt, DateTimeOffset? CompletedAt,
-    Guid? SelectionResultId, string? WinnerName, int? WinnerSlotNumber, string? AuctionStatus, DateTimeOffset? AuctionStartsAt, DateTimeOffset? AuctionEndsAt, int AuctionBidCount);
+    Guid? SelectionResultId, string? WinnerName, int? WinnerSlotNumber, string? AuctionStatus, DateTimeOffset? AuctionStartsAt, DateTimeOffset? AuctionEndsAt, int AuctionBidCount, int AuctionRescheduleCount = 0);
 
 public sealed record AdminPaymentCounts(int Captured, int Pending, int Failed, int ReconciliationRequired, int Refunded)
 {

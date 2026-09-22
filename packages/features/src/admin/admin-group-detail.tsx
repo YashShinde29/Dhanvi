@@ -40,7 +40,7 @@ function AdminGroupDetail() {
   const row = s?.group; const current = row?.currentCycle ?? null;
   const cycles = useAsyncData(() => contributionService.cycles(id, "admin"), [id], !!row?.activatedAt);
   const contributions = useAsyncData(() => contributionService.cycleContributions("admin", id, current!.id), [id, current?.id], !!current);
-  const auctionLive = !!current && current.selectionMethod === "AUCTION" && ["READY_FOR_SELECTION", "CONTRIBUTIONS_COMPLETE"].includes(current.status);
+  const auctionLive = !!current && current.selectionMethod === "AUCTION" && ["COLLECTING_CONTRIBUTIONS", "READY_FOR_SELECTION", "CONTRIBUTIONS_COMPLETE"].includes(current.status);
   const auction = useAsyncData(() => auctionService.get(id, current!.id), [id, current?.id], auctionLive);
   async function refresh() { await Promise.all([summary.reload(), group.reload(), members.reload(), row?.activatedAt ? cycles.reload() : Promise.resolve(), current ? contributions.reload() : Promise.resolve(), auctionLive ? auction.reload() : Promise.resolve()]); }
 
@@ -120,7 +120,7 @@ function AdminGroupDetail() {
                 {!row.activatedAt && (
                   <Card><CardHeader title="Member positions" subtitle={row.termsPendingCount ? `${row.termsPendingCount} approved member${row.termsPendingCount === 1 ? "" : "s"} still need to accept the rules` : "Rules accepted by every approved member"} /><CardBody><ProgressBar value={row.currentMemberCount} max={row.memberLimit} label="Positions filled" start={<strong className="num">{row.currentMemberCount} of {row.memberLimit} positions reserved</strong>} end={row.pendingApplications ? <span className="badge badge--warning">{row.pendingApplications} applications</span> : undefined} /></CardBody></Card>
                 )}
-                <Card><CardHeader title="Recent activity" actions={<button type="button" className="link text-sm" onClick={() => setTab("activity")}>All activity</button>} /><CardBody><ActivityTimeline activity={s.activity} limit={6} /></CardBody></Card>
+                <Card><CardHeader title="Recent activity" actions={<button type="button" className="link text-sm" onClick={() => setTab("activity")}>All activity</button>} /><CardBody><ActivityTimeline activity={s.activity} limit={6} historyHref={`/groups/${g.id}/auction-history`} /></CardBody></Card>
               </div>
               <Card><CardHeader title="Tracking" subtitle="Where this group sits" /><CardBody><GroupTrack group={row} cycles={s.cycles} /></CardBody></Card>
             </div>
@@ -136,7 +136,10 @@ function AdminGroupDetail() {
           )}
           {row.activatedAt && (
             <>
-              <TabPanel id="cycles" active={activeTab === "cycles"}><CyclesTable group={row} cycles={s.cycles} /></TabPanel>
+              <TabPanel id="cycles" active={activeTab === "cycles"}>
+                {row.groupType === "AUCTION" && <div className="row row--between"><span className="text-sm text-muted">Each cycle shows its current auction window only.</span><Link className="link text-sm" href={`/groups/${g.id}/auction-history`}>Auction schedule history →</Link></div>}
+                <CyclesTable group={row} cycles={s.cycles} />
+              </TabPanel>
               <TabPanel id="contributions" active={activeTab === "contributions"}>
                 {current && currentCycleDto ? (
                   <>
@@ -155,7 +158,7 @@ function AdminGroupDetail() {
           )}
           {row.activatedAt && <TabPanel id="payouts" active={activeTab === "payouts"}><GroupPayoutsTable payouts={s.payouts} /><p className="text-sm text-muted"><Link className="link" href={`/payouts?groupId=${g.id}`}>Open in payout operations</Link></p></TabPanel>}
           <TabPanel id="ledger" active={activeTab === "ledger"}><GroupLedgerPanel groupId={g.id} /></TabPanel>
-          <TabPanel id="activity" active={activeTab === "activity"}><Card><CardHeader title="Activity" subtitle="Group and payout events, newest first" /><CardBody><ActivityTimeline activity={s.activity} /></CardBody></Card></TabPanel>
+          <TabPanel id="activity" active={activeTab === "activity"}><Card><CardHeader title="Activity" subtitle="Group and payout events, newest first" /><CardBody><ActivityTimeline activity={s.activity} historyHref={`/groups/${g.id}/auction-history`} /></CardBody></Card></TabPanel>
           <TabPanel id="rules" active={activeTab === "rules"}>
             <div className="grid-sidebar"><div className="stack stack--lg"><ImportantRulesCard group={g} /><RulesSnapshot group={g} /></div>{row.status === "DRAFT" && canManage ? <Card><CardBody className="stack"><p className="text-sm text-secondary">Rules can still change while the group is a draft.</p><LinkButton href={`/groups/${g.id}`} variant="secondary" size="sm">Edit from Group Control</LinkButton></CardBody></Card> : <div />}</div>
           </TabPanel>
@@ -185,6 +188,8 @@ function CyclesTable({ group, cycles }: { group: { id: string; durationMonths: n
     { key: "dates", header: "Due · selection · payout", render: (c) => <span className="text-xs">{formatDate(c.contributionDueDate)} · {formatDate(c.selectionDate)} · {formatDate(c.payoutDate)}</span> },
     { key: "collection", header: "Collection", render: (c) => c.status === "UPCOMING" ? <span className="text-muted">—</span> : <span className="num">{c.settledMemberCount} / {c.expectedMemberCount}<span className="cell__sub">{formatMoney(c.settledAmount)} of {formatMoney(c.expectedPoolAmount)}</span></span> },
     { key: "selection", header: "Selection", render: (c) => c.selectionResultId ? <>#{c.winnerSlotNumber} {c.winnerName}<span className="cell__sub">{statusLabel("selection", c.selectionMethod)} · {formatDate(c.selectionCompletedAt)}</span></> : c.auctionStatus ? <>{statusLabel("auction", c.auctionStatus)}<span className="cell__sub">{c.auctionBidCount} bid{c.auctionBidCount === 1 ? "" : "s"}</span></> : <span className="text-muted">{statusLabel("selection", c.selectionMethod)}</span> },
+    // One compact auction cell per cycle: the authoritative window and whether it moved — never the change list itself.
+    { key: "auction", header: "Auction", render: (c) => c.selectionMethod !== "AUCTION" ? <span className="text-muted">—</span> : <span className="cell-tight">{c.auctionStartsAt ? formatDateTime(c.auctionStartsAt) : formatDate(c.selectionDate)}{c.auctionRescheduleCount > 0 && <span className="cell__sub"><span className="badge badge--warning badge--plain">Rescheduled{c.auctionRescheduleCount > 1 ? ` ×${c.auctionRescheduleCount}` : ""}</span></span>}</span> },
     { key: "completed", header: "Completed", render: (c) => c.completedAt ? formatDate(c.completedAt) : <span className="text-muted">—</span> },
     { key: "actions", header: "", actions: true, render: (c) => c.status === "UPCOMING" ? null : <span className="row" style={{ gap: 8 }}><LinkButton variant="secondary" size="sm" href={`/groups/${group.id}/cycles/${c.id}/contributions`}>Contributions</LinkButton>{c.selectionMethod === "AUCTION" && <LinkButton variant="secondary" size="sm" href={`/groups/${group.id}/cycles/${c.id}/auction`}>Auction</LinkButton>}</span> },
   ];

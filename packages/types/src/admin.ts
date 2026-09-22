@@ -6,7 +6,7 @@ export interface AdminCycleSnapshot {
   manualRecordedMemberCount: number; manualRecordedAmount: number;
   startedAt: string | null; readyForSelectionAt: string | null; selectionCompletedAt: string | null; completedAt: string | null;
   selectionResultId: string | null; winnerName: string | null; winnerSlotNumber: number | null;
-  auctionStatus: string | null; auctionStartsAt: string | null; auctionEndsAt: string | null; auctionBidCount: number;
+  auctionStatus: string | null; auctionStartsAt: string | null; auctionEndsAt: string | null; auctionBidCount: number; auctionRescheduleCount: number;
 }
 export interface AdminPaymentCounts { captured: number; pending: number; failed: number; reconciliationRequired: number; refunded: number }
 export interface AdminPayoutCounts { pendingBeneficiary: number; approvalRequired: number; approved: number; processing: number; succeeded: number; failed: number; reconciliationRequired: number; cancelled: number }

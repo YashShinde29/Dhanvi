@@ -11,6 +11,11 @@ export interface MonthlyCycle {
   selectionDate: string;
   payoutDate: string;
   groupTimeZone: string;
+  /** Auction cycles: the authoritative window (rescheduled or rule-derived) and how often it moved. */
+  auctionStartsAt?: string | null;
+  auctionEndsAt?: string | null;
+  auctionStatus?: string | null;
+  auctionRescheduleCount?: number;
   expectedMemberCount: number;
   expectedContributionPerMember: number;
   expectedPoolAmount: number;

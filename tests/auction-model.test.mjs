@@ -47,6 +47,7 @@ test("custom bid validation explains minimum, maximum, share divisibility and cl
 test("countdown formats from the server clock and phases map from status", () => {
   assert.equal(m.countdown(4 * 60000 + 32000), "04:32");
   assert.equal(m.countdown(3600000 + 12 * 60000 + 34000), "01h 12m 34s");
+  assert.equal(m.countdown(28 * 3600000 + 7 * 60000), "1d 04h");
   assert.equal(m.countdown(0), null);
   assert.equal(m.clockOffset("2026-11-02T10:00:00Z", Date.parse("2026-11-02T09:59:50Z")), 10000);
   for (const [status, phase] of [["SCHEDULED", "SCHEDULED"], ["OPEN", "LIVE"], ["CLOSED", "CLOSING"], ["WINNER_SELECTED", "COMPLETED"], ["CLOSED_NO_BIDS", "NO_BIDS"]]) assert.equal(m.screenPhase({ ...base, status }), phase);

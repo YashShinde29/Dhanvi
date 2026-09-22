@@ -23,6 +23,16 @@ public static class AuctionPersistence
         b.HasOne<Auction>().WithMany().HasForeignKey(x => new { x.AuctionId, x.GroupId, x.CycleId }).HasPrincipalKey(x => new { x.Id, x.GroupId, x.CycleId }).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<GroupMembership>().WithMany().HasForeignKey(x => new { x.MembershipId, x.GroupId }).HasPrincipalKey(x => new { x.Id, x.GroupId }).OnDelete(DeleteBehavior.Restrict);
         a.HasOne<AuctionBid>().WithMany().HasForeignKey(x => new { x.CurrentWinningBidId, x.Id, x.CurrentWinningMembershipId }).HasPrincipalKey(x => new { x.Id, x.AuctionId, x.MembershipId }).OnDelete(DeleteBehavior.Restrict);
+        a.Property(x => x.RescheduleCount).HasDefaultValue(0); a.Ignore(x => x.WasRescheduled);
+        a.Property(x => x.LatestReasonCode).HasConversion<string>().HasMaxLength(40); a.Property(x => x.LatestMemberMessage).HasMaxLength(300);
+        var sc = model.Entity<AuctionScheduleChange>(); sc.ToTable("AuctionScheduleChanges", t => {
+            t.HasCheckConstraint("CK_AuctionScheduleChange_Windows", "\"PreviousStartsAt\" < \"PreviousEndsAt\" AND \"NewStartsAt\" < \"NewEndsAt\" AND \"ChangeSequence\" > 0");
+            t.HasCheckConstraint("CK_AuctionScheduleChange_Role", "\"ChangedByRole\" IN ('ADMIN', 'ORGANIZER')");
+            t.HasCheckConstraint("CK_AuctionScheduleChange_Reason", "\"ReasonCode\" <> 'Other' OR length(trim(\"ReasonText\")) >= 5");
+        });
+        sc.HasKey(x => x.Id); sc.HasIndex(x => new { x.AuctionId, x.ChangeSequence }).IsUnique(); sc.HasIndex(x => new { x.GroupId, x.CycleId, x.ChangedAt });
+        sc.Property(x => x.ReasonCode).HasConversion<string>().HasMaxLength(40); sc.Property(x => x.ReasonText).HasMaxLength(500); sc.Property(x => x.MemberMessage).HasMaxLength(300); sc.Property(x => x.ChangedByRole).HasMaxLength(20);
+        sc.HasOne<Auction>().WithMany().HasForeignKey(x => new { x.AuctionId, x.GroupId, x.CycleId }).HasPrincipalKey(x => new { x.Id, x.GroupId, x.CycleId }).OnDelete(DeleteBehavior.Restrict);
         var r = model.Entity<AuctionResult>(); r.ToTable("AuctionResults", t => {
             t.HasCheckConstraint("CK_AuctionResult_Money", "\"WinningDiscount\" > 0 AND \"WinnerPayout\" > 0 AND \"WinnerPayout\" < \"GroupValue\" AND \"WinnerPayout\" + \"WinningDiscount\" = \"GroupValue\" AND \"MemberLimit\" BETWEEN 2 AND 50 AND \"GrossMemberShare\" > 0 AND \"PlatformFee\" = \"GrossMemberShare\" AND \"GrossMemberShare\" * \"MemberLimit\" = \"WinningDiscount\" AND \"MemberBenefitPool\" + \"PlatformFee\" = \"WinningDiscount\" AND \"MemberBenefitPool\" = \"GrossMemberShare\" * (\"MemberLimit\" - 1)");
             t.HasCheckConstraint("CK_AuctionResult_Version", "\"CalculationVersion\" = 'DHANVI_AUCTION_V1' AND \"FeePolicy\" = 'WinnerMemberShare'");

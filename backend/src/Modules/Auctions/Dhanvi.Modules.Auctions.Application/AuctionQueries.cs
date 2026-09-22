@@ -46,14 +46,22 @@ public sealed partial class AuctionService
         var canBid = active && ready && window && auction.Status == AuctionStatus.Open && next <= auction.MaximumDiscount && eligible.Any(p => p.Membership.UserId == actor.UserId);
         var reason = canBid ? null : !active ? "Group is not active." : own?.Membership.HasBeenSelectedForPayout == true ? "You already hold a main payout right." :
             auction.Status != AuctionStatus.Open ? "Auction is not open." : !window ? "Outside the configured auction window." : next > auction.MaximumDiscount ? "Maximum discount has been reached." : "An active membership and fully recorded contribution are required.";
+        var reschedule = CanReschedule(state, actor) && active;
+        var rescheduleReason = !reschedule ? (active ? "Only the group's organizer or a Dhanvi administrator can reschedule." : "Group is not active.")
+            : auction.Status == AuctionStatus.Open ? "Auction is already live. Schedule changes are unavailable after bidding begins."
+            : auction.Status != AuctionStatus.Scheduled || state.Result is not null || state.Selection.ExistingResult is not null ? "This auction has closed; its timing is part of the record."
+            : auction.LastBidSequence > 0 ? "Bids exist on a scheduled auction; the auction state needs review." : null;
         return new(state.Auction?.Id, auction.CycleNumber, System.Text.Json.JsonNamingPolicy.SnakeCaseUpper.ConvertName(auction.Status.ToString()), auction.StartsAt, auction.EndsAt, now, auction.OpenedAt, auction.ClosedAt, auction.WinnerSelectedAt,
             auction.MinimumDiscount, auction.MaximumDiscount, auction.BidIncrement, auction.CurrentHighestDiscount, next, auction.GroupValue - auction.CurrentHighestDiscount,
-            auction.LastBidSequence, eligible.Count, manage, manage && active && ready && state.Auction is null && window, manage && active && ready && auction.Status == AuctionStatus.Open,
+            auction.LastBidSequence, eligible.Count, manage, manage && active && ready && (state.Auction is null || state.Auction.Status == AuctionStatus.Scheduled) && window, manage && active && ready && auction.Status == AuctionStatus.Open,
             canBid, reason, OwnBids(state, actor), inspect ? state.Bids.OrderBy(b => b.SequenceNumber).Select(b => BidMap(state, b, true)).ToArray() : [],
             inspect ? state.Audit.Where(a => a.CycleId == auction.CycleId && a.AlgorithmVersion == AuctionCalculator.Version).OrderBy(a => a.CreatedAt).Select(a => new AuctionAuditDetails(a.Action, a.CreatedAt, a.SubjectId)).ToArray() : [],
             state.Result is null ? null : ResultMap(state, actor),
             state.Selection.Group.GroupValue, state.Selection.Group.Name, state.Selection.Group.DurationMonths, RecentBids(state, own?.Membership.Id, 12),
-            state.Auction?.CurrentWinningMembershipId is { } leader ? state.Selection.Participants.SingleOrDefault(p => p.Membership.Id == leader)?.Membership.SlotNumber : null);
+            state.Auction?.CurrentWinningMembershipId is { } leader ? state.Selection.Participants.SingleOrDefault(p => p.Membership.Id == leader)?.Membership.SlotNumber : null,
+            auction.WasRescheduled, auction.LastRescheduledAt, auction.RescheduleCount, auction.WasRescheduled ? auction.OriginalStartsAt : null, auction.WasRescheduled ? auction.OriginalEndsAt : null,
+            auction.PreviousStartsAt, auction.PreviousEndsAt, auction.LatestReasonCode, auction.LatestMemberMessage,
+            reschedule && rescheduleReason is null, rescheduleReason, state.Auction?.Version ?? 0);
     }
     // Live bid movement for every viewer: amounts, times and member positions (the existing "Member #slot" convention), never identities.
     private static AuctionActivityDetails[] RecentBids(AuctionContext state, Guid? ownMembership, int limit)

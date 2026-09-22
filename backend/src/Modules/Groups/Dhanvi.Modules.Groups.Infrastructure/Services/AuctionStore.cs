@@ -27,7 +27,7 @@ internal sealed class AuctionStore(GroupsDbContext db, ISelectionStore selection
             Auction = await db.Auctions.SingleOrDefaultAsync(a => a.GroupId == groupId && a.CycleId == cycleId, ct),
             Result = await db.AuctionResults.Include(r => r.Allocations).SingleOrDefaultAsync(r => r.GroupId == groupId && r.CycleId == cycleId, ct),
             Bids = await db.AuctionBids.Where(b => b.GroupId == groupId && b.CycleId == cycleId).ToListAsync(ct),
-            Receipts = await db.IdempotencyRecords.Where(r => r.Scope == AuctionBidIdempotency.Scope(groupId, cycleId, actorId)).ToListAsync(ct),
+            Receipts = await db.IdempotencyRecords.Where(r => r.Scope == AuctionBidIdempotency.Scope(groupId, cycleId, actorId) || r.Scope == AuctionBidIdempotency.RescheduleScope(groupId, cycleId, actorId)).ToListAsync(ct),
             Audit = await db.AuditEvents.Where(a => a.GroupId == groupId && a.CycleId == cycleId).ToListAsync(ct)
         };
         var result = operation(state);
@@ -37,6 +37,7 @@ internal sealed class AuctionStore(GroupsDbContext db, ISelectionStore selection
             if (state.NewSelection is not null) db.SelectionResults.Add(state.NewSelection);
             if (state.Result is not null && db.Entry(state.Result).State == EntityState.Detached) db.AuctionResults.Add(state.Result);
             db.AuctionBids.AddRange(state.Bids.Where(b => db.Entry(b).State == EntityState.Detached));
+            db.AuctionScheduleChanges.AddRange(state.ScheduleChanges.Where(c => db.Entry(c).State == EntityState.Detached));
             db.IdempotencyRecords.AddRange(state.Receipts.Where(r => db.Entry(r).State == EntityState.Detached));
             db.AuditEvents.AddRange(state.Audit.Where(a => db.Entry(a).State == EntityState.Detached));
             await db.SaveChangesAsync(ct);

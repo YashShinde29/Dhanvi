@@ -3,6 +3,8 @@ using Dhanvi.SharedKernel.Exceptions;
 namespace Dhanvi.Modules.Auctions.Domain;
 
 public enum AuctionStatus { Scheduled, Open, Closed, WinnerSelected, ClosedNoBids }
+/// <summary>Why a scheduled auction was moved. Members see the code (as a label) and the member message, never the internal text.</summary>
+public enum AuctionScheduleReason { PublicHoliday, TechnicalIssue, OperationalIssue, OrganizerRequest, IncorrectSchedule, MemberAvailability, Emergency, Other }
 public sealed class Auction
 {
     private Auction() { }
@@ -29,6 +31,18 @@ public sealed class Auction
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
     public int Version { get; private set; }
+    /// <summary>How many times the scheduled window was moved; each move is an <see cref="AuctionScheduleChange"/>.</summary>
+    public int RescheduleCount { get; private set; }
+    public DateTimeOffset? LastRescheduledAt { get; private set; }
+    public bool WasRescheduled => RescheduleCount > 0;
+    // Latest-change summary, denormalized so reads never touch the history table: the window as first scheduled, the window
+    // replaced by the most recent change, and the member-safe reason of that change.
+    public DateTimeOffset OriginalStartsAt { get; private set; }
+    public DateTimeOffset OriginalEndsAt { get; private set; }
+    public DateTimeOffset? PreviousStartsAt { get; private set; }
+    public DateTimeOffset? PreviousEndsAt { get; private set; }
+    public AuctionScheduleReason? LatestReasonCode { get; private set; }
+    public string? LatestMemberMessage { get; private set; }
     public static Auction Schedule(Guid groupId, Guid cycleId, int number, decimal value, int members, AuctionGroupRules rules, DateTimeOffset start, DateTimeOffset end, DateTimeOffset now, GroupMemberPolicy? memberPolicy = null)
     {
         BusinessRuleException.Require(start < end && rules.MinimumDiscount >= 0 && rules.MinimumDiscount <= rules.MaximumDiscount && rules.BidIncrement > 0 && rules.BidIncrement < value,
@@ -38,7 +52,24 @@ public sealed class Auction
             "INVALID_AUCTION_ALLOCATION_PRECISION", "Configured limits and increment must support exact member shares.");
         return new() { GroupId = groupId, CycleId = cycleId, CycleNumber = number, GroupValue = value, MemberLimit = members,
             MinimumDiscount = rules.MinimumDiscount, MaximumDiscount = rules.MaximumDiscount, BidIncrement = rules.BidIncrement, FeePolicy = rules.FeePolicy,
-            StartsAt = start, EndsAt = end, CreatedAt = now, UpdatedAt = now, Status = AuctionStatus.Scheduled };
+            StartsAt = start, EndsAt = end, OriginalStartsAt = start, OriginalEndsAt = end, CreatedAt = now, UpdatedAt = now, Status = AuctionStatus.Scheduled };
+    }
+    /// <summary>
+    /// Moves a SCHEDULED, bid-free auction to a new window. The previous window is returned so the caller records it in the
+    /// append-only history inside the same transaction; StartsAt/EndsAt stay the single authoritative schedule.
+    /// </summary>
+    public (DateTimeOffset PreviousStartsAt, DateTimeOffset PreviousEndsAt) Reschedule(DateTimeOffset newStartsAt, DateTimeOffset newEndsAt, AuctionScheduleReason reasonCode, string? memberMessage, DateTimeOffset now)
+    {
+        BusinessRuleException.Require(Status != AuctionStatus.Open, "AUCTION_ALREADY_OPEN", "Schedule changes are unavailable after bidding begins.");
+        BusinessRuleException.Require(Status == AuctionStatus.Scheduled, "AUCTION_ALREADY_COMPLETED", "A closed auction's timing is part of its record and cannot change.");
+        BusinessRuleException.Require(LastBidSequence == 0, "AUCTION_RESCHEDULE_NOT_ALLOWED", "Bids exist for an auction that is not open; the auction state is inconsistent and needs review before any schedule change.");
+        BusinessRuleException.Require(newStartsAt < newEndsAt, "AUCTION_INVALID_TIME_RANGE", "The auction must end after it starts.");
+        BusinessRuleException.Require(newStartsAt > now, "AUCTION_NEW_START_IN_PAST", "The new start must be in the future.");
+        BusinessRuleException.Require(newStartsAt != StartsAt || newEndsAt != EndsAt, "AUCTION_SCHEDULE_UNCHANGED", "Choose a different date or time; this is the current schedule.");
+        var previous = (StartsAt, EndsAt);
+        PreviousStartsAt = StartsAt; PreviousEndsAt = EndsAt; LatestReasonCode = reasonCode; LatestMemberMessage = memberMessage;
+        StartsAt = newStartsAt; EndsAt = newEndsAt; RescheduleCount++; LastRescheduledAt = now; Touch(now);
+        return previous;
     }
     public void Open(DateTimeOffset now)
     {
@@ -84,4 +115,48 @@ public sealed class AuctionBid(Guid auctionId, Guid groupId, Guid cycleId, Guid 
     public string IdempotencyKey { get; private set; } = idempotencyKey;
     // PostgreSQL stores microseconds; normalize before returning the original receipt.
     public DateTimeOffset SubmittedAt { get; private set; } = new DateTimeOffset(submittedAt.Ticks - submittedAt.Ticks % 10, submittedAt.Offset).ToUniversalTime();
+}
+/// <summary>Append-only record of one schedule change. Never updated; the auction's RescheduleCount is its sequence.</summary>
+public sealed class AuctionScheduleChange
+{
+    private AuctionScheduleChange() { }
+    public const int MinOtherReasonLength = 5, MaxReasonLength = 500, MaxMemberMessageLength = 300;
+    public AuctionScheduleChange(Guid auctionId, Guid groupId, Guid cycleId, int changeSequence, DateTimeOffset previousStartsAt, DateTimeOffset previousEndsAt,
+        DateTimeOffset newStartsAt, DateTimeOffset newEndsAt, AuctionScheduleReason reasonCode, string? reasonText, string? memberMessage, Guid changedByUserId, string changedByRole, DateTimeOffset changedAt)
+    {
+        BusinessRuleException.Require(changeSequence > 0 && previousStartsAt < previousEndsAt && newStartsAt < newEndsAt, "AUCTION_INVALID_TIME_RANGE", "Schedule history requires valid windows.");
+        (reasonText, memberMessage) = ValidateReason(reasonCode, reasonText, memberMessage);
+        AuctionId = auctionId; GroupId = groupId; CycleId = cycleId; ChangeSequence = changeSequence; PreviousStartsAt = previousStartsAt; PreviousEndsAt = previousEndsAt;
+        NewStartsAt = newStartsAt; NewEndsAt = newEndsAt; ReasonCode = reasonCode; ReasonText = reasonText; MemberMessage = memberMessage;
+        ChangedByUserId = changedByUserId; ChangedByRole = changedByRole; ChangedAt = changedAt; CreatedAt = changedAt;
+    }
+    /// <summary>A code is always required; OTHER needs a meaningful explanation. Texts are trimmed and bounded; blank becomes null.</summary>
+    public static (string? ReasonText, string? MemberMessage) ValidateReason(AuctionScheduleReason reasonCode, string? reasonText, string? memberMessage)
+    {
+        BusinessRuleException.Require(Enum.IsDefined(reasonCode), "AUCTION_RESCHEDULE_REASON_REQUIRED", "Choose a valid reason for the schedule change.");
+        var text = string.IsNullOrWhiteSpace(reasonText) ? null : reasonText.Trim(); var message = string.IsNullOrWhiteSpace(memberMessage) ? null : memberMessage.Trim();
+        BusinessRuleException.Require(reasonCode != AuctionScheduleReason.Other || (text is not null && text.Length >= MinOtherReasonLength), "AUCTION_RESCHEDULE_REASON_REQUIRED", $"Explain the reason in at least {MinOtherReasonLength} characters when choosing Other.");
+        BusinessRuleException.Require(text is null || text.Length <= MaxReasonLength, "AUCTION_RESCHEDULE_REASON_REQUIRED", $"Keep the explanation within {MaxReasonLength} characters.");
+        BusinessRuleException.Require(message is null || message.Length <= MaxMemberMessageLength, "AUCTION_RESCHEDULE_REASON_REQUIRED", $"Keep the member message within {MaxMemberMessageLength} characters.");
+        return (text, message);
+    }
+    public Guid Id { get; private set; } = Guid.NewGuid();
+    public Guid AuctionId { get; private set; }
+    public Guid GroupId { get; private set; }
+    public Guid CycleId { get; private set; }
+    public int ChangeSequence { get; private set; }
+    public DateTimeOffset PreviousStartsAt { get; private set; }
+    public DateTimeOffset PreviousEndsAt { get; private set; }
+    public DateTimeOffset NewStartsAt { get; private set; }
+    public DateTimeOffset NewEndsAt { get; private set; }
+    public AuctionScheduleReason ReasonCode { get; private set; }
+    /// <summary>Internal explanation for operators (tickets, incident ids). Never shown to members.</summary>
+    public string? ReasonText { get; private set; }
+    /// <summary>Optional plain-language note written for members.</summary>
+    public string? MemberMessage { get; private set; }
+    public Guid ChangedByUserId { get; private set; }
+    /// <summary>"ADMIN" or "ORGANIZER" — the authority used, derived by the backend from the session, never from the client.</summary>
+    public string ChangedByRole { get; private set; } = string.Empty;
+    public DateTimeOffset ChangedAt { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; }
 }

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { managePrefix } from "../groups/shared";
 import type { GroupScope } from "@dhanvi/api-client";
 import type { Group, Contribution, MonthlyCycle } from "@dhanvi/types";
-import { formatDate, formatMoney, formatNumber, statusLabel } from "@dhanvi/utils";
+import { formatDate, formatDateTime, formatMoney, formatNumber, statusLabel } from "@dhanvi/utils";
 import { StatusBadge, ProgressBar, DataTable, type Column } from "@dhanvi/ui";
 
 export function CycleProgress({ cycle }: { cycle: MonthlyCycle }) {
@@ -23,7 +23,9 @@ export function CycleScheduleTable({ group, cycles, scope, mine = [] }: { group:
   const columns: Column<MonthlyCycle>[] = [
     { key: "cycle", header: "Cycle", primary: true, render: (c) => <span className="text-strong">Cycle {c.cycleNumber}{c.cycleNumber === group.currentCycleNumber ? <span className="badge badge--success badge--plain" style={{ marginLeft: 8 }}>Current</span> : null}</span> },
     { key: "due", header: "Contribution due", render: (c) => formatDate(c.contributionDueDate) },
-    { key: "selection", header: "Selection", render: (c) => <>{formatDate(c.selectionDate)}<span className="cell__sub">{statusLabel("selection", c.selectionMethod)}</span></> },
+    { key: "selection", header: "Selection", render: (c) => c.selectionMethod === "AUCTION" && c.auctionStartsAt
+      ? <>{formatDateTime(c.auctionStartsAt, c.groupTimeZone)}<span className="cell__sub">Auction{(c.auctionRescheduleCount ?? 0) > 0 ? <> · <span className="badge badge--warning badge--plain">Rescheduled{(c.auctionRescheduleCount ?? 0) > 1 ? ` ×${c.auctionRescheduleCount}` : ""}</span></> : null}</span></>
+      : <>{formatDate(c.selectionDate)}<span className="cell__sub">{statusLabel("selection", c.selectionMethod)}</span></> },
     { key: "payout", header: "Payout date", render: (c) => formatDate(c.payoutDate) },
     { key: "status", header: "Status", render: (c) => <StatusBadge kind="cycle" value={c.status} /> },
     management

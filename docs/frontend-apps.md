@@ -18,6 +18,7 @@ tests/                node --test structural checks (ports, route placement, gua
 apps/
   user-web/           Next.js 16, port 3000: public, member and organizer experience; Razorpay Checkout
   admin-web/          Next.js 16, port 3001: platform operations
+assets/brand/         logo and icon masters; `tools/generate-brand-assets.py` derives the files each app serves
 packages/
   ui/                 design system (components, icons, brand, globals.css, confirm dialog hook)
   api-client/         one typed fetch client (cookie credentials, single 401 refresh) plus every *.service module

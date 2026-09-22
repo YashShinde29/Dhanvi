@@ -7,6 +7,7 @@ import { formatDate, formatDateTime, formatMoney, formatSignedMoney, formatTime,
 import { BidPanel } from "./bid-panel";
 import { countdown, latestOwnBid, screenPhase, type ScreenPhase } from "./auction-model";
 import { useLiveAuction, useTicker } from "./use-live-auction";
+import { RescheduledNotice } from "./auction-reschedule";
 
 /** Which route hosts this experience; members and organizers (participating) both use the member app's group route. */
 export interface AuctionExperienceProps { group: Group; cycle: MonthlyCycle; groupHref: string; payoutsHref: string; /** Organizer participating in their own auction. */ participant?: boolean }
@@ -46,11 +47,13 @@ export function AuctionExperience({ group, cycle, groupHref, payoutsHref }: Auct
         </div>
         <div className="auc__state">
           <StatePill phase={phase!} />
+          {a.wasRescheduled && phase === "SCHEDULED" && <span className="badge badge--warning">Rescheduled</span>}
           {phase === "SCHEDULED" && <div className="auc__timer"><span className="auc__timer-label">Starts in</span><span className="auc__timer-value">{startsIn ?? "Opening"}</span></div>}
           {phase === "LIVE" && <div className="auc__timer" aria-live="off"><span className="auc__timer-label">Time left</span><span className={`auc__timer-value${endsIn && new Date(a.endsAt).getTime() - now < 5 * 60000 ? " auc__timer-value--urgent" : ""}`}>{endsIn ?? "Closing"}</span></div>}
         </div>
       </header>
 
+      {phase === "SCHEDULED" && <RescheduledNotice auction={a} zone={zone} groupId={group.id} cycle={cycle} />}
       {phase === "NO_BIDS" && <Card><CardBody className="stack"><div className="text-strong">Auction closed without bids</div><p className="text-sm text-secondary" style={{ margin: 0 }}>No winner or payout right was assigned this cycle. {group.creatorType === "PLATFORM" ? "Dhanvi" : "Your organizer"} will review what happens next.</p></CardBody></Card>}
 
       <div className="auc__layout">
@@ -136,7 +139,7 @@ export function AuctionExperience({ group, cycle, groupHref, payoutsHref }: Auct
           <details className="disclosure"><summary>What happens to the winning discount?</summary><div className="disclosure__body"><p className="text-sm text-secondary" style={{ margin: 0 }}>Under this group&apos;s fee policy (winner member share), the winning discount is shared as an auction benefit among the other {Math.max(0, group.memberLimit - 1)} members after the platform fee, and the winner receives the group value minus their discount. Benefits are calculated when the auction closes and settled with the cycle&apos;s payouts.</p></div></details>
 
           <p className="text-sm text-secondary" style={{ margin: 0 }}>
-            {phase === "COMPLETED" ? <>Next: cycle {a.cycleNumber < a.durationMonths ? `${a.cycleNumber + 1} contribution collection begins after this cycle's settlement completes.` : "— this was the final cycle."}</> : phase === "SCHEDULED" ? `The auction runs on ${formatDate(cycle.selectionDate)} once all contributions are settled.` : "The backend enforces the window and validates every bid; this countdown is informational."}
+            {phase === "COMPLETED" ? <>Next: cycle {a.cycleNumber < a.durationMonths ? `${a.cycleNumber + 1} contribution collection begins after this cycle's settlement completes.` : "— this was the final cycle."}</> : phase === "SCHEDULED" ? `The auction runs on ${formatDate(a.startsAt, zone)} once all contributions are settled.` : "The backend enforces the window and validates every bid; this countdown is informational."}
             {" "}<Link className="link" href={groupHref}>Back to group</Link>
           </p>
         </div>

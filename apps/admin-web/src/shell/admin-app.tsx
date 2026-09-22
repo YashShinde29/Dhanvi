@@ -44,7 +44,7 @@ const menuItems = (): MenuItem[] => [
 const titles: [RegExp, string][] = [
   [/^\/payouts\/[^/]+/, "Payout"], [/^\/payouts/, "Payouts"], [/^\/payments\/[^/]+/, "Payment"], [/^\/payments/, "Payments"], [/^\/reconciliation/, "Reconciliation"],
   [/^\/ledger\/trial-balance/, "Trial balance"], [/^\/ledger\/accounts/, "Chart of accounts"], [/^\/ledger/, "Ledger"],
-  [/^\/organizers/, "Organizer applications"], [/^\/groups\/create/, "Create platform group"], [/^\/groups\/[^/]+\/cycles\/[^/]+\/auction/, "Auction operations"],
+  [/^\/organizers/, "Organizer applications"], [/^\/groups\/create/, "Create platform group"], [/^\/groups\/[^/]+\/auction-history/, "Auction schedule history"], [/^\/groups\/[^/]+\/cycles\/[^/]+\/auction/, "Auction operations"],
   [/^\/groups\/[^/]+\/cycles\/[^/]+\/contributions/, "Cycle contributions"], [/^\/groups\/[^/]+/, "Group"], [/^\/groups/, "Groups"],
   [/^\/profile/, "Profile"], [/^\/dashboard/, "Requires attention"],
 ];
@@ -53,7 +53,7 @@ const titles: [RegExp, string][] = [
 function AdminPublicShell({ children }: { children: ReactNode }) {
   return (
     <div className="shell">
-      <header className="public-header"><div className="public-header__inner"><Brand label="Dhanvi Admin" href="/login" /></div></header>
+      <header className="public-header"><div className="public-header__inner"><Brand label="Dhanvi Admin" suffix="Admin" href="/login" /></div></header>
       <main className="public-main">{children}</main>
     </div>
   );

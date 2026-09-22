@@ -2,7 +2,7 @@
 import Link from "next/link";
 import type { Group, MonthlyCycle } from "@dhanvi/types";
 import { Card, CardBody, LinkButton } from "@dhanvi/ui";
-import { formatDate, formatDateTime, formatMoney } from "@dhanvi/utils";
+import { auctionReasonLabel, formatDateTime, formatMoney } from "@dhanvi/utils";
 import { countdown, latestOwnBid, personalState, screenPhase } from "./auction-model";
 import { useLiveAuction, useTicker } from "./use-live-auction";
 
@@ -26,7 +26,7 @@ export function AuctionSummaryCard({ group, cycle, href, viewer, action = true }
             <div className="auc__eyebrow">Cycle {cycle.cycleNumber} · Auction</div>
             <div className="text-strong" style={{ fontSize: "var(--text-lg)" }}>{!a ? "Loading auction…" : phase === "LIVE" ? "Auction live" : phase === "SCHEDULED" ? (cycle.status === "READY_FOR_SELECTION" ? `Scheduled · opens ${formatDateTime(a.startsAt, group.groupTimeZone)}` : "Scheduled after contributions are complete") : phase === "CLOSING" ? "Closed · finalizing" : phase === "NO_BIDS" ? "Closed without bids" : "Auction completed ✓"}</div>
           </div>
-          {a && <span className={`auc__pill ${phase === "LIVE" ? "auc__pill--live" : phase === "COMPLETED" ? "auc__pill--done" : ""}`}>{phase === "LIVE" ? "Live" : phase === "COMPLETED" ? "Completed" : phase === "SCHEDULED" ? "Scheduled" : "Closed"}</span>}
+          {a && <span className="row" style={{ gap: 6 }}>{a.wasRescheduled && phase === "SCHEDULED" && <span className="badge badge--warning">Rescheduled</span>}<span className={`auc__pill ${phase === "LIVE" ? "auc__pill--live" : phase === "COMPLETED" ? "auc__pill--done" : ""}`}>{phase === "LIVE" ? "Live" : phase === "COMPLETED" ? "Completed" : phase === "SCHEDULED" ? "Scheduled" : "Closed"}</span></span>}
         </div>
         {a && (phase === "LIVE" || phase === "COMPLETED") && (
           <div className="grid-3" style={{ gap: 12 }}>
@@ -36,7 +36,7 @@ export function AuctionSummaryCard({ group, cycle, href, viewer, action = true }
           </div>
         )}
         {a && viewer === "member" && phase === "LIVE" && <p className="text-sm text-secondary" style={{ margin: 0 }}>{personal === "LEADING" ? `You're leading with ${formatMoney(own!.discountAmount)}.` : personal === "OUTBID" ? `You've been outbid · minimum next bid ${formatMoney(a.minimumNextBid)}.` : personal === "NOT_BID" ? `You haven't bid yet · minimum ${formatMoney(a.minimumNextBid)}.` : "You cannot bid in this cycle."}</p>}
-        {a && phase === "SCHEDULED" && <p className="text-sm text-secondary" style={{ margin: 0 }}>Auction date {formatDate(cycle.selectionDate)} · minimum discount {formatMoney(a.minimumDiscount)} · increment {formatMoney(a.bidIncrement)}.</p>}
+        {a && phase === "SCHEDULED" && <p className="text-sm text-secondary" style={{ margin: 0 }}>{a.wasRescheduled ? <><strong>New time:</strong> {formatDateTime(a.startsAt, group.groupTimeZone)} <span className="text-muted">· previously {formatDateTime(a.previousStartsAt ?? cycle.selectionDate, group.groupTimeZone)} · {auctionReasonLabel(a.latestReasonCode)}</span></> : <>Auction {formatDateTime(a.startsAt, group.groupTimeZone)}</>} · minimum discount {formatMoney(a.minimumDiscount)} · increment {formatMoney(a.bidIncrement)}.</p>}
         {action ? <div><LinkButton href={href} variant={viewer === "member" && phase === "LIVE" ? "primary" : "secondary"}>{label}</LinkButton></div> : <div><Link className="link text-sm" href={href}>{label} →</Link></div>}
       </CardBody>
     </Card>

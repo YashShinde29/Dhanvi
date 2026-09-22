@@ -1,4 +1,6 @@
+using Dhanvi.Modules.Auctions.Domain;
 using Dhanvi.Modules.Contributions.Domain;
+using Dhanvi.Modules.Cycles.Domain;
 using Dhanvi.Modules.Groups.Application;
 using Dhanvi.Modules.Groups.Domain;
 using Dhanvi.SharedKernel.Exceptions;
@@ -11,13 +13,24 @@ internal sealed partial class GroupCycleService
     {
         var group = await ReadableGroup(groupId, actor, management, ct);
         var cycles = await db.MonthlyCycles.AsNoTracking().Where(c => c.GroupId == groupId).OrderBy(c => c.CycleNumber).ToListAsync(ct);
-        return cycles.Select(c => MapCycle(c, group.GroupTimeZone)).ToArray();
+        // One query for every auction row of the group; cycles without a row get the rule-derived window (what Scheduled() would create).
+        var auctions = group.GroupType == GroupType.Auction ? await db.Auctions.AsNoTracking().Where(a => a.GroupId == groupId).ToDictionaryAsync(a => a.CycleId, ct) : new Dictionary<Guid, Auction>();
+        return cycles.Select(c => WithAuction(MapCycle(c, group.GroupTimeZone), c, group, auctions.GetValueOrDefault(c.Id))).ToArray();
     }
     public async Task<CycleDetails> CycleAsync(Guid groupId, Guid cycleId, GroupActor actor, CancellationToken ct)
     {
         var group = await ReadableGroup(groupId, actor, false, ct);
         var cycle = await db.MonthlyCycles.AsNoTracking().SingleOrDefaultAsync(c => c.GroupId == groupId && c.Id == cycleId, ct) ?? throw new NotFoundException("Cycle not found.");
-        return MapCycle(cycle, group.GroupTimeZone);
+        return WithAuction(MapCycle(cycle, group.GroupTimeZone), cycle, group, group.GroupType == GroupType.Auction ? await db.Auctions.AsNoTracking().SingleOrDefaultAsync(a => a.CycleId == cycleId, ct) : null);
+    }
+    private static CycleDetails WithAuction(CycleDetails details, MonthlyCycle cycle, Group group, Auction? auction)
+    {
+        if (cycle.SelectionMethod != SelectionMethod.Auction) return details;
+        if (auction is not null) return details with { AuctionStartsAt = auction.StartsAt, AuctionEndsAt = auction.EndsAt, AuctionStatus = System.Text.Json.JsonNamingPolicy.SnakeCaseUpper.ConvertName(auction.Status.ToString()), AuctionRescheduleCount = auction.RescheduleCount };
+        var rules = group.Rules.AuctionRules; if (rules is null) return details;
+        // Rule times are UTC clock times (see AuctionService.Scheduled); the calendar day is the cycle's selection date.
+        DateTimeOffset Utc(TimeOnly time) => new(cycle.SelectionDate.ToDateTime(time, DateTimeKind.Unspecified), TimeSpan.Zero);
+        return details with { AuctionStartsAt = Utc(rules.AuctionStartTime), AuctionEndsAt = Utc(rules.AuctionEndTime), AuctionStatus = "SCHEDULED" };
     }
     public async Task<ContributionPage> MyContributionsAsync(GroupActor actor, Guid? groupId, ContributionStatus? status, int page, int pageSize, CancellationToken ct)
     {

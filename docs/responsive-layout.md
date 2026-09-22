@@ -36,3 +36,18 @@ Containers: member pages `--content-max: 1200px`, admin pages `1440px`; page gut
 ## Auction on phones
 
 Order: state pill + timer → current highest discount → projected winner payout → your status → minimum next bid → quick bids (auto-wrapping grid) → custom bid (`inputMode="numeric"`) → live preview → Review bid. Selecting an amount reveals the sticky `Selected discount · Review bid` bar; the confirmation sheet is the only path that submits. Headline figures reserve their line height so live updates never shift the layout. Tablets (768–1023) use a split view with the bid panel beside the state.
+
+## Auction schedule history (summary first, detail on demand)
+
+Rescheduling can produce many records (50 cycles × several reschedules), so screens are layered:
+
+| Level | Surface | Shows |
+| --- | --- | --- |
+| 1 | Group overview / dashboards | Current cycle's auction window + `Rescheduled` badge only |
+| 2 | Cycles list (member, organizer, admin) | One compact row per cycle: window and `Rescheduled ×n` |
+| 3 | Cycle / auction operations | Schedule card: current window, reschedule count, one **Reschedule auction** action |
+| 4 | Member auction page | Latest change only: new time, previous time, reason |
+| 5 | History drawer | This auction's changes, newest first, 5 per page with **Load more** |
+| 6 | `…/auction-history` page | Every cycle of the group, server-paged 20 per page, cycle filter (admin + owning organizer) |
+
+No overview screen fetches history: the auction read model carries the latest-change summary (`wasRescheduled`, `rescheduleCount`, `previousStartsAt/EndsAt`, `latestReasonCode`, `latestMemberMessage`, `originalStartsAt/EndsAt`). The drawer is a bottom-anchored full-width sheet on phones, 480px beside the content on tablet and up; the full-history table becomes cards on phones and scrolls inside its own container above that.

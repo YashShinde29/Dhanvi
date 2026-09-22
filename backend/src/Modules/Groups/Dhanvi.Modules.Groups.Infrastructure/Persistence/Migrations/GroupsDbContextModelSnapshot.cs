@@ -71,6 +71,17 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                     b.Property<long>("LastBidSequence")
                         .HasColumnType("bigint");
 
+                    b.Property<DateTimeOffset?>("LastRescheduledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LatestMemberMessage")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("LatestReasonCode")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
                     b.Property<decimal>("MaximumDiscount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -84,6 +95,23 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTimeOffset?>("OpenedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("OriginalEndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("OriginalStartsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("PreviousEndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("PreviousStartsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RescheduleCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTimeOffset>("StartsAt")
                         .HasColumnType("timestamp with time zone");
@@ -306,6 +334,82 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("CK_AuctionResult_Money", "\"WinningDiscount\" > 0 AND \"WinnerPayout\" > 0 AND \"WinnerPayout\" < \"GroupValue\" AND \"WinnerPayout\" + \"WinningDiscount\" = \"GroupValue\" AND \"MemberLimit\" BETWEEN 2 AND 50 AND \"GrossMemberShare\" > 0 AND \"PlatformFee\" = \"GrossMemberShare\" AND \"GrossMemberShare\" * \"MemberLimit\" = \"WinningDiscount\" AND \"MemberBenefitPool\" + \"PlatformFee\" = \"WinningDiscount\" AND \"MemberBenefitPool\" = \"GrossMemberShare\" * (\"MemberLimit\" - 1)");
 
                             t.HasCheckConstraint("CK_AuctionResult_Version", "\"CalculationVersion\" = 'DHANVI_AUCTION_V1' AND \"FeePolicy\" = 'WinnerMemberShare'");
+                        });
+                });
+
+            modelBuilder.Entity("Dhanvi.Modules.Auctions.Domain.AuctionScheduleChange", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AuctionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ChangeSequence")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("ChangedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ChangedByRole")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("ChangedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CycleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MemberMessage")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTimeOffset>("NewEndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("NewStartsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("PreviousEndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("PreviousStartsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReasonCode")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("ReasonText")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuctionId", "ChangeSequence")
+                        .IsUnique();
+
+                    b.HasIndex("AuctionId", "GroupId", "CycleId");
+
+                    b.HasIndex("GroupId", "CycleId", "ChangedAt");
+
+                    b.ToTable("AuctionScheduleChanges", "groups", t =>
+                        {
+                            t.HasCheckConstraint("CK_AuctionScheduleChange_Reason", "\"ReasonCode\" <> 'Other' OR length(trim(\"ReasonText\")) >= 5");
+
+                            t.HasCheckConstraint("CK_AuctionScheduleChange_Role", "\"ChangedByRole\" IN ('ADMIN', 'ORGANIZER')");
+
+                            t.HasCheckConstraint("CK_AuctionScheduleChange_Windows", "\"PreviousStartsAt\" < \"PreviousEndsAt\" AND \"NewStartsAt\" < \"NewEndsAt\" AND \"ChangeSequence\" > 0");
                         });
                 });
 
@@ -1085,6 +1189,16 @@ namespace Dhanvi.Modules.Groups.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("WinningBidId", "AuctionId", "WinnerMembershipId")
                         .HasPrincipalKey("Id", "AuctionId", "MembershipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Dhanvi.Modules.Auctions.Domain.AuctionScheduleChange", b =>
+                {
+                    b.HasOne("Dhanvi.Modules.Auctions.Domain.Auction", null)
+                        .WithMany()
+                        .HasForeignKey("AuctionId", "GroupId", "CycleId")
+                        .HasPrincipalKey("Id", "GroupId", "CycleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

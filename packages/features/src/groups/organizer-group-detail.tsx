@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@dhanvi/auth";
@@ -112,6 +113,7 @@ export function OrganizerGroupDetail({ applications = false }: { applications?: 
                 {contributions.error ? <ErrorState message={contributions.error} onRetry={contributions.reload} /> : <CycleContributionsTable group={g} cycle={currentCycle} contributions={contributions.data ?? []} scope="organizer" onChanged={refresh} />}
               </TabPanel>
               <TabPanel id="cycle" active={activeTab === "cycle"}>
+                {g.groupType === "AUCTION" && <div className="row row--between"><span className="text-sm text-muted">Each cycle shows its current auction window only.</span><Link className="link text-sm" href={`/organizer/groups/${g.id}/auction-history`}>Auction schedule history →</Link></div>}
                 {cycles.data && <CycleScheduleTable group={g} cycles={cycles.data} scope="organizer" />}
               </TabPanel>
               <TabPanel id="selection" active={activeTab === "selection"}>

@@ -8,6 +8,7 @@ import { formatDateTime, formatMoney, formatTime, friendlyError, humanize } from
 import { countdown, screenPhase } from "./auction-model";
 import { useLiveAuction, useTicker } from "./use-live-auction";
 import { AuctionExperience } from "./auction-experience";
+import { AuctionScheduleCard, formatWindow } from "./auction-reschedule";
 
 interface Props { group: Group; cycle: MonthlyCycle; scope: "admin" | "organizer"; groupHref: string; listHref: string; listLabel: string }
 
@@ -44,7 +45,7 @@ export function AuctionOperations({ group, cycle, scope, groupHref, listHref, li
     : phase === "LIVE" && a.canClose ? <Button loading={busy} variant="danger" onClick={() => manage("close")}>Close auction</Button>
     : phase === "COMPLETED" ? <LinkButton href={`${groupHref}?tab=payouts`} variant="secondary">View result &amp; payouts</LinkButton> : undefined;
   const facts = [
-    { label: "Window", value: `${formatDateTime(a.startsAt, zone)} → ${formatDateTime(a.endsAt, zone)}` },
+    { label: a.wasRescheduled ? "Window (rescheduled)" : "Window", value: formatWindow(a.startsAt, a.endsAt, zone) },
     ...(phase === "SCHEDULED" ? [{ label: "Opens in", value: countdown(new Date(a.startsAt).getTime() - now) ?? "Window open — can be opened now" }] : []),
     ...(phase === "LIVE" ? [{ label: "Time left", value: countdown(new Date(a.endsAt).getTime() - now) ?? "Past scheduled end — close when ready" }] : []),
     ...(!a.canManage ? [{ label: "Who acts", value: group.creatorType === "PLATFORM" ? "Dhanvi admin" : "The organizer", tone: "waiting" as const }] : []),
@@ -62,7 +63,7 @@ export function AuctionOperations({ group, cycle, scope, groupHref, listHref, li
   return (
     <div className="stack stack--lg">
       <Breadcrumbs items={crumbs} />
-      <div className="auc__head"><div><div className="auc__eyebrow">{group.name} · Cycle {cycle.cycleNumber} of {group.durationMonths}</div><h1 className="auc__title">Auction operations</h1></div><span className={`auc__pill ${phase === "LIVE" ? "auc__pill--live" : phase === "COMPLETED" ? "auc__pill--done" : ""}`}>{humanize(a.status)}</span></div>
+      <div className="auc__head"><div><div className="auc__eyebrow">{group.name} · Cycle {cycle.cycleNumber} of {group.durationMonths}</div><h1 className="auc__title">Auction operations</h1></div><div className="auc__state"><span className={`auc__pill ${phase === "LIVE" ? "auc__pill--live" : phase === "COMPLETED" ? "auc__pill--done" : ""}`}>{humanize(a.status)}</span>{a.wasRescheduled && <span className="badge badge--warning">Rescheduled</span>}</div></div>
       <ControlPanel eyebrow="Auction control" stage={stage} status={status} headline={a.bidCount ? `Current highest discount ${formatMoney(a.currentHighestDiscount)} · projected winner payout ${formatMoney(a.potentialWinnerPayout)}` : "No bids yet."} facts={facts} primary={primary}>
         <dl className="auc__ops-grid">
           <div className="auc__fact"><dt>Eligible members</dt><dd>{a.eligibleBidderCount}</dd></div><div className="auc__fact"><dt>Total bids</dt><dd>{a.bidCount}</dd></div>
@@ -72,6 +73,7 @@ export function AuctionOperations({ group, cycle, scope, groupHref, listHref, li
         {phase === "CLOSING" && <p className="text-sm text-secondary" style={{ margin: 0 }}>Finalizing… the result is recorded by the server.</p>}
         {phase === "COMPLETED" && a.result && <p className="text-sm text-secondary" style={{ margin: 0 }}>Winner: Member {a.result.winner.slotNumber} — {a.result.winner.displayName} · winning discount {formatMoney(a.result.winningDiscount)} · payout {formatMoney(a.result.winnerPayout)} · member benefit pool {formatMoney(a.result.memberBenefitPool)} · platform fee {formatMoney(a.result.platformFee)}.</p>}
       </ControlPanel>
+      {(phase === "SCHEDULED" || a.wasRescheduled) && <AuctionScheduleCard scope={scope} group={group} cycle={cycle} auction={a} onChanged={setAuction} onRefresh={refresh} />}
       <Card>
         <CardHeader title="Bid monitoring" subtitle={`Min ${formatMoney(a.minimumDiscount)} · max ${formatMoney(a.maximumDiscount)} · increment ${formatMoney(a.bidIncrement)} · last server update ${formatTime(a.serverTime, zone)}`} />
         <DataTable columns={columns} rows={[...a.operationalBids].reverse()} rowKey={(b) => b.bidId} compact empty={{ title: "No bids recorded", description: phase === "SCHEDULED" ? "Bids appear once the auction is open." : "No member has bid yet." }} />

@@ -97,3 +97,11 @@ export const PUBLIC_GROUP_STATUSES = ["RECRUITING", "FULLY_SUBSCRIBED", "READY_T
 export const ALL_GROUP_STATUSES = Object.keys(groupStatus);
 export const ORGANIZER_APPLICATION_STATUSES = ["PENDING", "UNDER_REVIEW", "APPROVED", "REJECTED", "SUSPENDED"] as const;
 export const CONTRIBUTION_STATUSES = Object.keys(contributionStatus);
+
+/** Human labels for auction reschedule reason codes (shown to members and operators alike; internal notes stay separate). */
+export const AUCTION_RESCHEDULE_REASONS: { value: "PUBLIC_HOLIDAY" | "TECHNICAL_ISSUE" | "OPERATIONAL_ISSUE" | "ORGANIZER_REQUEST" | "INCORRECT_SCHEDULE" | "MEMBER_AVAILABILITY" | "EMERGENCY" | "OTHER"; label: string }[] = [
+  { value: "PUBLIC_HOLIDAY", label: "Public holiday" }, { value: "TECHNICAL_ISSUE", label: "Technical issue" }, { value: "OPERATIONAL_ISSUE", label: "Operational issue" },
+  { value: "ORGANIZER_REQUEST", label: "Organizer request" }, { value: "INCORRECT_SCHEDULE", label: "Incorrect original schedule" }, { value: "MEMBER_AVAILABILITY", label: "Member availability" },
+  { value: "EMERGENCY", label: "Emergency / unexpected event" }, { value: "OTHER", label: "Other" },
+];
+export function auctionReasonLabel(code: string | null | undefined): string { return AUCTION_RESCHEDULE_REASONS.find((r) => r.value === code)?.label ?? (code ? code.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) : "—"); }

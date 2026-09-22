@@ -25,6 +25,7 @@ public sealed class GroupsDbContext(DbContextOptions<GroupsDbContext> options) :
     public DbSet<Auction> Auctions => Set<Auction>();
     public DbSet<AuctionBid> AuctionBids => Set<AuctionBid>();
     public DbSet<AuctionResult> AuctionResults => Set<AuctionResult>();
+    public DbSet<AuctionScheduleChange> AuctionScheduleChanges => Set<AuctionScheduleChange>();
     public DbSet<AuctionBenefitAllocation> AuctionBenefitAllocations => Set<AuctionBenefitAllocation>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

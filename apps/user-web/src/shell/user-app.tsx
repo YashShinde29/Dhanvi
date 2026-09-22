@@ -78,7 +78,7 @@ function menuItems(user: CurrentUser): MenuItem[] {
 
 const titles: [RegExp, string][] = [
   [/^\/payouts/, "My payouts"], [/^\/payments/, "My payments"], [/^\/ledger/, "Financial history"],
-  [/^\/organizer\/groups\/create/, "Create group"], [/^\/organizer\/groups\/[^/]+\/applications/, "Applications"], [/^\/organizer\/groups\/[^/]+\/cycles\/[^/]+\/auction/, "Auction"],
+  [/^\/organizer\/groups\/create/, "Create group"], [/^\/organizer\/groups\/[^/]+\/auction-history/, "Auction schedule history"], [/^\/organizer\/groups\/[^/]+\/applications/, "Applications"], [/^\/organizer\/groups\/[^/]+\/cycles\/[^/]+\/auction/, "Auction"],
   [/^\/organizer\/groups\/[^/]+\/cycles\/[^/]+\/contributions/, "Cycle contributions"], [/^\/organizer\/groups\/[^/]+\/payouts/, "Group payouts"], [/^\/organizer\/groups\/[^/]+/, "My group"], [/^\/organizer\/groups/, "My managed groups"],
   [/^\/organizer\/applications/, "Applications"], [/^\/organizer\/application-status/, "Organizer application"], [/^\/organizer/, "Organizer"],
   [/^\/groups\/[^/]+\/cycles\/[^/]+\/auction/, "Auction"], [/^\/groups\/[^/]+\/cycles\/[^/]+\/selection\/verify/, "Verify draw"], [/^\/groups\/[^/]+/, "Group"], [/^\/groups/, "Browse groups"],

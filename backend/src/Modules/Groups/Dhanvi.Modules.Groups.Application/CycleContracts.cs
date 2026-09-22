@@ -7,7 +7,9 @@ public sealed record CycleDetails(Guid Id, Guid GroupId, int CycleNumber, Select
     DateOnly ContributionDueDate, DateOnly SelectionDate, DateOnly PayoutDate, string GroupTimeZone, int ExpectedMemberCount,
     decimal ExpectedContributionPerMember, decimal ExpectedPoolAmount, decimal RecordedContributionAmount, int FullyRecordedMemberCount,
     int PendingMemberCount, DateTimeOffset? StartedAt, DateTimeOffset? ContributionsCompletedAt, DateTimeOffset? ReadyForSelectionAt, DateTimeOffset? SelectionCompletedAt, Guid? SelectionResultId,
-    ContributionCollectionMode CollectionMode = ContributionCollectionMode.ManualTracking, decimal FinanciallySettledAmount = 0, int FinanciallySettledMemberCount = 0);
+    ContributionCollectionMode CollectionMode = ContributionCollectionMode.ManualTracking, decimal FinanciallySettledAmount = 0, int FinanciallySettledMemberCount = 0,
+    // Auction cycles only: the authoritative window (rescheduled or rule-derived) and how often it moved — enough for a compact cycle row.
+    DateTimeOffset? AuctionStartsAt = null, DateTimeOffset? AuctionEndsAt = null, string? AuctionStatus = null, int AuctionRescheduleCount = 0);
 public sealed record ContributionEntryDetails(Guid Id, ContributionEntryType EntryType, decimal Amount, string Reference, string? Note, Guid RecordedByUserId, DateTimeOffset CreatedAt, Guid? ReversesEntryId);
 public sealed record ContributionDetails(Guid Id, Guid GroupId, string GroupName, Guid CycleId, int CycleNumber, Guid MembershipId,
     int? SlotNumber, string? MemberName, DateOnly DueDate, string GroupTimeZone, decimal ExpectedAmount, decimal RecordedAmount,

@@ -81,9 +81,10 @@ export function GroupTrack({ group: g, cycles }: { group: AdminGroupRow; cycles:
 const NOISY = new Set(["MONTHLY_CYCLES_CREATED", "CONTRIBUTIONS_CREATED", "GROUP_RULE_VERSION_CREATED", "ORGANIZER_ADDED_AS_MEMBER", "CYCLE_CONTRIBUTIONS_COMPLETED", "PAYOUT_LEDGER_POSTED"]);
 const friendly = (a: AdminActivityEntry) => a.message ?? humanize(a.action);
 
-export function ActivityTimeline({ activity, limit }: { activity: AdminActivityEntry[]; limit?: number }) {
+export function ActivityTimeline({ activity, limit, historyHref }: { activity: AdminActivityEntry[]; limit?: number; /** Link to the group's full auction schedule history (shown on "Auction rescheduled" rows). */ historyHref?: string }) {
   const [technical, setTechnical] = useState(false);
   const rows = activity.filter((a) => technical || !NOISY.has(a.action)).slice(0, limit ?? activity.length);
+  const rescheduleDetail = (a: AdminActivityEntry) => a.action === "AUCTION_RESCHEDULED" && historyHref ? <Link className="link" href={`${historyHref}${a.cycleId ? `?cycleId=${a.cycleId}` : ""}`}>View schedule history</Link> : null;
   if (activity.length === 0) return <p className="text-sm text-muted">No activity recorded yet.</p>;
   return (
     <div className="stack" style={{ gap: 8 }}>
@@ -91,7 +92,7 @@ export function ActivityTimeline({ activity, limit }: { activity: AdminActivityE
         {rows.map((a) => (
           <div key={`${a.source}-${a.id}`} className="activity__item">
             <span className="activity__icon">{a.source === "PAYOUT" ? <Icons.Wallet size={14} /> : <Icons.Activity size={14} />}</span>
-            <div style={{ minWidth: 0 }}><div className="activity__title">{friendly(a)}</div><div className="activity__desc">{a.actorName ? `by ${a.actorName}` : a.source === "PAYOUT" ? "Payout operations" : "System"}{a.message && a.message !== friendly(a) ? ` · ${humanize(a.action)}` : ""}</div></div>
+            <div style={{ minWidth: 0 }}><div className="activity__title">{friendly(a)}</div>{rescheduleDetail(a) && <div className="activity__desc">{rescheduleDetail(a)}</div>}<div className="activity__desc">{a.actorName ? `by ${a.actorName}` : a.source === "PAYOUT" ? "Payout operations" : "System"}{a.message && a.message !== friendly(a) ? ` · ${humanize(a.action)}` : ""}</div></div>
             <span className="activity__time">{formatDateTime(a.at)}</span>
           </div>
         ))}

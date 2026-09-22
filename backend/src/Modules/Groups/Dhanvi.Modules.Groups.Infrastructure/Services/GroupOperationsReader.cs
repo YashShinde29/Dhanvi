@@ -113,7 +113,7 @@ internal sealed class GroupOperationsReader(GroupsDbContext db, IGroupUserDirect
                 c.ExpectedPoolAmount, financial ? c.FinanciallySettledAmount : c.RecordedContributionAmount, c.FullyRecordedMemberCount, c.RecordedContributionAmount,
                 c.StartedAt, c.ReadyForSelectionAt, c.SelectionCompletedAt, c.CompletedAt, c.SelectionResultId,
                 result is null ? null : winnerNames.GetValueOrDefault(result.WinnerUserId), result?.WinnerSlotNumber,
-                auction is null ? null : Name(auction.Status), auction?.StartsAt, auction?.EndsAt, bidCounts.GetValueOrDefault(c.Id));
+                auction is null ? null : Name(auction.Status), auction?.StartsAt, auction?.EndsAt, bidCounts.GetValueOrDefault(c.Id), auction?.RescheduleCount ?? 0);
         }).ToArray();
     }
 

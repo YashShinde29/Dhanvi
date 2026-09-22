@@ -77,6 +77,8 @@ export function countdown(msRemaining: number): string | null {
   const total = Math.floor(msRemaining / 1000);
   const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
   const pad = (n: number) => String(n).padStart(2, "0");
+  // A day or more away (typical for a scheduled or rescheduled auction): "1d 04h" reads better than "28h 07m 35s".
+  if (h >= 24) return `${Math.floor(h / 24)}d ${pad(h % 24)}h`;
   if (h > 0) return `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
   return `${pad(m)}:${pad(s)}`;
 }

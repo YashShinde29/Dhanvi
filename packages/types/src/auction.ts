@@ -61,5 +61,24 @@ export interface Auction {
   durationMonths: number;
   recentBids: AuctionActivity[];
   currentLeaderSlot: number | null;
+  /** Latest-change summary only (denormalized on the auction). Full history is a separate paged call. */
+  wasRescheduled: boolean;
+  lastRescheduledAt: string | null;
+  rescheduleCount: number;
+  originalStartsAt: string | null;
+  originalEndsAt: string | null;
+  previousStartsAt: string | null;
+  previousEndsAt: string | null;
+  latestReasonCode: AuctionScheduleReason | null;
+  latestMemberMessage: string | null;
+  canReschedule: boolean;
+  rescheduleUnavailableReason: string | null;
+  /** Concurrency token the operator saw; sent back as expectedScheduleVersion so a stale screen cannot overwrite. */
+  scheduleVersion: number;
 }
+export type AuctionScheduleReason = "PUBLIC_HOLIDAY" | "TECHNICAL_ISSUE" | "OPERATIONAL_ISSUE" | "ORGANIZER_REQUEST" | "INCORRECT_SCHEDULE" | "MEMBER_AVAILABILITY" | "EMERGENCY" | "OTHER";
+/** One history row. reasonText, changedByRole and changedByName are null for members. */
+export interface AuctionScheduleChange { id: string; cycleId: string; cycleNumber: number; changeSequence: number; previousStartsAt: string; previousEndsAt: string; newStartsAt: string; newEndsAt: string; reasonCode: AuctionScheduleReason; reasonText: string | null; memberMessage: string | null; changedByRole: "ADMIN" | "ORGANIZER" | null; changedByName: string | null; changedAt: string }
+export interface AuctionScheduleHistoryPage { items: AuctionScheduleChange[]; page: number; pageSize: number; totalCount: number }
+export interface RescheduleAuctionInput { newStartsAt: string; newEndsAt: string; reasonCode: AuctionScheduleReason; reasonText: string | null; memberMessage: string | null; expectedScheduleVersion: number }
 export interface AuctionActivity { discountAmount: number; submittedAt: string; memberSlot: number; isMine: boolean; isCurrentHighest: boolean }

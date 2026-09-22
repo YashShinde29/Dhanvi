@@ -11,7 +11,7 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
         var (status, type, message) = exception switch
         {
             ForbiddenException forbidden => (StatusCodes.Status403Forbidden, "forbidden", forbidden.Message),
-            Dhanvi.Modules.Groups.Domain.GroupBusinessException group => (group.Code is "NOT_GROUP_OWNER" or "MEMBERSHIP_REQUIRED" or "ORGANIZER_NOT_APPROVED" or "NOT_AUTHORIZED_TO_EXECUTE_SELECTION" or "NOT_AUTHORIZED_TO_MANAGE_AUCTION" ? StatusCodes.Status403Forbidden : StatusCodes.Status409Conflict, group.Code, group.Message),
+            Dhanvi.Modules.Groups.Domain.GroupBusinessException group => (group.Code is "NOT_GROUP_OWNER" or "MEMBERSHIP_REQUIRED" or "ORGANIZER_NOT_APPROVED" or "NOT_AUTHORIZED_TO_EXECUTE_SELECTION" or "NOT_AUTHORIZED_TO_MANAGE_AUCTION" or "AUCTION_PERMISSION_DENIED" ? StatusCodes.Status403Forbidden : StatusCodes.Status409Conflict, group.Code, group.Message),
             BadHttpRequestException badRequest => (StatusCodes.Status400BadRequest, "validation_error", badRequest.Message),
             BusinessRuleException cycleRule => (StatusCodes.Status409Conflict, cycleRule.Code, cycleRule.Message),
             RequestValidationException validation => (StatusCodes.Status400BadRequest, "validation_error", validation.Message),
@@ -19,6 +19,8 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
             UnauthorizedAccessException unauthorized => (StatusCodes.Status401Unauthorized, "authentication_error", unauthorized.Message),
             NotFoundException notFound => (StatusCodes.Status404NotFound, "not_found", notFound.Message),
             ConflictException conflict => (StatusCodes.Status409Conflict, "conflict", conflict.Message),
+            // Optimistic-concurrency loss (Version token): the caller acted on stale state and must re-read before retrying.
+            Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "AUCTION_SCHEDULE_CONFLICT", "This record was changed by another user. Review the updated state before making another change."),
             _ => (StatusCodes.Status500InternalServerError, "server_error", "The request could not be completed."),
         };
         if (status == StatusCodes.Status500InternalServerError)

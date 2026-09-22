@@ -19,7 +19,7 @@ export interface CycleFacts {
   auctionStatus: string | null; selectionCompletedAt: string | null; readyForSelectionAt: string | null;
 }
 export function cycleFacts(c: MonthlyCycle | AdminCycleSnapshot, auctionStatusOverride?: string | null): CycleFacts {
-  const auctionStatus = auctionStatusOverride !== undefined ? auctionStatusOverride : ("auctionStatus" in c ? c.auctionStatus : null);
+  const auctionStatus = auctionStatusOverride !== undefined ? auctionStatusOverride : ("auctionStatus" in c ? c.auctionStatus ?? null : null);
   const financial = c.collectionMode === "RAZORPAY";
   const settled = "settledMemberCount" in c ? c.settledMemberCount : financial ? c.financiallySettledMemberCount : c.fullyRecordedMemberCount;
   return { id: c.id, cycleNumber: c.cycleNumber, status: c.status, selectionMethod: c.selectionMethod, collectionMode: c.collectionMode, expectedMemberCount: c.expectedMemberCount, settledMemberCount: settled,
