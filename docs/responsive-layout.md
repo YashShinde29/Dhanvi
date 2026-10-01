@@ -1,6 +1,6 @@
 # Responsive layout
 
-Both apps adapt to every screen size through the shared design system in `packages/ui` — pages never carry their own media queries (`tests/responsive.test.mjs` enforces this).
+Both apps adapt to every screen size through the shared design system in `frontend/packages/ui` — pages never carry their own media queries (`frontend/tests/responsive.test.mjs` enforces this).
 
 ## Breakpoints
 

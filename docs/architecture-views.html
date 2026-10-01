@@ -134,7 +134,7 @@ const VIEWS = [
         { id: "rz", col: 0, row: 2, kind: "ext", title: "Razorpay (TEST)", meta: "collects contributions" }, { id: "pp", col: 1, row: 2, kind: "ext", title: "Payout provider", meta: "fake gateway · no real transfers" }, { id: "em", col: 2, row: 2, kind: "ext", title: "Email provider", meta: "not connected · logs only", dormant: true },
       ],
       edges: [{ from: "m", to: "dh", label: "member app :3000", dx2: -300 }, { from: "o", to: "dh", label: "member app :3000 (organizer tools)" }, { from: "a", to: "dh", label: "admin portal :3001", dx2: 300 }, { from: "dh", to: "rz", kind: "ext", label: "orders · webhooks", dx1: -300 }, { from: "dh", to: "pp", kind: "ext", label: "transfers" }, { from: "dh", to: "em", kind: "ext", dashed: true, label: "password reset mail", dx1: 300 }],
-      details: { dh: ["Dhanvi platform", ["Two Next.js apps + one ASP.NET Core API + one PostgreSQL database, deployed together with Docker Compose."]], rz: ["Razorpay", ["Test credentials only; a database check constraint refuses anything but Environment = 'TEST'."]] } },
+      details: { dh: ["Dhanvi platform", ["Two Next.js apps + one Fastify API + a BullMQ worker + PostgreSQL + Redis, deployed together with Docker Compose."]], rz: ["Razorpay", ["Test credentials only; a database check constraint refuses anything but Environment = 'TEST'."]] } },
   },
   {
     id: "containers", tab: "2 · Containers", title: "Containers and ports", question: "What runs, where, and how do the pieces talk?",
@@ -143,15 +143,15 @@ const VIEWS = [
       nodes: [
         { id: "b", col: 1, row: 0, kind: "actor", title: "Browser", meta: "dhanvi_access + dhanvi_refresh cookies" },
         { id: "u", col: 0, row: 1, kind: "frontend", title: "user-web", meta: "Next.js standalone · node 22", badge: ":3000" }, { id: "w", col: 2, row: 1, kind: "frontend", title: "admin-web", meta: "Next.js standalone · node 22", badge: ":3001" },
-        { id: "api", col: 1, row: 1, kind: "api", title: "backend", meta: "ASP.NET Core · /api/v1 · migrations on start", badge: ":5000→8080" },
+        { id: "api", col: 1, row: 1, kind: "api", title: "backend", meta: "Fastify · /api/v1 · migrations on start", badge: ":3002" },
         { id: "pg", col: 1, row: 2, kind: "data", title: "postgres", meta: "postgres:17-alpine · named volume", badge: ":5432" },
       ],
-      edges: [{ from: "b", to: "u", label: "pages" , dx2: 0}, { from: "b", to: "w", label: "pages" }, { from: "b", to: "api", label: "fetch /api/v1 · credentials: include" }, { from: "api", to: "pg", kind: "data", label: "Npgsql · EF Core" }],
-      details: { api: ["backend", ["Environment: ConnectionStrings__DefaultConnection, Jwt__SigningKey, Frontend__Origin, Database__ApplyMigrations, Razorpay keys."]], u: ["user-web", ["Build args bake NEXT_PUBLIC_API_BASE_URL, NEXT_PUBLIC_ADMIN_URL, NEXT_PUBLIC_USER_APP_URL."]] } },
+      edges: [{ from: "b", to: "u", label: "pages" , dx2: 0}, { from: "b", to: "w", label: "pages" }, { from: "b", to: "api", label: "fetch /api/v1 · credentials: include" }, { from: "api", to: "pg", kind: "data", label: "pg · parameterized SQL" }],
+      details: { api: ["backend", ["Environment: DATABASE_URL, REDIS_URL, JWT_SIGNING_KEY, FRONTEND_ORIGIN, RUN_MIGRATIONS_ON_START, Razorpay keys."]], u: ["user-web", ["Build args bake NEXT_PUBLIC_API_URL (http://localhost:3002), NEXT_PUBLIC_ADMIN_URL, NEXT_PUBLIC_USER_APP_URL."]] } },
   },
   {
     id: "modules", tab: "3 · Modules & data", title: "Modules and data ownership", question: "Which module owns which tables, and where do they meet?",
-    notes: ["Every module has its own DbContext, schema and migration history — no shared tables.", "Cross-module operations (approving an organizer, settling a cycle) run in one database transaction through a shared scoped connection.", "Groups is the largest module: cycles, contributions, random draws and auctions all live in the groups schema."],
+    notes: ["Every module has its own schema — no shared tables; one migration history covers the database.", "Cross-module operations (approving an organizer, settling a cycle) run in one database transaction through a shared scoped connection.", "Groups is the largest module: cycles, contributions, random draws and auctions all live in the groups schema."],
     spec: { cols: 4, bands: [{ label: "Modules", rows: [0, 1] }, { label: "PostgreSQL schemas", rows: [2, 3] }],
       nodes: [
         { id: "id", col: 0, row: 0, title: "Identity" }, { id: "or", col: 1, row: 0, title: "Organizers" }, { id: "gr", col: 2, row: 0, title: "Groups", meta: "cycles · contributions · draws · auctions" }, { id: "au", col: 3, row: 0, title: "Audit" },
@@ -164,13 +164,13 @@ const VIEWS = [
   },
   {
     id: "request", tab: "4 · Request & auth", title: "A request, end to end", question: "What happens between a tap in the app and a row in the database?",
-    notes: ["The access token lives 15 minutes; the api-client retries once through /auth/refresh on a 401, and refresh tokens rotate on every use.", "Authorization policies in the API are the security boundary; the apps only guard routes for convenience.", "Every request carries a correlation id into Serilog and OpenTelemetry."],
+    notes: ["The access token lives 15 minutes; the api-client retries once through /auth/refresh on a 401, and refresh tokens rotate on every use.", "Authorization policies in the API are the security boundary; the apps only guard routes for convenience.", "Every request carries a correlation id into the Pino logs."],
     spec: { cols: 3, bands: [{ label: "Browser", rows: [0, 0] }, { label: "API pipeline", rows: [1, 2] }, { label: "Module", rows: [3, 3] }],
       nodes: [
         { id: "ui", col: 0, row: 0, kind: "frontend", title: "Screen", meta: "@dhanvi/features" }, { id: "ac", col: 1, row: 0, kind: "frontend", title: "apiClient", meta: "one fetch wrapper · 401 → refresh once" }, { id: "ck", col: 2, row: 0, kind: "security", title: "Cookies", meta: "HttpOnly · SameSite=Strict" },
         { id: "rl", col: 0, row: 1, kind: "security", title: "Rate limiter", meta: "10 auth calls / min" }, { id: "jw", col: 1, row: 1, kind: "security", title: "JWT validation", meta: "bearer or cookie" }, { id: "pol", col: 2, row: 1, kind: "security", title: "Authorization policy", meta: "role · ownership · state" },
         { id: "ep", col: 1, row: 2, kind: "api", title: "Minimal API endpoint", meta: "validation · idempotency key" },
-        { id: "svc", col: 0, row: 3, title: "Application service", meta: "business rules" }, { id: "db", col: 1, row: 3, kind: "data", title: "DbContext → PostgreSQL", meta: "one transaction" }, { id: "log", col: 2, row: 3, kind: "ops", title: "Audit + logs", meta: "correlation id" },
+        { id: "svc", col: 0, row: 3, title: "Application service", meta: "business rules" }, { id: "db", col: 1, row: 3, kind: "data", title: "Repository → PostgreSQL", meta: "one transaction" }, { id: "log", col: 2, row: 3, kind: "ops", title: "Audit + logs", meta: "correlation id" },
       ],
       edges: [{ from: "ui", to: "ac" }, { from: "ac", to: "ck", label: "credentials: include" }, { from: "ac", to: "jw", label: "HTTPS /api/v1", dx1: 0 }, { from: "rl", to: "jw" }, { from: "jw", to: "pol" }, { from: "pol", to: "ep", label: "allowed", dx2: 0 }, { from: "ep", to: "svc", kind: "ctrl", dx2: 0 }, { from: "svc", to: "db", kind: "data" }, { from: "db", to: "log", kind: "async", label: "on success" }],
       details: { jw: ["JWT validation", ["Issuer Dhanvi, audience Dhanvi.Web, 15-minute access tokens signed with Jwt:SigningKey; refresh tokens hashed with SHA-256 and revocable."]] } },
@@ -192,12 +192,12 @@ const VIEWS = [
     notes: ["Compose builds four images; the backend applies migrations at start and seeds the first admin when asked.", "No CI exists yet — tests (unit 214, architecture 14, integration 184 with Testcontainers, frontend structural) run locally.", "Free-tier hosting is documented separately: Vercel for the apps, a container host for the API, managed Postgres."],
     spec: { cols: 4, bands: [{ label: "Build", rows: [0, 0] }, { label: "Run · docker compose", rows: [1, 1] }, { label: "Observe", rows: [2, 2] }],
       nodes: [
-        { id: "b1", col: 0, row: 0, kind: "deploy", title: "backend/Dockerfile", meta: "sdk:10 → aspnet:10" }, { id: "b2", col: 1, row: 0, kind: "deploy", title: "apps/*/Dockerfile", meta: "workspace-aware · standalone" }, { id: "b3", col: 2, row: 0, kind: "deploy", title: ".env", meta: "ports · secrets · origins" }, { id: "b4", col: 3, row: 0, kind: "deploy", title: "Local test suites", meta: "dotnet test · npm test", dormant: true },
+        { id: "b1", col: 0, row: 0, kind: "deploy", title: "backend/Dockerfile", meta: "node:24 build → node:24 runtime" }, { id: "b2", col: 1, row: 0, kind: "deploy", title: "frontend/apps/*/Dockerfile", meta: "workspace-aware · standalone" }, { id: "b3", col: 2, row: 0, kind: "deploy", title: ".env", meta: "ports · secrets · origins" }, { id: "b4", col: 3, row: 0, kind: "deploy", title: "Local test suites", meta: "vitest · npm test", dormant: true },
         { id: "r1", col: 0, row: 1, kind: "data", title: "postgres", meta: "healthcheck · volume" }, { id: "r2", col: 1, row: 1, kind: "api", title: "backend", meta: "depends on postgres healthy" }, { id: "r3", col: 2, row: 1, kind: "frontend", title: "user-web", badge: ":3000" }, { id: "r4", col: 3, row: 1, kind: "frontend", title: "admin-web", badge: ":3001" },
-        { id: "o1", col: 0, row: 2, kind: "ops", title: "Serilog JSON", meta: "stdout" }, { id: "o2", col: 1, row: 2, kind: "ops", title: "Health endpoints", meta: "/health · /health/ready" }, { id: "o3", col: 2, row: 2, kind: "ops", title: "OpenTelemetry", meta: "OTLP when configured", dormant: true }, { id: "o4", col: 3, row: 2, kind: "ops", title: "Hangfire", meta: "storage only · no jobs", dormant: true },
+        { id: "o1", col: 0, row: 2, kind: "ops", title: "Pino JSON", meta: "stdout" }, { id: "o2", col: 1, row: 2, kind: "ops", title: "Health endpoints", meta: "/health · /health/ready" }, { id: "o3", col: 2, row: 2, kind: "ops", title: "BullMQ worker", meta: "auction automation" }, { id: "o4", col: 3, row: 2, kind: "ops", title: "Redis", meta: "BullMQ queues only" },
       ],
       edges: [{ from: "b1", to: "r2", kind: "ctrl", label: "image" }, { from: "b2", to: "r3", kind: "ctrl", label: "images" }, { from: "b3", to: "r2", kind: "ctrl", dashed: true, label: "env" }, { from: "r1", to: "r2", kind: "data", label: "5432" }, { from: "r2", to: "o1", kind: "async" }, { from: "r2", to: "o2", kind: "async", dx2: 0 }],
-      details: { b3: [".env", ["POSTGRES_*, BACKEND_PORT, FRONTEND_PORT, ADMIN_PORT, JWT_SIGNING_KEY, FRONTEND_ORIGIN, NEXT_PUBLIC_API_BASE_URL, DHANVI_SEED_ADMIN_*, RAZORPAY_*."]] } },
+      details: { b3: [".env", ["POSTGRES_*, BACKEND_PORT, FRONTEND_PORT, ADMIN_PORT, JWT_SIGNING_KEY, FRONTEND_ORIGIN, NEXT_PUBLIC_API_URL, DHANVI_SEED_ADMIN_*, RAZORPAY_*."]] } },
   },
 ];
 const tabs = document.getElementById("tabs"); let current = VIEWS[0];

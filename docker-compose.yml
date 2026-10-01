@@ -1,5 +1,7 @@
 name: dhanvi
 
+# Local stack: PostgreSQL (source of truth) · Redis (BullMQ only) · Fastify API :3002 · BullMQ worker (no port)
+# · user-web :3000 · admin-web :3001. Both web apps call the same backend at NEXT_PUBLIC_API_URL.
 services:
   postgres:
     image: postgres:17-alpine
@@ -18,40 +20,73 @@ services:
       timeout: 5s
       retries: 10
 
-  backend:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - dhanvi-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
     build:
       context: ./backend
     restart: unless-stopped
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      Frontend__Origin: ${FRONTEND_ORIGIN:-http://localhost:3000;http://localhost:3001}
-      Database__ApplyMigrations: "true"
-      Jwt__SigningKey: ${JWT_SIGNING_KEY}
-      Jwt__SecureCookies: "false"
+    environment: &backend-env
+      NODE_ENV: development
+      PORT: "3002"
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      RUN_MIGRATIONS_ON_START: "true"
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000;http://localhost:3001}
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY}
+      JWT_SECURE_COOKIES: "false"
+      GROUP_POLICY_MIN_MEMBERS: "2"
       DHANVI_SEED_ADMIN_ENABLED: ${DHANVI_SEED_ADMIN_ENABLED:-false}
       DHANVI_SEED_ADMIN_EMAIL: ${DHANVI_SEED_ADMIN_EMAIL:-}
       DHANVI_SEED_ADMIN_PASSWORD: ${DHANVI_SEED_ADMIN_PASSWORD:-}
-      Payments__Razorpay__Enabled: "${PAYMENTS_RAZORPAY_ENABLED:-false}"
+      PAYMENTS_RAZORPAY_ENABLED: "${PAYMENTS_RAZORPAY_ENABLED:-false}"
       RAZORPAY_ENVIRONMENT: "${RAZORPAY_ENVIRONMENT:-TEST}"
       RAZORPAY_KEY_ID: "${RAZORPAY_KEY_ID:-}"
       RAZORPAY_KEY_SECRET: "${RAZORPAY_KEY_SECRET:-}"
       RAZORPAY_WEBHOOK_SECRET: "${RAZORPAY_WEBHOOK_SECRET:-}"
+      AUCTION_GOING_ONCE_SECONDS: "${AUCTION_GOING_ONCE_SECONDS:-30}"
+      AUCTION_GOING_TWICE_SECONDS: "${AUCTION_GOING_TWICE_SECONDS:-30}"
+      AUCTION_FINAL_WARNING_SECONDS: "${AUCTION_FINAL_WARNING_SECONDS:-30}"
     ports:
-      - "${BACKEND_PORT:-5000}:8080"
+      - "${BACKEND_PORT:-3002}:3002"
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    command: ["node", "dist/worker.js"]
+    environment:
+      <<: *backend-env
+      RUN_MIGRATIONS_ON_START: "false"
+    depends_on:
+      api:
+        condition: service_started
 
   user-web:
     build:
-      context: .
+      context: ./frontend
       dockerfile: apps/user-web/Dockerfile
       args:
         NEXT_PUBLIC_APP_ENV: development
         NEXT_PUBLIC_MIN_GROUP_MEMBERS: "2"
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:5000/api/v1}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3002}
         NEXT_PUBLIC_USER_APP_URL: ${USER_APP_URL:-http://localhost:3000}
         NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3001}
     restart: unless-stopped
@@ -61,16 +96,16 @@ services:
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
-      - backend
+      - api
 
   admin-web:
     build:
-      context: .
+      context: ./frontend
       dockerfile: apps/admin-web/Dockerfile
       args:
         NEXT_PUBLIC_APP_ENV: development
         NEXT_PUBLIC_MIN_GROUP_MEMBERS: "2"
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:5000/api/v1}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3002}
         NEXT_PUBLIC_USER_APP_URL: ${USER_APP_URL:-http://localhost:3000}
         NEXT_PUBLIC_ADMIN_URL: ${ADMIN_APP_URL:-http://localhost:3001}
     restart: unless-stopped
@@ -80,7 +115,8 @@ services:
     ports:
       - "${ADMIN_PORT:-3001}:3001"
     depends_on:
-      - backend
+      - api
 
 volumes:
   dhanvi-postgres-data:
+  dhanvi-redis-data:

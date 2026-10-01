@@ -70,7 +70,7 @@ The existing API client, cookie authentication, protected pages, and UI styles a
 
 ## Configuration and operations
 
-No environment variables were added. Existing `ConnectionStrings__DefaultConnection` and `Database__ApplyMigrations` apply. Startup now migrates Groups after Identity and Organizers when migration application is enabled. Run against your configured development database, or deploy the generated migration through your normal migration process. Production deployment remains an operator action.
+No environment variables were added. `DATABASE_URL` and `RUN_MIGRATIONS_ON_START` (Fastify backend) apply. Startup now migrates Groups after Identity and Organizers when migration application is enabled. Run against your configured development database, or deploy the generated migration through your normal migration process. Production deployment remains an operator action.
 
 The initial member bounds are centralized domain constants, not per-controller settings. UTC is used for calendar validation and optional auction times. No financial configuration is required.
 

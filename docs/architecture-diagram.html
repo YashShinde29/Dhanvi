@@ -111,8 +111,8 @@ footer { color: var(--ink-3); font-size: 0.85rem; }
   <div class="head">
     <span class="eyebrow">Dhanvi · system architecture</span>
     <h1>One API, two web apps, one database — every module owns its own schema.</h1>
-    <p>Read top to bottom: people use two Next.js apps, both call the same ASP.NET Core API, the API is a modular monolith whose modules each own a PostgreSQL schema, and only three things live outside the process. Click any box for its details.</p>
-    <div class="meta-row"><span>Backend: .NET 10 · EF Core · PostgreSQL 17</span><span>Frontend: Next.js 16 · npm workspaces</span><span>Source of truth: <code>backend/src</code>, <code>apps/</code>, <code>packages/</code></span></div>
+    <p>Read top to bottom: people use two Next.js apps, both call the same Fastify API, the API is a TypeScript service whose features each own a PostgreSQL schema, and a BullMQ worker, Redis and a few providers live outside the process. Click any box for its details.</p>
+    <div class="meta-row"><span>Backend: Fastify · TypeScript · PostgreSQL 17 · Redis/BullMQ</span><span>Frontend: Next.js 16 · npm workspaces</span><span>Source of truth: <code>backend/src</code>, <code>frontend/apps/</code>, <code>frontend/packages/</code></span></div>
   </div>
 
   <div class="stage"><svg id="d" role="img" aria-label="Layered architecture diagram"></svg></div>
@@ -142,7 +142,7 @@ footer { color: var(--ink-3); font-size: 0.85rem; }
         <li>Auth is one cookie session shared by both apps; the API enforces roles on every call.</li>
         <li>Modules are folders in one process (Domain · Application · Infrastructure · Api); cross-module work joins one database transaction.</li>
         <li>Money never moves without a provider record: Razorpay in, fake provider out (test mode only).</li>
-        <li>Hangfire, OpenTelemetry export and real email are wired but dormant.</li>
+        <li>Real email is not wired (password resets are only logged).</li>
       </ul></div>
     </aside>
   </div>
@@ -152,10 +152,10 @@ footer { color: var(--ink-3); font-size: 0.85rem; }
 const DETAILS = {
   member: ["Member / organizer browser", ["Signs in once; cookies dhanvi_access (15 min) and dhanvi_refresh (30 days) are HttpOnly, SameSite=Strict.", "Uses the member app on :3000. Razorpay Checkout.js loads only here."]],
   admin: ["Admin browser", ["ADMIN / SUPER_ADMIN roles only; other accounts see a restriction screen.", "Uses the admin portal on :3001; shares the same cookie session."]],
-  userweb: ["user-web", ["apps/user-web · Next.js 16 · standalone output.", "Public site, auth, member and organizer screens, auction experience, Razorpay checkout."]],
-  adminweb: ["admin-web", ["apps/admin-web · Next.js 16 · standalone output.", "Requires attention, groups, organizers, payments, payouts, reconciliation, ledger."]],
+  userweb: ["user-web", ["frontend/apps/user-web · Next.js 16 · standalone output.", "Public site, auth, member and organizer screens, auction experience, Razorpay checkout."]],
+  adminweb: ["admin-web", ["frontend/apps/admin-web · Next.js 16 · standalone output.", "Requires attention, groups, organizers, payments, payouts, reconciliation, ledger."]],
   pkgs: ["@dhanvi/* packages", ["ui (design system), api-client (one fetch client + services), auth, types, utils, config, features (shared screens).", "Consumed as TypeScript source through tsconfig paths."]],
-  api: ["Dhanvi.Api", ["ASP.NET Core host, /api/v1, Swagger, CORS allow-list, rate limiting on auth, Serilog request logs with correlation ids.", "Each module registers its endpoints and DbContext; Database:ApplyMigrations runs migrations at start."]],
+  api: ["backend (Fastify)", ["Fastify host, /api/v1, Swagger, CORS allow-list, rate limiting on auth, Pino request logs with correlation ids.", "Each feature registers its routes on one shared pg pool; RUN_MIGRATIONS_ON_START applies SQL migrations at start."]],
   identity: ["Identity", ["Users, roles, refresh tokens (SHA-256), password reset and email verification tokens.", "Seeds the first super admin when DHANVI_SEED_ADMIN_ENABLED=true."]],
   organizers: ["Organizers", ["Application → review → approve/reject/suspend. Approval assigns the ORGANIZER role in one transaction with Identity."]],
   groups: ["Groups", ["The core domain: groups, memberships, rule versions, terms acceptance, monthly cycles, contribution obligations and entries, random draws (RANDOM_V1 with verifiable proof), auctions (AUCTION_V1), selection results, idempotency records."]],
@@ -164,29 +164,29 @@ const DETAILS = {
   ledger: ["Ledger", ["Double-entry journals posted on selection, allocation and settlement; trial balance and account balances for admins."]],
   audit: ["Audit", ["Append-only audit log; every sensitive identity/admin action writes here."]],
   adminmod: ["Admin read models", ["/admin/operations/overview and /admin/groups/{id}/operations-summary aggregate across schemas for the control center."]],
-  pg: ["PostgreSQL", ["One database, one schema per module, one EF Core migration history per module.", "Port 5432 in Compose; Testcontainers for integration tests."]],
+  pg: ["PostgreSQL", ["One database, one schema per module, one SQL migration history (baseline + backend/sql/migrations).", "Port 5432 in Compose; Testcontainers for integration tests."]],
   razorpay: ["Razorpay (TEST)", ["api.razorpay.com/v1 with Basic auth; Checkout.js in the member browser; webhooks to /payments/webhooks/razorpay.", "Test credentials only — the schema enforces Environment = 'TEST'."]],
   fake: ["Fake payout provider", ["In-process IPayoutGateway used for payouts; produces provider references and statuses without moving money."]],
-  email: ["Email", ["IEmailSender is NullEmailSender: password resets are logged, never delivered. Plug a provider before production."]],
-  logs: ["Serilog", ["JSON logs to stdout with X-Correlation-ID; request logging middleware."]],
-  otel: ["OpenTelemetry", ["Traces and metrics; exported only when OTEL_EXPORTER_OTLP_ENDPOINT is set."]],
+  email: ["Email", ["No provider: password resets are logged, never delivered. Plug a provider before production."]],
+  logs: ["Pino", ["JSON logs to stdout with X-Correlation-ID; secrets redacted."]],
+  otel: ["BullMQ worker", ["Opens auctions at StartsAt and runs Going Once → Going Twice → Final Call → Finalizing; every job re-checks PostgreSQL under row locks."]],
   health: ["Health & Swagger", ["/api/v1/health, /api/v1/health/ready, /swagger (dev)."]],
-  hangfire: ["Hangfire", ["PostgreSQL storage registered; no recurring jobs defined yet."]],
+  redis: ["Redis", ["BullMQ queues and delayed jobs only — never financial truth."]],
   compose: ["Docker Compose", ["postgres, backend, user-web, admin-web; env from .env; migrations applied on backend start."]],
 };
 const spec = {
   cols: 4, colW: 232, rowH: 60, gapX: 40, gapY: 56,
   bands: [
-    { label: "People", rows: [0, 0] }, { label: "Web apps · Next.js 16", rows: [1, 1] }, { label: "API host · ASP.NET Core", rows: [2, 2] },
+    { label: "People", rows: [0, 0] }, { label: "Web apps · Next.js 16", rows: [1, 1] }, { label: "API host · Fastify", rows: [2, 2] },
     { label: "Backend modules · one process, one schema each", rows: [3, 4] }, { label: "Data & providers", rows: [5, 5] }, { label: "Operations", rows: [6, 6] },
   ],
   nodes: [
     { id: "member", col: 0, row: 0, kind: "actor", title: "Member / organizer", meta: "browser · cookie session" },
     { id: "admin", col: 3, row: 0, kind: "actor", title: "Admin", meta: "browser · ADMIN / SUPER_ADMIN" },
-    { id: "userweb", col: 0, row: 1, kind: "frontend", title: "user-web", meta: "apps/user-web", badge: ":3000" },
+    { id: "userweb", col: 0, row: 1, kind: "frontend", title: "user-web", meta: "frontend/apps/user-web", badge: ":3000" },
     { id: "pkgs", col: 1, row: 1, span: 2, kind: "frontend", title: "@dhanvi/* shared packages", meta: "ui · api-client · auth · types · utils · config · features" },
-    { id: "adminweb", col: 3, row: 1, kind: "frontend", title: "admin-web", meta: "apps/admin-web", badge: ":3001" },
-    { id: "api", col: 1, row: 2, span: 2, kind: "api", title: "Dhanvi.Api", meta: "/api/v1 · JWT cookies · CORS · rate limits · Swagger", badge: ":5000" },
+    { id: "adminweb", col: 3, row: 1, kind: "frontend", title: "admin-web", meta: "frontend/apps/admin-web", badge: ":3001" },
+    { id: "api", col: 1, row: 2, span: 2, kind: "api", title: "backend (Fastify)", meta: "/api/v1 · JWT cookies · CORS · rate limits · Swagger", badge: ":3002" },
     { id: "identity", col: 0, row: 3, title: "Identity", meta: "auth, users, roles, tokens" },
     { id: "organizers", col: 1, row: 3, title: "Organizers", meta: "applications, approval" },
     { id: "groups", col: 2, row: 3, title: "Groups", meta: "cycles · contributions · draws · auctions" },
@@ -195,12 +195,12 @@ const spec = {
     { id: "payouts", col: 1, row: 4, title: "Payouts", meta: "accounts, approval, execution" },
     { id: "ledger", col: 2, row: 4, title: "Ledger", meta: "double-entry journals" },
     { id: "audit", col: 3, row: 4, title: "Audit", meta: "append-only log" },
-    { id: "pg", col: 0, row: 5, kind: "data", title: "PostgreSQL 17", meta: "schema per module · EF Core migrations", badge: ":5432" },
+    { id: "pg", col: 0, row: 5, kind: "data", title: "PostgreSQL 17", meta: "schema per module · SQL migrations", badge: ":5432" },
     { id: "razorpay", col: 1, row: 5, kind: "ext", title: "Razorpay (TEST)", meta: "orders, checkout.js, webhooks" },
     { id: "fake", col: 2, row: 5, kind: "ext", title: "Fake payout provider", meta: "in-process gateway" },
     { id: "email", col: 3, row: 5, kind: "ext", title: "Email sender", meta: "used by Identity · log only today", dormant: true },
-    { id: "logs", col: 0, row: 6, kind: "ops", title: "Serilog JSON logs", meta: "stdout · correlation id" },
-    { id: "otel", col: 1, row: 6, kind: "ops", title: "OpenTelemetry", meta: "OTLP export when configured", dormant: true },
+    { id: "logs", col: 0, row: 6, kind: "ops", title: "Pino JSON logs", meta: "stdout · correlation id" },
+    { id: "otel", col: 1, row: 6, kind: "ops", title: "BullMQ worker", meta: "auction automation · Redis" },
     { id: "health", col: 2, row: 6, kind: "ops", title: "Health · Swagger", meta: "/health · /health/ready" },
     { id: "compose", col: 3, row: 6, kind: "deploy", title: "Docker Compose", meta: "4 containers · .env" },
   ],
@@ -208,7 +208,7 @@ const spec = {
     { from: "member", to: "userweb", label: "HTTPS" }, { from: "admin", to: "adminweb", label: "HTTPS" },
     { from: "userweb", to: "api", label: "fetch /api/v1 · credentials", dx2: -60, lx: -20 }, { from: "adminweb", to: "api", label: "fetch /api/v1 · admin endpoints", dx2: 60, lx: 20 },
     { from: "api", to: "organizers", kind: "ctrl", label: "registers every module's endpoints", dx1: 0, dx2: 0 },
-    { from: "payments", to: "pg", kind: "data", label: "EF Core · one schema per module" },
+    { from: "payments", to: "pg", kind: "data", label: "pg · one schema per module" },
     { from: "payments", to: "razorpay", kind: "ext", label: "orders · verify" }, { from: "payouts", to: "fake", kind: "ext", label: "IPayoutGateway", dx2: 0 },
   ],
   onSelect(n) { const d = DETAILS[n.id]; const box = document.getElementById("detail"); box.innerHTML = `<span class="eyebrow">Selected</span><h3>${d ? d[0] : n.title}</h3>` + (d ? d[1].map((t) => `<p>${t}</p>`).join("") : ""); },

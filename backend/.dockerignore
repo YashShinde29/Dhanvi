@@ -1,5 +1,7 @@
-**/bin
-**/obj
-.vs
-TestResults
-
+node_modules
+dist
+coverage
+test
+.env
+.env.*
+!.env.example

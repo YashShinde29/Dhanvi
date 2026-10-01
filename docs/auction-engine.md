@@ -115,23 +115,19 @@ Results show Auction Completed, Winning Member, Group Value, Winning Discount, W
 
 `AUCTION_CREATED`, `AUCTION_OPENED`, `AUCTION_BID_SUBMITTED`, `AUCTION_CLOSED`, `AUCTION_CLOSED_NO_BIDS`, `AUCTION_WINNER_SELECTED`, `AUCTION_CALCULATION_FINALIZED`, `AUCTION_MEMBER_BENEFITS_CALCULATED`, `AUCTION_PLATFORM_FEE_CALCULATED`, `CYCLE_AUCTION_SELECTION_COMPLETED`, and `MEMBER_SELECTED_FOR_PAYOUT`.
 
-## Windows verification
+## Digital closing sequence and verification
 
-See `prompt-6-windows-verification.md` for the final counts and results from this checkout.
+From the Fastify backend onward, an open auction with a highest bid enters Going Once → Going Twice → Final Call →
+Finalizing → Completed at its scheduled end (durations `AUCTION_GOING_ONCE_SECONDS`, `AUCTION_GOING_TWICE_SECONDS`,
+`AUCTION_FINAL_WARNING_SECONDS`); a higher bid during the call resets to Going Once. Additional audit events:
+`AUCTION_CLOSING_STARTED`, `AUCTION_CLOSING_GOING_TWICE`, `AUCTION_CLOSING_FINAL_WARNING`, `AUCTION_FINALIZING`,
+`AUCTION_CLOSING_RESET_BY_BID`. See [Fastify migration](fastify-migration/README.md).
 
-The repository targets the pinned .NET 10.0.302 SDK. It was installed into the user's `.dotnet` directory because this machine's system SDK was .NET 9. Set the current shell PATH to that SDK before running the existing backend commands.
-
-```powershell
-$env:PATH = "$env:USERPROFILE\.dotnet;$env:PATH"
-dotnet restore backend/Dhanvi.sln
-dotnet build backend/Dhanvi.sln -c Release
-dotnet test backend/Dhanvi.sln -c Release --no-build
-
-Set-Location frontend
-npm ci
-npm run build
-npm run lint
-npm run typecheck
+```bash
+cd backend && npm ci
+npm test                    # calculator + closing state machine
+npm run test:integration    # bids, Final Call, stale/duplicate jobs, rescheduling (Docker required)
+cd ../frontend && npm install && npm run lint && npm run typecheck && npm test && npm run build
 ```
 
 Integration tests default to Testcontainers PostgreSQL 18. When Docker is unavailable, set `DHANVI_TEST_POSTGRES` to a **test-server** connection with permission to create databases. Each fixture creates a fresh randomly named database, applies the real migrations, and drops only that database when finished. An isolated PostgreSQL 18.3 cluster on loopback was used for this Windows run; existing PostgreSQL services/databases were not changed.
