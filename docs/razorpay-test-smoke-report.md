@@ -1,5 +1,7 @@
 # Razorpay TEST incoming contribution verification
 
+> **Historical report.** This records a verification run of the former ASP.NET Core backend, which has since been replaced by the Fastify backend in `backend/` (see [Fastify migration](fastify-migration/README.md)). Commands and file paths below refer to that retired implementation.
+
 Verified on 2026-09-15 against the existing Prompt 8 implementation. An actual Razorpay TEST-mode incoming contribution payment was completed end-to-end: backend order creation, real Razorpay Checkout in the member UI, server-side signature verification, captured settlement, Ledger posting, live reconciliation, and a real full refund with a reversing journal. Prompt 8 and Prompt 9 were not redesigned; no payout, production, or live-mode operation was performed.
 
 ## Environment detection

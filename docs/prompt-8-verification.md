@@ -1,5 +1,7 @@
 # Prompt 8 final verification
 
+> **Historical report.** This records a verification run of the former ASP.NET Core backend, which has since been replaced by the Fastify backend in `backend/` (see [Fastify migration](fastify-migration/README.md)). Commands and file paths below refer to that retired implementation.
+
 Verified on 2026-09-13 against the existing Prompt 8 working tree. The payment backend and Checkout screens were continued, not restarted. No Prompt 9 features were added.
 
 ## Verification results

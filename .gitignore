@@ -13,11 +13,10 @@ npm-debug.log*
 next-env.d.ts
 
 # .NET
-.dotnet/
 .tools/
-backend/**/bin/
-backend/**/obj/
-backend/.vs/
+backend/node_modules/
+backend/dist/
+backend/coverage/
 *.user
 *.suo
 TestResults/

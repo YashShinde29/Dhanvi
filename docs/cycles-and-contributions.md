@@ -114,10 +114,10 @@ Manual record forms show remaining amount, reference, note, explicit non-payment
 
 The full suite includes deterministic clock/calendar tests, all selection configurations, 20/50-member schedules, 400/2,500 obligations, authorization/privacy, invalid pool/terms, duplicate and concurrent activation, full/partial/over recording, idempotency conflicts, concurrent full records, reversal/readiness reopening, overdue at India midnight, active suspension, append-only database protection, and injected activation rollback. Existing Prompt 1–3 tests remain included.
 
-No new environment variables or external integration configuration is required. Existing `Database__ApplyMigrations` startup behavior applies the new Groups migration after prior migrations. For manual deployment, configure `ConnectionStrings__DefaultConnection` and run from `backend`:
+No new environment variables or external integration configuration is required. The schema is part of the database baseline (`backend/sql/baseline/0000_baseline.sql`); `RUN_MIGRATIONS_ON_START=true` or the command below applies pending migrations with `DATABASE_URL` set:
 
 ```sh
-dotnet ef database update --project src/Modules/Groups/Dhanvi.Modules.Groups.Infrastructure --context GroupsDbContext
+cd backend && npm run db:migrate   # adopts the existing schema, applies backend/sql/migrations/*
 ```
 
 Migration tests use disposable PostgreSQL containers. Deployment to your persistent database remains a manual operator action. PostgreSQL migration credentials need permission to create the append-only trigger function.

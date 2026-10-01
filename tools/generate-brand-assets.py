@@ -4,11 +4,11 @@
 The masters are large, opaque exports (white or navy background, generous padding). Web surfaces need trimmed,
 transparent, correctly sized files, so every derived asset is produced here rather than hand-edited:
 
-    assets/brand/dhanvi-logo.png       -> apps/*/public/brand/logo.png        (transparent lockup, light surfaces)
-    assets/brand/dhanvi-logo-dark.png  -> apps/*/public/brand/logo-dark.png   (transparent lockup, dark sidebar)
-    assets/brand/dhanvi-app-icon.png   -> apps/*/public/brand/mark.png        (rounded tile, transparent corners)
-    assets/brand/dhanvi-app-icon.png   -> apps/*/src/app/apple-icon.png       (180x180 opaque, iOS applies its own mask)
-    assets/brand/dhanvi-favicon.png    -> apps/*/src/app/icon.png             (256x256, keeps its white ground so the
+    assets/brand/dhanvi-logo.png       -> frontend/apps/*/public/brand/logo.png        (transparent lockup, light surfaces)
+    assets/brand/dhanvi-logo-dark.png  -> frontend/apps/*/public/brand/logo-dark.png   (transparent lockup, dark sidebar)
+    assets/brand/dhanvi-app-icon.png   -> frontend/apps/*/public/brand/mark.png        (rounded tile, transparent corners)
+    assets/brand/dhanvi-app-icon.png   -> frontend/apps/*/src/app/apple-icon.png       (180x180 opaque, iOS applies its own mask)
+    assets/brand/dhanvi-favicon.png    -> frontend/apps/*/src/app/icon.png             (256x256, keeps its white ground so the
                                                                                tab icon stays legible in dark tab strips)
 
 Requires Pillow (`pip install pillow`). Run from anywhere:  python3 tools/generate-brand-assets.py
@@ -25,7 +25,7 @@ except ImportError:  # pragma: no cover - tooling guard
 
 ROOT = Path(__file__).resolve().parent.parent
 MASTERS = ROOT / "assets" / "brand"
-APPS = [ROOT / "apps" / "user-web", ROOT / "apps" / "admin-web"]
+APPS = [ROOT / "frontend" / "apps" / "user-web", ROOT / "frontend" / "apps" / "admin-web"]
 # The app icon's tile is a rounded square whose radius measures ~20.5% of its side.
 TILE_RADIUS_RATIO = 0.205
 SUPERSAMPLE = 4

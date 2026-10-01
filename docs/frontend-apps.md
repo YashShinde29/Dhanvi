@@ -1,14 +1,16 @@
 # Frontend applications: member app and admin portal
 
-The single `frontend/` Next.js application was separated into two independently built Next.js applications that share one backend, one database, one authentication authority and a set of shared frontend packages. No backend module was duplicated and no business logic was copied.
+The original single Next.js application was separated into two independently built Next.js applications that share one backend, one database, one authentication authority and a set of shared frontend packages. No backend module was duplicated and no business logic was copied.
 
 ```text
-Dhanvi User Web    http://localhost:3000   apps/user-web
-Dhanvi Admin Web   http://localhost:3001   apps/admin-web
-Same backend API   http://localhost:5000/api/v1
+Dhanvi User Web    http://localhost:3000   frontend/apps/user-web
+Dhanvi Admin Web   http://localhost:3001   frontend/apps/admin-web
+Same backend API   http://localhost:3002   backend/  (NEXT_PUBLIC_API_URL; REST routes under /api/v1)
 ```
 
 ## Workspace layout
+
+All paths below are inside `frontend/`; run npm commands from there.
 
 ```text
 package.json          npm workspaces: apps/*, packages/*; root dev/build/lint/typecheck/test scripts
@@ -18,20 +20,21 @@ tests/                node --test structural checks (ports, route placement, gua
 apps/
   user-web/           Next.js 16, port 3000: public, member and organizer experience; Razorpay Checkout
   admin-web/          Next.js 16, port 3001: platform operations
-assets/brand/         logo and icon masters; `tools/generate-brand-assets.py` derives the files each app serves
 packages/
   ui/                 design system (components, icons, brand, globals.css, confirm dialog hook)
   api-client/         one typed fetch client (cookie credentials, single 401 refresh) plus every *.service module
   auth/               AuthProvider with per-app policy, ProtectedPage guard, role helpers
   types/              shared DTO types (auth, groups, contributions, auctions, payments, payouts, ledger, selection)
   utils/              money/date formatting, status presentation, error mapping, form validation, data hooks
-  config/             public runtime configuration: API base URL, app kind, cross-app URLs, group policy
+  config/             public runtime configuration: API URL (NEXT_PUBLIC_API_URL → apiBaseUrl `${url}/api/v1`), app kind, cross-app URLs, group policy
   features/           shared feature screens (groups, contributions, auctions, selections, payments, payouts, ledger,
                       organizers, dashboards, profile, marketing) and generic shell primitives (sidebar, header,
                       mobile nav, user menu, public shell) driven by a per-app ShellConfig
 ```
 
-Packages are plain TypeScript source consumed through tsconfig `paths`; Next compiles them as part of each app. An app never imports another app's `src`, and no package depends on an app (enforced by `tests/app-separation.test.mjs`).
+Brand masters live in the repository-level `assets/brand/`; `tools/generate-brand-assets.py` derives the files each app serves.
+
+Packages are plain TypeScript source consumed through tsconfig `paths`; Next compiles them as part of each app. An app never imports another app's `src`, and no package depends on an app (enforced by `frontend/tests/app-separation.test.mjs`).
 
 ## Route migration
 
@@ -50,7 +53,7 @@ Packages are plain TypeScript source consumed through tsconfig `paths`; Next com
 | `/admin/ledger`, `/admin/ledger/trial-balance`, `/admin/ledger/accounts`, `/admin/ledger/journals/[id]`, `/admin/ledger/groups/[groupId]` | ADMIN | admin-web `/ledger...` |
 | — | ADMIN | admin-web `/login` (new), `/profile` (shared profile screen), `/` → `/dashboard` |
 
-`apps/user-web/next.config.ts` redirects `/admin` → `{ADMIN_URL}/dashboard`, `/admin/organizers` → `{ADMIN_URL}/organizers` and `/admin/:path*` → `{ADMIN_URL}/:path*`. The member app no longer contains any admin page file. Shared feature screens build management links through `managePrefix(scope)` (`/organizer` for organizer scope, unprefixed for admin scope), so the same `GroupDetailPage`, `ManageContributionsPage`, `AuctionPage`, `PaymentsPage`, `PayoutsPage` and ledger pages render in whichever app mounts them.
+`frontend/apps/user-web/next.config.ts` redirects `/admin` → `{ADMIN_URL}/dashboard`, `/admin/organizers` → `{ADMIN_URL}/organizers` and `/admin/:path*` → `{ADMIN_URL}/:path*`. The member app no longer contains any admin page file. Shared feature screens build management links through `managePrefix(scope)` (`/organizer` for organizer scope, unprefixed for admin scope), so the same `GroupDetailPage`, `ManageContributionsPage`, `AuctionPage`, `PaymentsPage`, `PayoutsPage` and ledger pages render in whichever app mounts them.
 
 ## Authentication
 
@@ -70,13 +73,13 @@ Cross-links: administrators signed in to the member app get an "Open Admin Porta
 
 ## Backend change
 
-`Program.cs` CORS now allows an explicit list of origins with credentials: `Frontend:Origins` (appsettings, `http://localhost:3000` and `http://localhost:3001`) or the env-friendly `Frontend__Origin` (`;`/`,`-separated), which Compose sets from `FRONTEND_ORIGIN`. `AllowAnyOrigin` is never combined with credentials. `CorsPolicyTests` verifies both origins are accepted and unknown origins get no `Access-Control-Allow-Origin` header.
+The Fastify API (`backend/src/plugins/cors.ts`) allows an explicit list of origins with credentials from `FRONTEND_ORIGIN` (`;`/`,`-separated, default `http://localhost:3000;http://localhost:3001`). A wildcard origin is never combined with credentials; unknown origins get no `Access-Control-Allow-Origin` header.
 
 ## Environment variables
 
 | Variable | user-web | admin-web |
 | --- | --- | --- |
-| `NEXT_PUBLIC_API_BASE_URL` | yes | yes |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:3002` | `http://localhost:3002` |
 | `NEXT_PUBLIC_APP_KIND` | `user` | `admin` |
 | `NEXT_PUBLIC_ADMIN_URL` | cross-link and `/admin/*` redirect target | — |
 | `NEXT_PUBLIC_USER_APP_URL` | — | cross-link target |
@@ -92,13 +95,13 @@ To use manual checkout, configure the backend Razorpay Test credentials and set 
 
 Once the group is active and its current cycle is collecting contributions, an active member can open **Contributions**, click **Pay**, and select **Continue to Razorpay**. Existing groups default to external payment tracking; collection rules cannot change after member approval. No real money is collected in test mode.
 
-Checkout (`packages/features/src/payments/payment-checkout.tsx`) is mounted only by the member app (`/contributions` and the member's group contribution card). The backend-configured return base URL `http://localhost:3000/checkout/return` is unchanged (the flow uses Razorpay's JavaScript handler, not a redirect). `POST /api/v1/payments/webhooks/razorpay` remains backend-only.
+Checkout (`frontend/packages/features/src/payments/payment-checkout.tsx`) is mounted only by the member app (`/contributions` and the member's group contribution card). The backend-configured return base URL `http://localhost:3000/checkout/return` is unchanged (the flow uses Razorpay's JavaScript handler, not a redirect). `POST /api/v1/payments/webhooks/razorpay` remains backend-only.
 
 ## Docker
 
 Local Compose builds set `NEXT_PUBLIC_APP_ENV=development` and `NEXT_PUBLIC_MIN_GROUP_MEMBERS=2` for both websites, matching the backend's Development policy. The form accepts 2–50 members for testing. Standalone Docker builds default to the production policy of 20–50 members. Rebuild both websites after changing these public build settings.
 
-`docker-compose.yml` replaces `frontend` with `user-web` (3000) and `admin-web` (3001), each built from the repository root with `apps/<app>/Dockerfile` (workspace-aware, standalone output traced from the workspace root). The Compose backend receives both origins through `FRONTEND_ORIGIN`.
+`docker-compose.yml` replaces `frontend` with `user-web` (3000) and `admin-web` (3001), each built with build context `./frontend` and `apps/<app>/Dockerfile` (workspace-aware, standalone output traced from the workspace root). The Compose backend receives both origins through `FRONTEND_ORIGIN`.
 
 ## Verification (2026-09-15)
 

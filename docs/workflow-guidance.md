@@ -4,11 +4,11 @@ A presentation-only milestone: every workflow-heavy screen now states where the 
 
 ## Input focus bug (one letter at a time)
 
-**Root cause:** `packages/ui/src/dialog.tsx` → `useFocusTrap(open, ref, onClose)` listed `onClose` as an effect dependency. Every dialog parent passes a fresh closure each render (`onClose={() => setOpen(false)}`, `onClose={busy ? () => undefined : close}` in `ConfirmDialog`). Each keystroke inside a dialog re-rendered the parent → new `onClose` → the effect's cleanup restored focus to the element focused before the dialog opened, then the setup focused the dialog's first control (the header Close button). The field lost focus after every character.
+**Root cause:** `frontend/packages/ui/src/dialog.tsx` → `useFocusTrap(open, ref, onClose)` listed `onClose` as an effect dependency. Every dialog parent passes a fresh closure each render (`onClose={() => setOpen(false)}`, `onClose={busy ? () => undefined : close}` in `ConfirmDialog`). Each keystroke inside a dialog re-rendered the parent → new `onClose` → the effect's cleanup restored focus to the element focused before the dialog opened, then the setup focused the dialog's first control (the header Close button). The field lost focus after every character.
 
 **Affected inputs:** every field rendered inside `Dialog`, `Drawer` or `ConfirmDialog` — rejection reason (member applications, organizer applications), cancel/suspend reason, the manual contribution record dialog (amount/reference/note), and the group-list filter drawer (min/max value). Plain page forms (register, profile, group wizard, search, payout account, auction bid) were never affected.
 
-**Fix (root cause, no refocus workaround):** the effect reads `onClose` through a ref and depends only on `[open, ref]`, so it runs on open/close only; it also keeps React's `autoFocus` (so the reason textarea receives initial focus instead of the Close button). Guarded by `tests/ux-regressions.test.mjs`. Browser verification typed "Dhanvi Testing Group", "Yash Shinde", "auction group" and "Documents require verification" character-by-character with editing keys; all fields kept focus and value.
+**Fix (root cause, no refocus workaround):** the effect reads `onClose` through a ref and depends only on `[open, ref]`, so it runs on open/close only; it also keeps React's `autoFocus` (so the reason textarea receives initial focus instead of the Close button). Guarded by `frontend/tests/ux-regressions.test.mjs`. Browser verification typed "Dhanvi Testing Group", "Yash Shinde", "auction group" and "Documents require verification" character-by-character with editing keys; all fields kept focus and value.
 
 ## Workflow presentation layer
 

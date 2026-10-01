@@ -7,7 +7,7 @@ Dhanvi Member Portal          http://localhost:3000   apps/user-web    USER, ORG
 Dhanvi Admin Control Center   http://localhost:3001   apps/admin-web   ADMIN, SUPER_ADMIN
 ```
 
-The member portal answers "what do I need to do?". The control center answers "what needs my attention, where is each group, what is blocking it, who must act, what can I do?". They share `packages/*` (design system, API client, workflow engine) but have different information architecture. No app imports another app's `src` (enforced by `tests/app-separation.test.mjs`), and the admin bundle never reaches member participation screens (checkout, bank account form, member dashboard) while the member bundle never reaches admin screens (`tests/role-separation.test.mjs`).
+The member portal answers "what do I need to do?". The control center answers "what needs my attention, where is each group, what is blocking it, who must act, what can I do?". They share `frontend/packages/*` (design system, API client, workflow engine) but have different information architecture. No app imports another app's `src` (enforced by `frontend/tests/app-separation.test.mjs`), and the admin bundle never reaches member participation screens (checkout, bank account form, member dashboard) while the member bundle never reaches admin screens (`frontend/tests/role-separation.test.mjs`).
 
 ## Navigation
 
@@ -32,7 +32,7 @@ Integration tests: `tests/Dhanvi.IntegrationTests/Api/AdminOperationsEndpointTes
 
 ## Next-action engine
 
-`packages/features/src/workflow/group-control.ts` — `deriveGroupControl()` turns backend state (group, current cycle, auction capability flags, payout counts, payment issues) into one `GroupControlState`: stage, status, headline, blocked-by, waiting-on, who acts next, next step, **one primary action**, secondary links, overflow (rare/destructive). Authority mirrors the backend: admins operate PLATFORM groups end to end and may only suspend/cancel ORGANIZER groups; organizers operate their own groups. `GroupControlPanel` (`groups/group-control-panel.tsx`) is the only place that issues lifecycle commands (publish, confirm ready, activate, selection, open/close auction, prepare payouts, mark overdue, suspend, cancel) — guarded by `tests/role-separation.test.mjs`.
+`frontend/packages/features/src/workflow/group-control.ts` — `deriveGroupControl()` turns backend state (group, current cycle, auction capability flags, payout counts, payment issues) into one `GroupControlState`: stage, status, headline, blocked-by, waiting-on, who acts next, next step, **one primary action**, secondary links, overflow (rare/destructive). Authority mirrors the backend: admins operate PLATFORM groups end to end and may only suspend/cancel ORGANIZER groups; organizers operate their own groups. `GroupControlPanel` (`groups/group-control-panel.tsx`) is the only place that issues lifecycle commands (publish, confirm ready, activate, selection, open/close auction, prepare payouts, mark overdue, suspend, cancel) — guarded by `frontend/tests/role-separation.test.mjs`.
 
 `workflow/admin-operations.ts` — `groupHealth()` (Healthy / Attention required / Blocked / Waiting on others / Completed / Closed, with the reason) and the dashboard `adminAttention()` / `adminWaiting()` lists. Health is presentation only; lifecycle and cycle states are untouched.
 
@@ -69,8 +69,8 @@ Every command toast names the next actor ("Membership approved ✓ — Next: Yas
 
 Dedicated route in every app: member `/groups/{id}/cycles/{cycleId}/auction` (member experience), organizer `/organizer/groups/…/auction` (controls, plus own participation when the organizer saves in the group), admin `/groups/…/auction` (operations). Group pages and the member home only show a compact cycle card with one link into it.
 
-- `packages/features/src/auctions/auction-experience.tsx` — one page for SCHEDULED → LIVE → CLOSING → COMPLETED; hero = current highest discount → projected winner payout → group value, with the visible formula; server-clock countdown; recent bid movement (member positions only); your bids; details; how it works.
+- `frontend/packages/features/src/auctions/auction-experience.tsx` — one page for SCHEDULED → LIVE → CLOSING → COMPLETED; hero = current highest discount → projected winner payout → group value, with the visible formula; server-clock countdown; recent bid movement (member positions only); your bids; details; how it works.
 - `bid-panel.tsx` — personal status (leading / outbid / not bid / ineligible / closed), Quick bid (minimum next, +1, +2 increments, capped), custom discount with live payout preview and validation, Review → Confirm → Place, stale-bid explanation (`BID_INCREMENT_NOT_MET`), mobile sticky Review bar.
-- `auction-model.ts` — pure derivations (`tests/auction-model.test.mjs`); `use-live-auction.ts` — 3 s polling while OPEN, 20 s otherwise, stopped when completed, paused when hidden, non-overlapping, immediate refresh after own bid.
+- `auction-model.ts` — pure derivations (`frontend/tests/auction-model.test.mjs`); `use-live-auction.ts` — 3 s polling while OPEN, 20 s otherwise, stopped when completed, paused when hidden, non-overlapping, immediate refresh after own bid.
 - `auction-operations.tsx` — admin/organizer control: status, window, counts, leader, one action per state, bid monitoring table, audit history.
 - Backend: `AuctionDetails` gained `groupValue`, `groupName`, `durationMonths`, `recentBids` (amount, time, member position, isMine, isCurrentHighest) and `currentLeaderSlot`; no rule changed. Covered by `AuctionExperienceTests`.

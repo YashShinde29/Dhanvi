@@ -2,20 +2,47 @@
 
 Prompt 8 incoming Razorpay Test payments and their verification are documented in the [final Prompt 8 report](docs/prompt-8-verification.md). It supersedes older milestone statements below about payments and Ledger being deferred; payout execution remains deferred.
 
-Dhanvi is a production-minded foundation for a community savings platform. The current milestone implements authentication, user accounts, platform roles, profiles, organizer application approval, and savings groups, activation, monthly schedules, and manual contribution tracking, and verifiable random/organizer-reserved selection through SELECTION_COMPLETED in a .NET 10 modular monolith with a Next.js frontend and PostgreSQL. Auction bidding and calculated payout rights are implemented; financial execution, payments, real payouts, and ledger behavior remain deferred. See [Auction engine](docs/auction-engine.md) and [Windows verification](docs/prompt-6-windows-verification.md). See [Groups and membership foundation](docs/groups-foundation.md) for rules, APIs, migration, concurrency, frontend pages, and operational details. See [Monthly cycles and contribution tracking](docs/cycles-and-contributions.md) for the activation transaction, timezone, idempotency, reversals, new APIs, and migration. See [Random and organizer-reserved selection](docs/random-and-reserved-selection.md) for the V1 algorithm, proof format, payout-right semantics, APIs, and migration.
+Dhanvi is a production-minded foundation for a community savings platform. The current milestone implements authentication, user accounts, platform roles, profiles, organizer application approval, and savings groups, activation, monthly schedules, and manual contribution tracking, and verifiable random/organizer-reserved selection through SELECTION_COMPLETED with a Fastify + TypeScript API, Next.js frontends and PostgreSQL. Auction bidding and calculated payout rights are implemented; financial execution, payments, real payouts, and ledger behavior remain deferred. See [Auction engine](docs/auction-engine.md). See [Groups and membership foundation](docs/groups-foundation.md) for rules, APIs, migration, concurrency, frontend pages, and operational details. See [Monthly cycles and contribution tracking](docs/cycles-and-contributions.md) for the activation transaction, timezone, idempotency, reversals, new APIs, and migration. See [Random and organizer-reserved selection](docs/random-and-reserved-selection.md) for the V1 algorithm, proof format, payout-right semantics, APIs, and migration.
 
 ## Architecture
 
-The backend is one deployable ASP.NET Core process with module-owned Domain, Application, Infrastructure, and API projects. Identity, Organizers, Groups, and Audit each own an EF Core `DbContext`, PostgreSQL schema, and migration history. A scoped PostgreSQL connection allows multi-module approval operations to enlist in one database transaction.
+> **Backend migrated to Fastify.** The API in `backend/` is Fastify + TypeScript on the same PostgreSQL schema, with Redis +
+> BullMQ for durable background work. The former ASP.NET Core backend has been removed from the repository (it remains in
+> git history). See [Fastify migration](docs/fastify-migration/README.md), the
+> [parity checklist](docs/fastify-migration/parity-checklist.md) and the [cutover runbook](docs/fastify-migration/cutover-runbook.md).
 
-Authentication uses a 15-minute JWT access token and a longer-lived random opaque refresh token. Refresh tokens are SHA-256 hashed in PostgreSQL, rotated on use, and revocable. The API supports bearer headers for API clients and HttpOnly, SameSite cookies for the web app. Backend authorization policies remain the source of truth.
+The API exposes the same `/api/v1` routes, payloads and error codes as before. PostgreSQL remains the financial source of
+truth (row locks, append-only triggers, NUMERIC money); Redis only carries BullMQ queues. Authentication uses a 15-minute JWT
+access token and a rotating, SHA-256-hashed opaque refresh token, via bearer headers or HttpOnly SameSite cookies; backend
+authorization remains the source of truth.
+
+## Project layout
+
+```
+Dhanvi/
+├── README.md · docker-compose.yml · .env.example
+├── frontend/                     npm workspace (Next.js 16)
+│   ├── package.json · tsconfig.base.json · eslint.config.mjs · tests/
+│   ├── apps/user-web             member app      http://localhost:3000
+│   ├── apps/admin-web            admin portal    http://localhost:3001
+│   └── packages/                 api-client · auth · config · features · types · ui · utils
+├── backend/                      Fastify API     http://localhost:3002
+│   ├── package.json · tsconfig.json · Dockerfile
+│   ├── sql/{baseline,migrations}
+│   ├── src/server.ts             HTTP API (PORT=3002)
+│   ├── src/worker.ts             BullMQ worker (no public port; processes Redis jobs)
+│   ├── src/{app.ts,config,plugins,routes,features,queues,workers,services,infra,types,utils,scripts}
+│   └── test/
+├── docs/ · tools/ · assets/
+```
+
+Both web apps call the same backend: `NEXT_PUBLIC_API_URL=http://localhost:3002` (the API client appends `/api/v1`).
 
 ## Prerequisites
 
 - Docker Desktop with Docker Compose
-- Node.js 20.9+ and npm 10+ for manual frontend development
-- .NET 10 SDK for manual backend development
-- PostgreSQL 18 or a compatible supported PostgreSQL release when not using Docker
+- Node.js 22.12+ (24 recommended) and npm 10+
+- PostgreSQL 16+ and Redis 7 when not using Docker
 
 ## Configuration
 
@@ -30,14 +57,18 @@ Open `.env` and replace the placeholder values. Do not commit `.env`.
 | Variable | Purpose |
 | --- | --- |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` | Local PostgreSQL settings |
-| `BACKEND_PORT`, `FRONTEND_PORT` | Host application ports |
+| `BACKEND_PORT`, `FRONTEND_PORT` | Host application ports (API 3002, member app 3000) |
 | `JWT_SIGNING_KEY` | Random secret of at least 32 characters; use a secret manager in production |
 | `DHANVI_SEED_ADMIN_ENABLED` | Set `true` only when intentionally creating the initial super admin |
 | `DHANVI_SEED_ADMIN_EMAIL`, `DHANVI_SEED_ADMIN_PASSWORD` | Initial super-admin credentials when seeding is enabled |
 | `FRONTEND_ORIGIN` | Browser origins allowed by the API (`;`-separated); defaults to both web apps |
 | `ADMIN_PORT`, `USER_APP_URL`, `ADMIN_APP_URL` | Admin portal host port and the cross-app link URLs baked into each web app |
-| `NEXT_PUBLIC_API_BASE_URL` | Browser-visible API base URL |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | Optional OpenTelemetry collector endpoint |
+| `NEXT_PUBLIC_API_URL` | Backend origin used by both web apps (`http://localhost:3002`) |
+| `REDIS_PORT` | Redis host port |
+| `AUCTION_GOING_ONCE_SECONDS`, `AUCTION_GOING_TWICE_SECONDS`, `AUCTION_FINAL_WARNING_SECONDS` | Digital closing-sequence phase durations (default 30 s each) |
+| `PAYMENTS_RAZORPAY_ENABLED`, `RAZORPAY_*` | Razorpay TEST mode credentials (backend only) |
+
+The full backend variable list (pool size, sweep intervals, payouts, ledger policy) is in `backend/.env.example`.
 
 Admin seeding is idempotent. After the first account is created, disable it and restart the API. Never use the example credentials in a shared or production environment.
 
@@ -51,8 +82,11 @@ Open:
 
 - Member web app: `http://localhost:3000`
 - Admin portal: `http://localhost:3001`
-- API health: `http://localhost:5000/api/v1/health`
-- Swagger: `http://localhost:5000/swagger`
+- API health: `http://localhost:3002/api/v1/health`
+- Swagger: `http://localhost:3002/swagger`
+
+Compose starts PostgreSQL, Redis, the Fastify API (applies migrations and seeds on start), the BullMQ worker and both web
+apps.
 
 Stop the project while keeping database data:
 
@@ -87,16 +121,22 @@ Organizer workflow:
 
 ## Frontend applications
 
-The frontend is an npm workspace with two independent Next.js applications and shared packages. See [Frontend applications](docs/frontend-apps.md) for the route map, auth strategy and package layout.
+The frontend (`frontend/`) is an npm workspace with two independent Next.js applications and shared packages. See [Frontend applications](docs/frontend-apps.md) for the route map, auth strategy and package layout.
 
 | Application | Port | Contents |
 | --- | --- | --- |
-| `apps/user-web` — Dhanvi member app | 3000 | Landing, sign-in/registration, member dashboard, groups, contributions, Razorpay Checkout, payments, payouts, financial history, profile, organizer tools |
-| `apps/admin-web` — Dhanvi Admin Portal | 3001 | Admin sign-in, platform overview, organizer applications, platform groups, payments and reconciliation, payouts, ledger |
+| `frontend/apps/user-web` — Dhanvi member app | 3000 | Landing, sign-in/registration, member dashboard, groups, contributions, Razorpay Checkout, payments, payouts, financial history, profile, organizer tools |
+| `frontend/apps/admin-web` — Dhanvi Admin Portal | 3001 | Admin sign-in, platform overview, organizer applications, platform groups, payments and reconciliation, payouts, ledger |
 
-Shared code lives once under `packages/` (`ui`, `api-client`, `auth`, `types`, `utils`, `config`, `features`). Both apps call the same backend API; the backend remains the authorization authority and both apps also guard every route client-side by role.
+Shared code lives once under `frontend/packages/` (`ui`, `api-client`, `auth`, `types`, `utils`, `config`, `features`). Both apps call the same backend API (`NEXT_PUBLIC_API_URL`, default `http://localhost:3002`); the backend remains the authorization authority and both apps also guard every route client-side by role.
 
 ```powershell
+cd backend
+npm ci
+npm run dev          # Fastify API on 3002 (needs DATABASE_URL, REDIS_URL, JWT_SIGNING_KEY in backend/.env)
+npm run worker:dev   # BullMQ worker, separate terminal, no port
+
+cd frontend
 npm install
 npm run dev          # member app on 3000 and admin portal on 3001
 npm run dev:user     # member app only
@@ -109,37 +149,21 @@ Admin Control Center routes: `/login`, `/dashboard`, `/groups`, `/groups/create`
 
 ## Database migrations
 
-Checked-in migrations:
-
-- Identity: `IdentityAndAuthentication`
-- Organizers: `OrganizerApplications`
-- Audit: `IdentityAuditLog`
-- Groups: `GroupsAndMembershipFoundation` (groups, memberships, rules snapshots, terms acceptances, and group audit events)
-- Groups: `MonthlyCyclesAndContributionTracking` (monthly cycles, obligations, append-only contribution entries, and idempotency receipts)
-- Groups: `RandomAndReservedSelectionFoundation` (immutable selection results and relational eligible snapshots, cycle completion, and payout-right naming)
-
-- Groups: `AuctionEngine` (auctions, append-only bids, immutable results and calculated allocations, auction selection integration)
-
-They create `identity.users`, `identity.roles`, `identity.user_roles`, `identity.refresh_tokens`, `identity.password_reset_tokens`, `identity.email_verification_tokens`, `organizers.organizer_profiles`, `organizers.organizer_applications`, and `audit.audit_logs`, with the required indexes and constraints.
-
-Compose applies these migrations when the API starts. For manual development, set `ConnectionStrings__DefaultConnection` and run each module context from `backend`:
-
-```powershell
-dotnet ef database update --project src/Modules/Audit/Dhanvi.Modules.Audit.Infrastructure --context AuditDbContext
-dotnet ef database update --project src/Modules/Identity/Dhanvi.Modules.Identity.Infrastructure --context IdentityDbContext
-dotnet ef database update --project src/Modules/Organizers/Dhanvi.Modules.Organizers.Infrastructure --context OrganizerDbContext
-dotnet ef database update --project src/Modules/Groups/Dhanvi.Modules.Groups.Infrastructure --context GroupsDbContext
-```
+`backend/sql/baseline/0000_baseline.sql` is the schema produced by the historical (pre-Fastify) migrations. On an
+existing Dhanvi database `npm run db:migrate` (in `backend/`) adopts it without executing anything, then applies the
+migrations owned by the new stack from `backend/sql/migrations/`. On an empty database it creates the schema from the
+baseline. See [Database baseline](docs/fastify-migration/database-baseline.md).
 
 ## Tests and checks
 
-```powershell
-Set-Location backend
-dotnet restore Dhanvi.sln
-dotnet build Dhanvi.sln -c Release
-dotnet test Dhanvi.sln -c Release
+```bash
+cd backend
+npm ci
+npm run lint && npm run typecheck && npm run build
+npm test                    # unit
+npm run test:integration    # PostgreSQL 17 + Redis 7 via Testcontainers (Docker required)
 
-Set-Location ..
+cd ../frontend
 npm install
 npm run lint
 npm run typecheck
@@ -147,11 +171,13 @@ npm test
 npm run build        # builds apps/user-web then apps/admin-web
 ```
 
-Docker must be running for the integration tests. Testcontainers applies the real migrations to disposable PostgreSQL and verifies registration, duplicate email handling, password safety, login, authorization, refresh rotation/reuse protection, password reset reuse protection, organizer application rules, admin approval/rejection, role assignment, and audit creation. Group tests additionally verify all four creator/mechanism combinations, terms, privacy, readiness, and real concurrent final-slot approval. Cycle/contribution tests also verify atomic activation and rollback, 20/50-member schedules, private histories, manual recording/reversal, idempotency, concurrent over-record prevention, readiness, and overdue dates.
+Integration tests run against real PostgreSQL (never SQLite) and real Redis: concurrent final-slot approval, concurrent
+bids, the full Going Once → Final Call sequence, stale and duplicate BullMQ jobs, Razorpay webhook signatures over exact
+bytes, ledger postings exactly once, payouts and cycle completion.
 
 ## Known limitations
 
-- The development email sender logs that a reset was requested; configure a real `IEmailSender` before production email delivery.
+- Password-reset requests are logged without the token; no email/SMS provider is configured (notifications are out of scope).
 - Email verification storage is prepared, but send/confirm endpoints and a provider are not implemented.
 - Suspended organizers cannot create or manage groups. Active group suspension blocks contribution operations; resume and all financial execution remain deferred.
 - KYC, document uploads, MFA, and all financial workflows remain out of scope for this milestone.

@@ -74,7 +74,7 @@ All strings below use UTF-8 without BOM. Separators are a single LF byte (`0a`),
 
    `ResultHash = lowercase_hex(SHA256(UTF8(result payload)))`.
 
-The independent golden vector in [examples/random-v1-test-vector.json](examples/random-v1-test-vector.json) is asserted in the .NET unit suite. Its selected index is 1 and ResultHash is `f98c26f97cbbe567f1fc758bf7b6d00f47f0bb2c139ba61b6b1f5108e2ecd885`.
+The independent golden vector in [examples/random-v1-test-vector.json](examples/random-v1-test-vector.json) is asserted in the backend unit suite (`backend/test/unit/random-draw.test.ts`). Its selected index is 1 and ResultHash is `f98c26f97cbbe567f1fc758bf7b6d00f47f0bb2c139ba61b6b1f5108e2ecd885`.
 
 The reserved result hash uses LF-terminated UTF-8 lines: `ORGANIZER_RESERVED_V1`, group UUID, cycle UUID, `1`, organizer membership UUID, organizer slot. It carries no random seed/proof.
 
@@ -123,10 +123,10 @@ Existing member/organizer/admin group cycle panels show readiness, execution con
 
 ## Configuration, verification, and deferred work
 
-No new environment variables or external service configuration. Existing migration application startup applies the new migration after Prompts 1–4. To apply manually from `backend`, configure your normal connection string and run:
+No new environment variables or external service configuration. The schema is part of the database baseline; to apply pending migrations with `DATABASE_URL` set:
 
 ```sh
-dotnet ef database update --project src/Modules/Groups/Dhanvi.Modules.Groups.Infrastructure --context GroupsDbContext
+cd backend && npm run db:migrate   # adopts the existing schema, applies backend/sql/migrations/*
 ```
 
 The suite includes deterministic golden hashes, rejection boundaries, alternate seeds, singleton/empty/invalid sets, tamper detection, eligibility exclusion, reserved rules, production source shape, PostgreSQL atomic selection, concurrent/retried execution, immutable snapshots/results, database uniqueness, rollback, safe member visibility, verification audit, and reversal blocking after selection. Prompt 1–4 tests remain included.
