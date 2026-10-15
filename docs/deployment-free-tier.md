@@ -65,7 +65,7 @@ Deploy in this order: database → backend → frontends, because each step need
    | `RUN_MIGRATIONS_ON_START` | `true` |
    | `JWT_SIGNING_KEY` | your generated 48-char secret |
    | `JWT_SECURE_COOKIES` | `true` |
-   | `NODE_ENV` | `production` (enforces the 20–50 member policy) |
+   | `NODE_ENV` | `production` (enforces the 2–50 member policy) |
    | `PORT` | `3002` |
    | `FRONTEND_ORIGIN` | `https://dhanvi-user.vercel.app;https://dhanvi-admin.vercel.app` (fill in with your real Vercel URLs after Step 3; a placeholder is fine for now) |
    | `DHANVI_SEED_ADMIN_ENABLED` | `true` (first deploy only, see Step 4) |

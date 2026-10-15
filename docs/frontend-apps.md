@@ -83,7 +83,7 @@ The Fastify API (`backend/src/plugins/cors.ts`) allows an explicit list of origi
 | `NEXT_PUBLIC_APP_KIND` | `user` | `admin` |
 | `NEXT_PUBLIC_ADMIN_URL` | cross-link and `/admin/*` redirect target | — |
 | `NEXT_PUBLIC_USER_APP_URL` | — | cross-link target |
-| `NEXT_PUBLIC_MIN_GROUP_MEMBERS` | `.env.development`/`.env.test` set 2; production stays 20 | same |
+| `NEXT_PUBLIC_MIN_GROUP_MEMBERS` | `.env.development`/`.env.test` set 2; production stays 2 | same |
 
 Razorpay Checkout needs no frontend env: the public `rzp_test_` key arrives from the backend in the Checkout response and the admin portal never loads Checkout. No secret belongs in either app.
 
@@ -99,7 +99,7 @@ Checkout (`frontend/packages/features/src/payments/payment-checkout.tsx`) is mou
 
 ## Docker
 
-Local Compose builds set `NEXT_PUBLIC_APP_ENV=development` and `NEXT_PUBLIC_MIN_GROUP_MEMBERS=2` for both websites, matching the backend's Development policy. The form accepts 2–50 members for testing. Standalone Docker builds default to the production policy of 20–50 members. Rebuild both websites after changing these public build settings.
+Local Compose builds set `NEXT_PUBLIC_APP_ENV=development` and `NEXT_PUBLIC_MIN_GROUP_MEMBERS=2` for both websites, matching the backend's Development policy. The form accepts 2–50 members for testing. Standalone Docker builds default to the production policy of 2–50 members. Rebuild both websites after changing these public build settings.
 
 `docker-compose.yml` replaces `frontend` with `user-web` (3000) and `admin-web` (3001), each built with build context `./frontend` and `apps/<app>/Dockerfile` (workspace-aware, standalone output traced from the workspace root). The Compose backend receives both origins through `FRONTEND_ORIGIN`.
 

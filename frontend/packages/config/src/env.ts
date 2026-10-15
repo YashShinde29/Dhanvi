@@ -3,7 +3,7 @@
 const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002";
 
 // Public values are fixed at build time. Local Docker builds explicitly use the development policy.
-const productionMinimum = 20;
+const productionMinimum = 2;
 const developmentMinimum = Number(process.env.NEXT_PUBLIC_MIN_GROUP_MEMBERS ?? productionMinimum);
 const appEnvironment = process.env.NEXT_PUBLIC_APP_ENV ?? process.env.NODE_ENV;
 const minimumGroupMembers = appEnvironment === "development" || appEnvironment === "test"

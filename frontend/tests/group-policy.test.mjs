@@ -23,10 +23,10 @@ for (const app of ["user-web", "admin-web"]) {
     });
   }
 }
-test("production defaults retain 20–50, even with a minimum override", () => {
+test("production allows 2–50, even with a legacy minimum override", () => {
   for (const minimum of [undefined, "2", "20"]) {
     const limits = policy("production", minimum);
-    assert.equal(limits.minimumGroupMembers, 20);
+    assert.equal(limits.minimumGroupMembers, 2);
     assert.equal(limits.maximumGroupMembers, 50);
   }
 });
@@ -36,8 +36,8 @@ test("optimized local Docker builds allow 2 members with an explicit development
   assert.equal(limits.maximumGroupMembers, 50);
 });
 
-test("an explicit production policy retains 20 members", () => {
-  assert.equal(policy("development", "2", { NEXT_PUBLIC_APP_ENV: "production" }).minimumGroupMembers, 20);
+test("an explicit production policy allows 2 members", () => {
+  assert.equal(policy("development", "20", { NEXT_PUBLIC_APP_ENV: "production" }).minimumGroupMembers, 2);
 });
 
 test("cross-app URLs default to the two development ports", () => {
